@@ -1,0 +1,498 @@
+/* ════════════════════════════════
+   PARTICIPANT — estilos exclusivos de #screen-participant
+   (targetes de navegació — mateix aspecte i graella a tots els dispositius,
+   sense bottom-nav fix; box unificat Repte + La meva foto)
+   ════════════════════════════════ */
+
+/* ── REPTE + LA MEVA FOTO — box unificat, sense subdivisions ──
+   Capçalera (nom + text informatiu del repte) i a sota la foto, apilats. */
+.objective-card { padding: 20px; }
+
+.objective-header {
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border2);
+}
+
+.objective-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(22px, 3.5vw, 28px);
+  letter-spacing: 1.5px;
+  color: var(--accent2);
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.objective-desc {
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* Rang de dates de pujada/votació (objectives.cal_upload_*/cal_voting_*),
+   sota el nom+descripció del repte. Amagades per JS (classe .hidden) quan
+   falta alguna de les dues dates d'un rang. */
+.objective-cal-dates { margin-top: 10px; display: flex; flex-direction: column; gap: 2px; }
+.objective-cal-line {
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: .2px;
+  color: var(--text-muted);
+}
+
+/* Imatge de fons de la capçalera (objectives.cover_image_url, opcional —
+   2026-07-24). Sense imatge, .objective-header queda tal com estava abans
+   (fons pla, sense aquesta classe). El degradat s'aplica des del JS
+   (participant.js) juntament amb la imatge, en un sol background-image, per
+   garantir que el text quedi llegible sigui quina sigui la foto pujada.
+   Relació recomanada de la imatge en origen: 3:1 (p. ex. 1200×400 px),
+   perquè els socis la pugin ja retallada — aquí només s'ajusta amb
+   background-size:cover per si la relació no és exacta. */
+.objective-header--has-cover {
+  border-bottom: none;
+  border-radius: 12px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  aspect-ratio: 3 / 1;
+  min-height: 120px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.objective-header--has-cover .objective-title { color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,.55); }
+.objective-header--has-cover .objective-desc  { color: rgba(255,255,255,.92); text-shadow: 0 1px 3px rgba(0,0,0,.55); }
+.objective-header--has-cover .objective-cal-line { color: rgba(255,255,255,.92); text-shadow: 0 1px 3px rgba(0,0,0,.55); }
+
+@media (max-width: 700px) {
+  .objective-header--has-cover { aspect-ratio: 2.2 / 1; }
+}
+
+.objective-photo-header { margin-bottom: 16px; }
+.objective-photo-title { font-size: 20px; }
+
+/* ── Igualar l'alçada amb Galeria (mateixa fila del hero-grid, 2026-07-24) ──
+   .hero-grid ja té align-items:stretch, però una targeta de bloc normal no
+   omple aquesta alçada extra amb el seu propi contingut: es queda amb
+   l'alçada natural i deixa la resta en blanc sota seu (per això la targeta
+   de Repte quedava més baixa que la de Galeria). La convertim en un
+   contenidor flex en columna perquè l'espai guanyat s'aprofiti — la zona de
+   "La meva foto" creix i queda més folgada — en lloc de quedar buit al peu.
+   Escopat per id perquè no afecti cap altra targeta/pantalla de l'app. */
+#card-objective-photo.objective-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+#card-objective-photo .objective-photo-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+#card-objective-photo #participant-mode-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+#card-objective-photo #upload-section,
+#card-objective-photo #upload-preview-section,
+#card-objective-photo #upload-done-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+#card-objective-photo .upload-zone {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Camp de títol/descripció de la foto — una línia, mateixa amplada que la foto
+   (no ha de competir en pes visual amb la imatge, que és el contingut principal) */
+.caption-field { margin-top: 12px; margin-left: auto; margin-right: auto; }
+.caption-field--preview { max-width: 380px; }
+.caption-field--done { max-width: 300px; }
+
+.caption-input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--surface, #16243a);
+  border: 2px solid var(--border2);
+  color: inherit;
+  font-family: inherit;
+  font-size: 16px;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.caption-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* Peu de foto inhabilitat (pujada tancada, v0.1.28): es veu però no es pot
+   editar — va associat a la mateixa acció que pujar/canviar foto. */
+.caption-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Botó que no ha de forçar amplada completa (ex: Confirmar Pujada) */
+.btn-inline { width: auto; }
+
+/* ── SECTION GRID — targetes equivalents (Resultat, Classificació) ──
+   Mateixa graella de 2 columnes a mòbil, tauleta i escriptori (màxima homologació). */
+.section-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.nav-card {
+  background: rgba(13,29,74,0.7);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 16px 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+  color: var(--text);
+}
+
+.nav-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(79,143,255,0.2);
+}
+
+.nav-card .nav-icon { font-size: 26px; margin-bottom: 6px; }
+.nav-card .nav-title { font-family: var(--font-display); font-weight: 700; font-size: 18px; letter-spacing: 1.5px; }
+/* Subtítol: mida augmentada per llegibilitat (usuari mitjà +65 anys) */
+.nav-card .nav-sub { font-size: 14px; font-weight: 500; color: var(--text-muted); margin-top: 3px; line-height: 1.35; }
+
+/* Targeta GALERIA (i VOTAR, que en reutilitza el mateix llenguatge visual):
+   mida compacta base, amb un fons de fotos i icona/títol/subtítol per damunt. */
+.photo-gallery-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  min-height: 100px;
+}
+/* El contingut (icona/títol/subtítol) per damunt del fons i llegible */
+.photo-gallery-tile > .nav-icon,
+.photo-gallery-tile > .nav-title,
+.photo-gallery-tile > .nav-sub {
+  position: relative;
+  z-index: 1;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, .85);
+}
+/* Carrusel de fons (Galeria): capes d'imatge que es fonen amb brillantor baixa */
+.gallery-tile-carousel {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.gallery-tile-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  filter: brightness(.32);
+  transition: opacity 1.5s ease-in-out;
+}
+.gallery-tile-layer.visible {
+  opacity: 1;
+}
+
+/* ── FILA PRINCIPAL (hero) — Repte/La meva foto (o Votar) + Galeria ──
+   Les dues targetes principals: més grans i gràfiques que la resta.
+   align-items:stretch fa que totes dues s'estirin a la mateixa alçada —
+   com que són elements GERMANS directes del grid, funciona igual per a
+   qualsevol combinació de les dues visibles en cada moment. Aquestes regles
+   van DESPRÉS de .nav-card/.photo-gallery-tile perquè les han de sobreescriure
+   (mateixa especificitat: guanya la que surt més tard en el full d'estils). */
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: stretch;
+  margin-bottom: 16px;
+}
+
+.hero-gallery-tile {
+  min-height: 260px;
+  padding: 24px 18px;
+}
+.hero-gallery-tile .nav-icon { font-size: 46px; margin-bottom: 12px; }
+.hero-gallery-tile .nav-title { font-size: 28px; letter-spacing: 2px; }
+.hero-gallery-tile .nav-sub { font-size: 15px; }
+
+@media (max-width: 700px) {
+  .hero-grid { grid-template-columns: 1fr; }
+  .hero-gallery-tile { min-height: 180px; }
+}
+
+/* ── VOTAR (mosaic) — substitueix TOTA la targeta de Repte quan la votació
+   és oberta. Reutilitza .hero-gallery-tile (mateixa mida que Galeria: això
+   és el que garanteix que totes dues quedin igual d'altes).
+   Graella FIXA de 6 fotos (3 columnes x 2 files). NOTA: es posiciona cada
+   imatge amb percentatges explícits (position:absolute + top/left/width/
+   height calculats), NO amb CSS Grid — dins un contenidor ell mateix
+   absolut (inset:0) el repartiment amb `1fr` de files/columnes no es
+   calculava bé (la 2a fila quedava d'un parell de píxels). Percentatges
+   directes és el mateix mecanisme, ja provat, del carrusel de Galeria. */
+.vote-mosaic-grid {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+.vote-mosaic-grid img {
+  position: absolute;
+  width: calc((100% - 4px) / 3);
+  height: calc((100% - 2px) / 2);
+  object-fit: cover;
+  object-position: center;
+  filter: brightness(.32);
+  display: block;
+  border-radius: 2px;
+}
+.vote-mosaic-grid img:nth-child(1) { top: 0; left: 0; }
+.vote-mosaic-grid img:nth-child(2) { top: 0; left: calc((100% - 4px) / 3 + 2px); }
+.vote-mosaic-grid img:nth-child(3) { top: 0; left: calc(2 * (100% - 4px) / 3 + 4px); }
+.vote-mosaic-grid img:nth-child(4) { top: calc((100% - 2px) / 2 + 2px); left: 0; }
+.vote-mosaic-grid img:nth-child(5) { top: calc((100% - 2px) / 2 + 2px); left: calc((100% - 4px) / 3 + 2px); }
+.vote-mosaic-grid img:nth-child(6) { top: calc((100% - 2px) / 2 + 2px); left: calc(2 * (100% - 4px) / 3 + 4px); }
+
+/* ════════════════════════════════
+   PANTALLA DE VOTACIÓ — capçalera d'estat (v0.1.30, revisat v0.1.31)
+   Decisió (Pablo): una sola línia d'estat (recompte de vots + data límit /
+   ja enviat, fosos junts — abans en 2 línies, es fonien massa entre el
+   títol i la instrucció). No ha de competir amb el títol (h2, 24px) però ha
+   de ser prou visible — i tots els textos d'aquesta pantalla (instruccions,
+   criteris a votar) han de pujar de mida i contrast, mateix criteri ja
+   aplicat a altres pantalles (v0.1.22) en atenció a la mitjana d'edat dels
+   socis (~65 anys).
+   ════════════════════════════════ */
+.voting-status-line {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+.voting-status-line.is-submitted { color: var(--success); }
+
+/* .card-subtitle genèric és 13px — aquí es puja mida i contrast (deixa de ser
+   "text-muted" pur) perquè la instrucció es llegeixi bé. */
+.voting-instructions {
+  font-size: 16px;
+  color: var(--text);
+}
+
+/* Etiquetes "Creativitat"/"Temàtica"/"Composició" de cada foto a votar (abans
+   inline a votacio.js: 11px, var(--text-muted), width:80px — il·legible). */
+.vote-criteria-label {
+  font-size: 15px;
+  color: var(--text);
+  width: 108px;
+  flex-shrink: 0;
+}
+
+/* ════════════════════════════════
+   GALERIA — filtres, capçaleres de grup i mosaic
+   ════════════════════════════════ */
+.gallery-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.gallery-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+  flex: 1;
+  min-width: 140px;
+}
+.gallery-filter select {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface, #16243a);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+}
+/* Card per repte: agrupa la capçalera del repte + la seva rejilla de fotos */
+.gallery-objective-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+.gallery-objective-card .gallery-group-header {
+  margin-top: 0;
+}
+.gallery-group-header {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 1.5px;
+  color: var(--accent2);
+  background: rgba(255,255,255,0.04);
+  border-left: 3px solid var(--accent2);
+  padding: 6px 12px;
+  border-radius: 6px;
+  margin: 18px 0 10px;
+}
+.gallery-mosaic-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+.gallery-photo {
+  cursor: pointer;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface, #16243a);
+  border: 1px solid var(--border2);
+  transition: transform 0.15s, border-color 0.15s;
+}
+.gallery-photo:hover { transform: translateY(-2px); border-color: var(--accent); }
+.gallery-photo img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  display: block;
+}
+.gallery-photo-meta {
+  padding: 6px 8px;
+  font-family: Arial, Helvetica, sans-serif;
+}
+.gallery-photo-caption {
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.3;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.gallery-photo-author {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ════════════════════════════════
+   PANELL EMBEGUT (App Resultats d'Enric) — PANTALLA COMPLETA
+   L'iframe omple tota la finestra; només sura a sobre el botó ← Tornar (marge
+   esquerre). La resta de controls de FEM queden a la pàgina principal. S'activa
+   amb la classe body.embedded-fullscreen (la posa openEmbedded; la treu
+   _hideAllParticipantPanels en sortir per qualsevol via de navegació).
+   ════════════════════════════════ */
+#iframe-resultats { display: block; border: none; }
+
+body.embedded-fullscreen #participant-panel-embedded {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  margin: 0;
+}
+/* L'iframe omple la finestra. --iframe-zoom agranda el contingut d'Enric:
+   1 = mida normal; puja a 1.1 / 1.15 / 1.2... per fer-lo més gran. */
+body.embedded-fullscreen #iframe-resultats {
+  --iframe-zoom: 1.15;
+  width: calc(100vw / var(--iframe-zoom));
+  height: calc(100dvh / var(--iframe-zoom));
+  transform: scale(var(--iframe-zoom));
+  transform-origin: top left;
+}
+/* Botó ← Tornar surant al marge esquerre, a sobre de l'iframe */
+body.embedded-fullscreen #participant-panel-embedded > div:first-child {
+  position: fixed;
+  top: 14px;
+  left: 16px;
+  z-index: 1002;
+  margin: 0;
+}
+/* Mida del botó ← Tornar en mode pantalla completa (ajustable) */
+body.embedded-fullscreen #participant-panel-embedded > div:first-child .btn {
+  font-size: 15px;
+  padding: 10px 18px;
+}
+/* ESCRIPTORI ESTRET: quan la finestra és prou estreta perquè el títol de l'App
+   d'Enric arribi al marge esquerre (i el botó flotant el trepitgi), el ← Tornar
+   puja a una FILA FIXA a dalt i l'iframe baixa just aquesta fila. IMPORTANT:
+   es MANTÉ l'escala 1.15 (l'iframe NO s'empetiteix, només es desplaça avall).
+   Ajusta el max-width fins que coincideixi amb l'amplada on el títol toca el
+   marge esquerre. */
+@media (min-width: 641px) and (max-width: 1300px) {
+  body.embedded-fullscreen #participant-panel-embedded > div:first-child {
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    background: rgba(7,18,51,0.97);
+    border-bottom: 1px solid var(--border2);
+  }
+  /* L'iframe baixa la fila del botó però conserva l'escala (--iframe-zoom) */
+  body.embedded-fullscreen #iframe-resultats {
+    margin-top: 44px;
+    height: calc((100dvh - 44px) / var(--iframe-zoom));
+  }
+}
+
+/* En mòbil el ← Tornar es mou a la cantonada dreta i es fa compacte per no
+   trepitjar el títol de l'App d'Enric (les puntuacions retallades són cosa
+   d'aquella app, no de FEM). Posició ajustable després de veure-ho. */
+@media (max-width: 640px) {
+  /* En mòbil, el ← Tornar té la seva pròpia barra superior (no flota sobre
+     l'App d'Enric → no en trepitja el títol). L'iframe comença sota la barra. */
+  body.embedded-fullscreen #participant-panel-embedded > div:first-child {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 0 8px;
+    margin: 0;
+    background: rgba(7,18,51,0.97);
+    border-bottom: 1px solid var(--border2);
+    z-index: 1002;
+  }
+  body.embedded-fullscreen #participant-panel-embedded > div:first-child .btn {
+    font-size: 13px;
+    padding: 6px 12px;
+  }
+  /* Iframe a mida real sota la barra, i SENSE transform (el scale trencava el
+     scroll tàctil dins de l'iframe en mòbil). */
+  body.embedded-fullscreen #iframe-resultats {
+    position: absolute;
+    top: 44px;
+    left: 0;
+    width: 100vw;
+    height: calc(100dvh - 44px);
+    transform: none;
+  }
+}

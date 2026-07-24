@@ -1,0 +1,153 @@
+/* ════════════════════════════════
+   LOGIN — estilos exclusivos de #screen-login
+   (las clases compartidas .form-group/.btn/.error-msg viven en base.css)
+   ════════════════════════════════ */
+#screen-login {
+  align-items: center;
+  justify-content: center;
+  padding: 20px 16px;
+  padding-bottom: env(safe-area-inset-bottom, 20px);
+}
+
+.login-container {
+  width: 100%;
+  max-width: 420px;
+  animation: fadeUp 0.5s ease;
+}
+
+.login-logo {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.logo-image {
+  max-width: 320px;
+  width: 90%;
+  height: auto;
+}
+
+.logo-with-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.logo-icon {
+  width: 72px;
+  height: 72px;
+  filter: drop-shadow(0 0 20px var(--accent-glow));
+}
+
+.logo-text {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(56px, 16vw, 72px);
+  letter-spacing: 8px;
+  line-height: 1;
+  background: linear-gradient(160deg, #ffffff 0%, var(--accent2) 50%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 24px var(--accent-glow));
+}
+
+.login-logo .logo-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(56px, 18vw, 80px);
+  letter-spacing: 6px;
+  line-height: 1;
+  background: linear-gradient(160deg, #ffffff 0%, var(--accent2) 50%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 24px var(--accent-glow));
+}
+
+.login-logo .logo-sub {
+  font-size: 11px;
+  letter-spacing: 5px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  font-weight: 500;
+}
+
+.login-card {
+  background: rgba(13,29,74,0.7);
+  border: 1px solid var(--border2);
+  border-radius: 20px;
+  padding: 28px 24px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 48px rgba(0,0,20,0.5), inset 0 1px 0 rgba(255,255,255,0.07);
+}
+
+.login-card h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 30px;
+  letter-spacing: 3px;
+  margin-bottom: 20px;
+  color: var(--text);
+}
+
+/* ── LANGUAGE TOGGLE ── */
+.lang-switcher {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(17,34,96,0.8);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 3px;
+}
+
+.lang-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-family: var(--font-body);
+  letter-spacing: 1px;
+  transition: all 0.2s;
+}
+
+.lang-btn.active, .lang-btn:hover { background: var(--surface3); color: var(--accent2); }
+
+/* ── LOGIN TABS ── */
+.login-tab-btn {
+  flex: 1;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 42px;
+}
+
+.login-tab-btn.active-tab {
+  background: var(--surface3);
+  color: var(--text);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+/* Login responsivo (≤640px) */
+@media (max-width: 640px) {
+  .logo-image { max-width: 260px; }
+  .login-card { padding: 22px 18px; }
+}
+
+/* Login responsivo (>1024px) */
+@media (min-width: 1025px) {
+  .login-card { padding: 40px; }
+}

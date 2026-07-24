@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FEM Fotografia El Masnou</title>
+<link rel="icon" type="image/png" href="img/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- CSS modular -->
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/login.css">
+<link rel="stylesheet" href="css/admin.css">
+<link rel="stylesheet" href="css/participant.css">
+<!-- Librerías externas (CDN) — deben cargar antes que el módulo JS -->
+<script src="https://cdn.jsdelivr.net/npm/jszip@3/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/piexifjs@1.0.6/piexif.min.js"></script>
+</head>
+<body>
+
+<!-- Segell TEST — indicador global, visible només en mode test (BD de proves) -->
+<div id="test-stamp" aria-hidden="true">Test</div>
+
+<!-- ══════════════════════════════════
+     AVISO file:// — script NORMAL (no module): se ejecuta aunque los módulos
+     ES estén bloqueados. Si la app se abre por doble clic (file://), main.js
+     no carga y nada reacciona; mostramos instrucciones en vez de un botón muerto.
+══════════════════════════════════ -->
+<script>
+  if (location.protocol === 'file:') {
+    document.addEventListener('DOMContentLoaded', function () {
+      document.body.innerHTML =
+        '<div style="max-width:560px;margin:60px auto;padding:32px;font-family:sans-serif;' +
+        'color:#e6e6e6;background:#16243a;border:1px solid rgba(255,255,255,.12);border-radius:14px;text-align:center;">' +
+        '<h2 style="color:#e8c547;margin:0 0 12px;">⚠️ Obre l\'app amb el llançador</h2>' +
+        '<p style="line-height:1.6;">Aquesta app fa servir mòduls JavaScript que el navegador ' +
+        '<b>bloqueja en obrir el fitxer amb doble clic</b> (<code>file://</code>). Per això els botons no reaccionen.</p>' +
+        '<p style="line-height:1.6;">Tanca aquesta finestra i fes <b>doble clic a ' +
+        '<code style="color:#5cb87a;">Iniciar_FEM.bat</code></b> (a la mateixa carpeta). ' +
+        'S\'obrirà sola per <code>http://localhost</code> i ja funcionarà.</p>' +
+        '</div>';
+    });
+  }
+</script>
+
+<!-- ══════════════════════════════════
+     SCREEN: LOGIN
+══════════════════════════════════ -->
+<div id="screen-login" class="screen active">
+  <div class="login-container">
+    <div class="login-logo">
+      <img src="https://res.cloudinary.com/dxdsel3nm/image/upload/v1774473179/v6dxu4lnkd1x5feswsxq.png" alt="FEM" class="logo-image">
+    </div>
+    <div style="display:flex;justify-content:center;margin-top:12px;margin-bottom:4px;">
+      <div class="lang-switcher">
+        <button type="button" class="lang-btn lang-btn-ca" onclick="setLang('ca')">CA</button>
+        <button type="button" class="lang-btn lang-btn-es" onclick="setLang('es')">ES</button>
+      </div>
+    </div>
+    <div class="login-card">
+      <h2 data-i18n="login_title" style="text-align:center;">Accés</h2>
+      <!-- TEST MODE indicator — only visible when _dbMode === 'test' -->
+      <div id="login-test-banner" style="display:none;background:rgba(255,59,48,0.1);border:1px solid rgba(255,59,48,0.35);border-radius:8px;padding:8px 12px;margin-bottom:14px;text-align:center;font-size:12px;font-weight:700;color:#ff3b30;letter-spacing:0.06em;">
+        <span data-i18n="test_mode_banner">🔴 MODE TEST — Base de dades de proves</span>
+      </div>
+      <!-- Setup banner (shown only if DB is empty) -->
+      <div id="setup-banner" style="display:none;background:rgba(232,197,71,0.08);border:1px solid rgba(232,197,71,0.3);border-radius:10px;padding:14px;margin-bottom:18px;">
+        <div style="font-size:13px;color:var(--accent);font-weight:600;margin-bottom:8px;" data-i18n="setup_banner_title">⚙️ Primera configuració</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;" data-i18n="setup_banner_msg">No s'han trobat usuaris a la base de dades. Inicialitza per crear l'administrador per defecte.</div>
+        <button type="button" class="btn btn-primary btn-sm btn-full" onclick="initializeDB()" id="btn-init" data-i18n="init_db_btn">Inicialitzar Base de Dades</button>
+      </div>
+      <!-- Tab toggle -->
+      <div style="display:flex;gap:4px;background:var(--surface2);border-radius:10px;padding:4px;margin-bottom:20px;">
+        <button type="button" id="tab-login"    onclick="showLoginTab()"    class="login-tab-btn active-tab" data-i18n="login_tab">Iniciar Sessió</button>
+        <button type="button" id="tab-register" onclick="showRegisterTab()" class="login-tab-btn" data-i18n="register_tab">Registrar-se</button>
+      </div>
+
+      <!-- LOGIN FORM -->
+      <div id="form-login">
+        <div class="form-group">
+          <label data-i18n="username_label">Usuari / Email</label>
+          <input type="text" id="login-user" data-i18n-placeholder="login_user_placeholder" placeholder="El teu email o nom d'usuari" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label data-i18n="password_label">Contrasenya</label>
+          <input type="password" id="login-pass" placeholder="••••••••">
+        </div>
+        <button type="button" class="btn btn-primary" onclick="handleLogin()" id="login-btn" style="width:100%;" data-i18n="enter_btn">Entrar</button>
+      </div>
+
+      <!-- REGISTER FORM -->
+      <div id="form-register" style="display:none;">
+        <div class="form-group">
+          <label data-i18n="fullname_label">Nom Complet</label>
+          <input type="text" id="reg-name" data-i18n-placeholder="reg_name_placeholder" placeholder="El teu nom i cognoms">
+        </div>
+        <div class="form-group">
+          <label data-i18n="email_label">Email</label>
+          <input type="email" id="reg-email" placeholder="el.teu@email.com">
+        </div>
+        <div class="form-group">
+          <label data-i18n="password_label">Contrasenya</label>
+          <input type="password" id="reg-pass" data-i18n-placeholder="reg_pass_placeholder" placeholder="Mínim 6 caràcters">
+        </div>
+        <div class="form-group">
+          <label data-i18n="confirm_pass_label">Confirma la Contrasenya</label>
+          <input type="password" id="reg-pass2" data-i18n-placeholder="new_pwd_repeat" placeholder="Repeteix la contrasenya">
+        </div>
+        <button type="button" class="btn btn-primary" onclick="handleRegister()" id="register-btn" style="width:100%;" data-i18n="create_account_btn">Crear compte</button>
+        <p style="font-size:12px;color:var(--text-muted);text-align:center;margin-top:12px;line-height:1.6;">
+          El teu compte es crearà com a Soci. Podràs participar al concurs quan l'administrador activi la pujada de fotos.
+        </p>
+      </div>
+      <div id="login-status" style="font-size:12px;color:var(--text-muted);text-align:center;margin-top:10px;display:none;" data-i18n="loading">Carregant...</div>
+      <div class="error-msg" id="login-error" data-i18n="login_invalid">Usuari o contrasenya incorrectes.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     SCREEN: ADMIN
+══════════════════════════════════ -->
+<div id="screen-admin" class="screen">
+  <div class="topbar">
+    <div class="topbar-logo">
+      <img src="img/logo-icon.png" alt="FEM" class="topbar-logo-icon">
+      <span class="topbar-logo-text">FEM Fotografia El Masnou</span>
+    </div>
+    <div class="topbar-right">
+      <div class="role-badge admin admin-toggle" onclick="toggleAdminParticipantView()" data-i18n-title="view_as_participant" title="Veure com a participant">Admin ⇄</div>
+      <div id="btn-db-mode" class="role-badge db-mode-btn" onclick="toggleDbMode()" data-i18n-title="toggle_db_mode_tooltip" title="Canviar base de dades (Normal / Test)">Normal</div>
+      <div class="user-badge"><span data-i18n="welcome_label">Benvingut,</span> <span id="admin-username"></span></div>
+      <div class="lang-switcher">
+        <button type="button" class="lang-btn lang-btn-ca" onclick="setLang('ca')">CA</button>
+        <button type="button" class="lang-btn lang-btn-es" onclick="setLang('es')">ES</button>
+      </div>
+      <button type="button" class="btn btn-secondary btn-sm" id="btn-admin-logout" onclick="logout()" data-i18n="logout">Sortir</button>
+      <button type="button" class="btn-logout-x" id="btn-admin-logout-x" onclick="logout()" data-i18n-title="logout" title="Sortir">✕</button>
+    </div>
+  </div>
+
+  <div class="admin-shell">
+    <aside class="admin-sidebar">
+      <div class="sidebar-title" data-i18n="menu_label">Menú</div>
+      <!-- "Panell de Control" retirat (2026-07-18, petició Pablo: "no té sentit"):
+           des de la Fase 4/5 ja no hi quedava res propi (Votacions rebudes,
+           Controls i Calendari es van moure a cada targeta de repte). "Fotos"
+           passa a ser la pestanya activa per defecte. -->
+      <button type="button" class="sidebar-item active" onclick="adminNav('photos')">
+        <span class="sidebar-icon">📷</span><span class="sidebar-label" data-i18n="photos">Fotos</span>
+      </button>
+      <button type="button" class="sidebar-item" onclick="adminNav('objectives')">
+        <span class="sidebar-icon">🎯</span><span class="sidebar-label" data-i18n="objectives">Reptes</span>
+      </button>
+      <button type="button" class="sidebar-item" onclick="adminNav('members')">
+        <span class="sidebar-icon">👥</span><span class="sidebar-label" data-i18n="members">Socis</span>
+      </button>
+      <button type="button" class="sidebar-item" onclick="adminNav('texts')">
+        <span class="sidebar-icon">📝</span><span class="sidebar-label" data-i18n="texts_nav_label">Textos</span>
+      </button>
+    </aside>
+  <div class="main-content">
+    <!-- Tab Nav (ocult: navegació moguda al sidebar) -->
+    <div class="tab-nav" id="admin-top-tabs" style="display:none;">
+      <button type="button" class="tab-btn active" onclick="switchTab('admin', 'photos')" data-i18n="photos">Fotos</button>
+      <button type="button" class="tab-btn" onclick="switchTab('admin', 'voting')" data-i18n="voting">Votació</button>
+      <button type="button" class="tab-btn" onclick="switchTab('admin', 'ranking')" data-i18n="ranking">Ranking</button>
+      <button type="button" class="tab-btn" onclick="switchTab('admin', 'objectives')" data-i18n="objectives">Reptes</button>
+      <button type="button" class="tab-btn" onclick="switchTab('admin', 'members')" data-i18n="members">Socis</button>
+      <button type="button" class="tab-btn" onclick="switchTab('admin', 'texts')" data-i18n="texts_nav_label">Textos</button>
+    </div>
+
+    <!-- TAB: DASHBOARD — retirada (2026-07-18, petició Pablo). Ja no
+         quedava cap informació pròpia (Votacions rebudes/Controls/Calendari
+         es van moure a cada targeta de repte a la Fase 4/5); la targeta
+         "Vista i base de dades" que hi havia (només visible en mòbil) ara
+         viu directament a la barra superior, sempre visible per a l'admin
+         (vegeu #screen-admin .role-badge a base.css). Placeholders ocults
+         (stat-photos/stat-votes-done/stat-votes-total/current-objective-info)
+         retirats també, ja no els llegeix cap JS (refreshAdminDashboard()). -->
+
+    <!-- TAB: FOTOS (pestanya activa per defecte des de la retirada del
+         Panell de Control, 2026-07-18) -->
+    <div id="admin-tab-photos" class="tab-content active">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title" data-i18n="manage_photos">Gestió de fotos</div>
+            <div class="card-subtitle" data-i18n="photos_subtitle">Fotos rebudes dels participants</div>
+            <div class="card-subtitle" id="admin-gallery-count" style="margin-top:2px;color:var(--accent);font-weight:600;"></div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="downloadAllPhotos()" id="btn-download-all" data-i18n="download_all_btn">⬇ Descarregar Totes</button>
+            <button type="button" class="btn btn-danger btn-sm hidden" id="btn-delete-selected" onclick="deleteSelectedPhotos()" data-i18n="delete_selected">Eliminar Seleccionades</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="publishSelectedPhotos()" id="btn-publish" data-i18n="publish_btn">Publicar Fotos</button>
+          </div>
+        </div>
+        <div id="admin-gallery" class="gallery-grid">
+          <div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">📷</div><p data-i18n="no_photos">No s'han rebut fotos encara.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: VOTACIÓ (admin sees same as participants) -->
+    <div id="admin-tab-voting" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title" data-i18n="voting_interface_title">Interfície de votació</div>
+          <div class="card-subtitle" data-i18n="voting_interface_subtitle">Vista idèntica a la dels participants</div>
+        </div>
+        <div id="admin-voting-grid" class="voting-grid">
+          <div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🗳️</div><p data-i18n="no_photos_to_vote">No hi ha fotos publicades per votar.</p></div>
+        </div>
+        <div style="margin-top:20px;">
+          <button type="button" class="btn btn-primary" onclick="saveAdminVotes()" id="btn-save-admin-votes" data-i18n="save_votes_btn">Enviar Vots</button>
+        </div>
+      </div>
+
+      <!-- LA MEVA FOTO — admin upload inside voting tab -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title" data-i18n="my_photo">La meva foto</div>
+            <div class="card-subtitle" id="admin-upload-status-label">Puja la teva foto per participar</div>
+          </div>
+        </div>
+        <div id="admin-upload-section">
+          <div class="upload-zone" id="admin-upload-zone" ondragover="dragOver(event,'admin')" ondragleave="dragLeave('admin')" ondrop="dropFile(event,'admin')">
+            <input type="file" accept="image/*" id="admin-file-input" onchange="handleFileSelect(event,'admin')">
+            <div class="upload-icon">📸</div>
+            <h3 data-i18n="upload_zone_title">Selecciona o arrossega la teva foto</h3>
+            <p data-i18n="admin_upload_zone_subtitle">JPG, PNG, WEBP · Es comprimirà automàticament abans de pujar</p>
+          </div>
+        </div>
+        <div id="admin-upload-preview-section" class="hidden" style="margin-top:16px;">
+          <div class="upload-preview" id="admin-upload-preview-wrap"></div>
+          <textarea id="admin-caption-input" maxlength="300" rows="2" data-i18n-placeholder="caption_placeholder" placeholder="Què vols transmetre amb la teva foto? (opcional)" style="width:100%;margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--surface,#16243a);border:1px solid rgba(255,255,255,.15);color:inherit;font-family:inherit;font-size:14px;resize:vertical;box-sizing:border-box;"></textarea>
+          <div style="margin-top:16px;display:flex;gap:10px;justify-content:center;">
+            <button type="button" class="btn btn-secondary" onclick="cancelPreview('admin')" data-i18n="cancel_btn">Cancel·lar</button>
+            <button type="button" class="btn btn-primary" onclick="uploadPhoto('admin')" id="btn-admin-upload-confirm" data-i18n="confirm_upload_btn">Confirmar Pujada</button>
+          </div>
+        </div>
+        <div id="admin-upload-done-section" class="hidden" style="margin-top:16px;text-align:center;">
+          <div style="font-size:48px;">✅</div>
+          <p style="margin:12px 0;font-weight:600;" data-i18n="photo_uploaded_static">Foto pujada correctament</p>
+          <div id="admin-my-photo-preview" style="max-width:300px;margin:16px auto;border-radius:12px;overflow:hidden;"></div>
+          <button type="button" class="btn btn-danger btn-sm" onclick="deleteMyPhoto()" data-i18n="delete_photo_btn">🗑 Eliminar i Tornar a Pujar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: RANKING -->
+    <div id="admin-tab-ranking" class="tab-content">
+      <div class="tab-nav" style="margin-bottom:20px;">
+        <button type="button" class="tab-btn active" onclick="switchTab('rank', 'current')" data-i18n="current_ranking">Repte Actual</button>
+        <button type="button" class="tab-btn" onclick="switchTab('rank', 'general')" data-i18n="general_ranking">Ranking General</button>
+      </div>
+      <div id="rank-tab-current" class="tab-content active">
+        <div class="card">
+          <div class="card-title" style="margin-bottom:16px;" data-i18n="ranking_current_title">Ranking — Repte Actual</div>
+          <div id="ranking-current-list" class="ranking-list">
+            <div class="empty-state"><div class="empty-icon">🏆</div><p data-i18n="no_data_voting">Sense dades de votació encara.</p></div>
+          </div>
+        </div>
+      </div>
+      <div id="rank-tab-general" class="tab-content">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <div class="card-title" style="margin-bottom:0;" data-i18n="general_ranking">Ranking General</div>
+
+          </div>
+          <div id="ranking-general-list" class="ranking-list">
+            <div class="empty-state"><div class="empty-icon">🏅</div><p data-i18n="no_data_voting">Sense dades generals.</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: REPTES -->
+    <div id="admin-tab-objectives" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title" data-i18n="objectives_title">Gestió de reptes</div>
+          <button type="button" class="btn btn-primary btn-sm" onclick="openObjectiveModal()" data-i18n="new_objective_btn">+ Nou Repte</button>
+        </div>
+        <div id="objectives-list">
+          <div class="empty-state"><div class="empty-icon">🎯</div><p data-i18n="no_objectives">No hi ha reptes creats.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: SOCIS -->
+    <div id="admin-tab-members" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title" data-i18n="members_title">Gestió de socis</div>
+          <button type="button" class="btn btn-primary btn-sm" onclick="openMemberModal()" data-i18n="new_member_btn">+ Nou Soci</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="participant-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th data-i18n="member_name">Nom</th>
+                <th data-i18n="table_username_header">Usuari</th>
+                <th data-i18n="member_role">Rol</th>
+                <th data-i18n="member_uploaded">Foto pujada</th>
+                <th data-i18n="member_voted_h">Ha Votat</th>
+                <th data-i18n="member_actions">Accions</th>
+              </tr>
+            </thead>
+            <tbody id="members-tbody">
+              <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted);" data-i18n="loading">Carregant...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: TEXTOS (Fase 3 d'i18n — edició en calent del diccionari, sense passar per SQL) -->
+    <div id="admin-tab-texts" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title" data-i18n="texts_title">Gestió de textos</div>
+            <div class="card-subtitle" data-i18n="texts_subtitle">Edita els textos de l'aplicació (CA / ES)</div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:14px;">
+          <div style="display:flex;align-items:center;gap:10px;flex:1 1 240px;min-width:180px;max-width:420px;">
+            <input type="text" id="texts-search" oninput="filterTexts(this.value)" data-i18n-placeholder="texts_search_placeholder" placeholder="Cerca per clau o text..." style="max-width:300px;width:100%;background:rgba(4,9,30,0.6);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:0 16px;height:var(--tap);color:var(--text);font-family:var(--font-body);font-size:15px;outline:none;">
+            <span id="texts-count" style="font-size:12px;color:var(--text-muted);white-space:nowrap;"></span>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:nowrap;flex-shrink:0;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-save-texts" onclick="saveAllTexts()" data-i18n="save_all_texts_btn" style="width:auto;flex-shrink:0;white-space:nowrap;">Desar canvis a la base activa</button>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-save-texts-both" onclick="saveAllTextsToBoth()" data-i18n="save_all_texts_both_btn" style="width:auto;flex-shrink:0;white-space:nowrap;">Desar canvis a les dues bases</button>
+          </div>
+        </div>
+        <div id="texts-table-head" style="display:flex;gap:12px;padding:0 10px 8px;font-size:11px;color:var(--text-muted);font-weight:600;">
+          <div style="width:200px;flex-shrink:0;" data-i18n="texts_col_key">Clau</div>
+          <div style="flex:1;">CA</div>
+          <div style="flex:1;">ES</div>
+        </div>
+        <div id="texts-list" style="display:flex;flex-direction:column;gap:6px;max-height:65vh;overflow-y:auto;border-top:1px solid var(--border);"></div>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     SCREEN: PARTICIPANT
+══════════════════════════════════ -->
+<div id="screen-participant" class="screen">
+  <div class="topbar">
+    <div class="topbar-logo">
+      <img src="img/logo-icon.png" alt="FEM" class="topbar-logo-icon">
+      <span class="topbar-logo-text">FEM Fotografia El Masnou</span>
+    </div>
+    <div class="topbar-right">
+      <div class="role-badge" id="participant-role-badge"></div>
+      <div class="user-badge"><span data-i18n="hello_label">Hola,</span> <span id="participant-username"></span></div>
+      <div class="lang-switcher">
+        <button type="button" class="lang-btn lang-btn-ca" onclick="setLang('ca')">CA</button>
+        <button type="button" class="lang-btn lang-btn-es" onclick="setLang('es')">ES</button>
+      </div>
+      <button type="button" class="btn btn-secondary btn-sm" id="btn-participant-logout" onclick="logout()" data-i18n="logout">Sortir</button>
+      <button type="button" class="btn-logout-x" id="btn-participant-logout-x" onclick="logout()" data-i18n-title="logout" title="Sortir">✕</button>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <!-- Panel Principal -->
+    <div id="participant-panel-main">
+      <!-- FILA PRINCIPAL — Repte/La meva foto (esquerra) + Galeria (dreta):
+           les dues targetes principals, més grans i gràfiques que la resta. -->
+      <div class="hero-grid">
+
+        <!-- REPTE + LA MEVA FOTO — unificats: la foto pujada pertany a aquest repte.
+             Amagada sencera quan la votació és oberta (la substitueix
+             #vote-mosaic-section, de mida i tractament idèntics a Galeria).
+             PLA MULTI-REPTE (FEM_reptes.md, Fase 6 — encara NO implementat):
+             aquest bloc, JUNT amb #vote-mosaic-section de sota, formen una parella
+             per repte. Quan hi hagi més d'un repte actiu, aquesta parella sencera
+             es repetirà un cop per cada repte (cadascun mostrant "La meva foto" o
+             "Votar" segons el SEU propi voting_enabled, no un de global). Depèn
+             que abans es facin les Fases 2/3 (BD + nucli JS per repte). -->
+        <div class="card objective-card" id="card-objective-photo">
+
+          <!-- Capçalera del repte — nom + text informatiu + rang de dates de
+               pujada/votació (llegides de objectives.cal_upload_*/cal_voting_*
+               via getActiveCalendar()). Pot mostrar una imatge de fons pròpia
+               del repte (objectives.cover_image_url, pujada per l'admin) —
+               el JS (participant.js, refreshParticipantDashboard()) hi afegeix
+               la classe .objective-header--has-cover i el background-image
+               quan n'hi ha una. -->
+          <div class="objective-header" id="objective-header">
+            <div class="objective-title"><span data-i18n="home_repte_label">Repte:</span> <span id="participant-objective-name">—</span></div>
+            <div id="participant-objective-desc" class="objective-desc"></div>
+            <div class="objective-cal-dates">
+              <div id="participant-objective-cal-upload" class="objective-cal-line hidden"></div>
+              <div id="participant-objective-cal-voting" class="objective-cal-line hidden"></div>
+            </div>
+          </div>
+
+          <!-- La meva foto d'aquest repte -->
+          <div class="objective-photo-section">
+            <div class="objective-photo-header" id="objective-photo-header">
+              <div class="card-title objective-photo-title" id="card-my-photo-title" data-i18n="my_photo">La meva foto</div>
+              <!-- Amagat (no eliminat): el JS hi escriu l'estat de la pujada; el text
+                   actual ("Foto pujada (pendent)") confonia perquè la foto ja es veu.
+                   Es manté a l'DOM perquè el JS no peti; cal decidir amb participant.js
+                   si es reintrodueix amb un text correcte o es treu del tot. -->
+              <div class="card-subtitle hidden" id="upload-status-label">Puja la teva foto per participar</div>
+            </div>
+
+            <!-- MODO PARTICIPANTE: Upload section -->
+            <div id="participant-mode-section">
+              <div id="upload-section">
+                <div class="upload-zone" id="upload-zone" ondragover="dragOver(event)" ondragleave="dragLeave()" ondrop="dropFile(event)">
+                  <input type="file" accept="image/*" id="file-input" onchange="handleFileSelect(event)">
+                  <div class="upload-icon">📸</div>
+                  <h3 data-i18n="upload_zone_title">Selecciona o arrossega la teva foto</h3>
+                  <p data-i18n="participant_upload_zone_subtitle">JPG, PNG, WEBP · Sense límit de mida</p>
+                </div>
+                <div id="upload-closed-msg" class="hidden">
+                  <div class="empty-state"><div class="empty-icon">🔒</div>
+                  <p id="upload-closed-text">La pujada de fotos està tancada.</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Estat: foto seleccionada (abans de confirmar) -->
+              <div id="upload-preview-section" class="hidden" style="margin-top:16px;">
+                <div class="upload-preview" id="upload-preview-wrap"></div>
+                <div class="caption-field caption-field--preview">
+                  <input type="text" id="caption-input" maxlength="300" data-i18n-placeholder="caption_label" placeholder="Títol / descripció (opcional)" class="caption-input">
+                </div>
+                <div style="margin-top:16px; display:flex; gap:10px; justify-content:center;">
+                  <button type="button" class="btn btn-primary btn-inline" onclick="uploadPhoto()" id="btn-upload-confirm" data-i18n="confirm_upload_btn">
+                    Confirmar Pujada
+                  </button>
+                </div>
+              </div>
+
+              <!-- Estat: foto ja pujada — títol editable, sense icona de confirmació permanent -->
+              <div id="upload-done-section" class="hidden" style="margin-top:16px;">
+                <div id="my-photo-preview" style="max-width:300px;margin:0 auto 12px;border-radius:12px;overflow:hidden;"></div>
+                <div class="caption-field caption-field--done">
+                  <!-- PLACEHOLDER: el JS ha d'omplir aquest input amb el títol ja desat -->
+                  <input type="text" id="caption-edit-input" maxlength="300" class="caption-input" data-i18n-placeholder="caption_label" placeholder="Títol / descripció (opcional)">
+                </div>
+                <div style="margin-top:16px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+                  <button type="button" class="btn btn-secondary btn-sm hidden" id="btn-save-caption" onclick="saveCaptionEdit()" data-i18n="save_changes_btn">💾 Desar canvis</button>
+                  <button type="button" class="btn btn-danger btn-sm" onclick="deleteMyPhoto()" data-i18n="delete_photo_btn">🗑 Eliminar i Tornar a Pujar</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VOTAR — substitueix TOTA la targeta de Repte quan la votació és oberta.
+             Mateixa mida i tractament que Galeria (hero-gallery-tile): mosaic fix
+             de 6 fotos del repte (3 columnes x 2 files) de fons, amb "Votar el
+             repte: [nom]" com a títol per damunt (no un botó global: lligat al
+             repte). El JS omple #vote-mosaic-title i #vote-mosaic-sub (data fi de
+             votació) a fotos.js.
+             PLA MULTI-REPTE (FEM_reptes.md, Fase 6 — encara NO implementat): quan hi
+             hagi més d'un repte actiu, aquest bloc es repeteix un cop per repte
+             (parella amb #card-objective-photo de dalt); cada repte identifica
+             clarament de quin repte es tracta al títol i porta al seu propi
+             showParticipantVoting(objectiveId).
+             NOTA: el .nav-sub NO porta data-i18n perquè el text es genera
+             dinàmicament (amb la data); si en portés, applyTranslations()
+             el sobreescriuria cada refresc amb el text estàtic del diccionari. -->
+        <div class="nav-card photo-gallery-tile hero-gallery-tile vote-mosaic-tile hidden" id="vote-mosaic-section" onclick="showParticipantVoting()">
+          <div class="vote-mosaic-grid" id="vote-mosaic-grid"></div>
+          <div class="nav-icon">🗳️</div>
+          <div class="nav-title" id="vote-mosaic-title">—</div>
+          <div class="nav-sub" id="vote-mosaic-sub">Accedeix a la votació de fotos</div>
+        </div>
+
+        <!-- GALERIA — targeta principal (hero), més gran i gràfica que la resta -->
+        <div class="nav-card photo-gallery-tile hero-gallery-tile" id="nav-card-gallery" onclick="showParticipantGallery()">
+          <div class="gallery-tile-carousel" id="gallery-tile-carousel" aria-hidden="true"></div>
+          <div class="nav-icon">📷</div>
+          <div class="nav-title" data-i18n="nav_gallery">Galeria</div>
+          <div class="nav-sub" data-i18n="nav_gallery_sub">Fotos dels reptes finalitzats</div>
+        </div>
+      </div>
+
+      <!-- Accessos ràpids restants — Votar ja no hi és (viu dins la targeta de Repte) -->
+      <div class="section-grid">
+        <div class="nav-card" id="nav-card-resultats" onclick="openEmbedded('resultat')">
+          <div class="nav-icon">🏅</div>
+          <div class="nav-title" data-i18n="nav_resultats">Resultat Repte</div>
+          <div class="nav-sub" data-i18n="nav_resultats_sub">Resultats dels reptes finalitzats</div>
+        </div>
+        <div class="nav-card" id="nav-card-classificacio" onclick="openEmbedded('classificacio')">
+          <div class="nav-icon">🏆</div>
+          <div class="nav-title" data-i18n="nav_classificacio">Classificació General</div>
+          <div class="nav-sub" data-i18n="nav_classificacio_sub">Classificació acumulada</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel Votació -->
+    <div id="participant-panel-voting" class="hidden">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="showParticipantMain()" data-i18n="embedded_back">← Tornar</button>
+        <!-- Títol dinàmic (v0.1.30): el JS hi escriu "Votació del repte: [nom]"
+             (showParticipantVoting(), participant.js). El data-i18n estàtic
+             es treu d'aquí perquè el text ja no és fix. -->
+        <h2 id="voting-screen-title" style="font-family:var(--font-display);font-weight:700;font-size:24px;letter-spacing:2px;">Votació de fotos</h2>
+      </div>
+      <div class="card">
+        <!-- Capçalera d'estat (v0.1.30, revisat v0.1.31): una sola línia que
+             combina el recompte global de vots rebuts amb la data límit / si
+             ja s'ha enviat (abans en 2 línies separades — es fonien massa
+             entre el títol i la instrucció). Menys prominent que el títol
+             (h2) però prou visible — mida i contrast pujats respecte al
+             subtítol genèric d'abans (mateix criteri d'accessibilitat
+             aplicat ja a altres pantalles, v0.1.22). -->
+        <div id="voting-status-line" class="voting-status-line"></div>
+        <div class="card-subtitle voting-instructions" style="margin-bottom:16px;" data-i18n="voting_screen_subtitle">Puntua cada foto de l'1 al 5. No pots votar la teva pròpia foto.</div>
+        <div id="participant-voting-grid" class="voting-grid">
+          <div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🗳️</div><p data-i18n="no_photos_published">No hi ha fotos publicades.</p></div>
+        </div>
+        <div style="margin-top:20px;">
+          <button type="button" class="btn btn-primary" onclick="saveParticipantVotes()" id="btn-save-participant-votes" data-i18n="save_votes_btn">Enviar Vots</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel Ranking -->
+    <div id="participant-panel-ranking" class="hidden">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="showParticipantMain()" data-i18n="embedded_back">← Tornar</button>
+        <h2 style="font-family:var(--font-display);font-weight:700;font-size:24px;letter-spacing:2px;" data-i18n="ranking_screen_title">Ranking</h2>
+      </div>
+      <div class="tab-nav">
+        <button type="button" class="tab-btn active" onclick="switchTab('p-rank', 'current')" data-i18n="current_ranking">Repte Actual</button>
+        <button type="button" class="tab-btn" onclick="switchTab('p-rank', 'general')" data-i18n="general_tab">General</button>
+      </div>
+      <div id="p-rank-tab-current" class="tab-content active">
+        <div class="card">
+          <div id="p-ranking-current-list" class="ranking-list">
+            <div class="empty-state"><div class="empty-icon">🏆</div><p data-i18n="no_data_voting">Sense dades.</p></div>
+          </div>
+        </div>
+      </div>
+      <div id="p-rank-tab-general" class="tab-content">
+        <div class="card">
+          <div id="p-ranking-general-list" class="ranking-list">
+            <div class="empty-state"><div class="empty-icon">🏅</div><p data-i18n="no_participations">Sense dades.</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel Galeria — fotos dels reptes finalitzats -->
+    <div id="participant-panel-gallery" class="hidden">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="showParticipantMain()" data-i18n="embedded_back">← Tornar</button>
+        <h2 style="font-family:var(--font-display);font-weight:700;font-size:24px;letter-spacing:2px;" data-i18n="gallery_title">Galeria</h2>
+      </div>
+      <div class="card">
+        <div class="gallery-filters">
+          <label class="gallery-filter">
+            <span data-i18n="gallery_filter_objective">Repte</span>
+            <select id="gallery-filter-objective" onchange="onGalleryFilterChange()"></select>
+          </label>
+          <label class="gallery-filter">
+            <span data-i18n="gallery_filter_author">Autor</span>
+            <select id="gallery-filter-author" onchange="onGalleryFilterChange()"></select>
+          </label>
+        </div>
+        <div id="gallery-grid" style="margin-top:16px;"></div>
+        <div id="gallery-empty" class="hidden" style="text-align:center;padding:40px;color:var(--text-muted);">
+          <div style="font-size:42px;">📷</div>
+          <p data-i18n="gallery_empty" style="margin-top:8px;">Encara no hi ha reptes finalitzats.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel Resultat Repte — rànquing detallat per repte finalitzat (natiu) -->
+    <div id="participant-panel-resultats" class="hidden">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="showParticipantMain()">
+          <span data-i18n="embedded_back">← Tornar</span>
+        </button>
+        <h2 style="font-family:var(--font-display);font-weight:700;font-size:24px;letter-spacing:2px;" data-i18n="nav_resultats">Resultat Repte</h2>
+      </div>
+      <div class="card">
+        <label class="gallery-filter" style="margin-bottom:16px;">
+          <span data-i18n="gallery_filter_objective">Repte</span>
+          <select id="resultats-repte-select" onchange="onResultatsRepteChange()"></select>
+        </label>
+        <div id="resultats-list" class="ranking-list"></div>
+        <div id="resultats-empty" class="hidden" style="text-align:center;padding:40px;color:var(--text-muted);">
+          <div style="font-size:42px;">🏆</div>
+          <p data-i18n="gallery_empty" style="margin-top:8px;">Encara no hi ha reptes finalitzats.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel Resultats (App Resultats d'Enric, embeguda) -->
+    <div id="participant-panel-embedded" class="hidden">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="closeEmbedded()">
+          <span data-i18n="embedded_back">← Tornar</span>
+        </button>
+      </div>
+      <iframe id="iframe-resultats" src="" title="Resultats"></iframe>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     MODALS
+══════════════════════════════════ -->
+<!-- Objective Modal -->
+<div class="modal-overlay" id="modal-objective">
+  <div class="modal">
+    <h2 id="obj-modal-title">Nou Repte</h2>
+    <input type="hidden" id="obj-edit-id">
+    <div class="form-group">
+      <label data-i18n="obj_title_label">Títol</label>
+      <input type="text" id="obj-title" data-i18n-placeholder="obj_title_placeholder" placeholder="Ex: Paisatges Urbans">
+    </div>
+    <div class="form-group">
+      <label data-i18n="obj_desc_label">Descripció</label>
+      <textarea id="obj-desc" rows="3" data-i18n-placeholder="obj_desc_placeholder" placeholder="Ex: Fotos urbanístiques de la ciutat..." style="resize:vertical;"></textarea>
+    </div>
+    <!-- Imatge de fons de la capçalera del repte (box "Repte / Foto pujada",
+         costat participant) — opcional. Es puja a Cloudinary en seleccionar
+         el fitxer (handleObjectiveCoverSelect, tematiques.js) i la URL
+         resultant queda a #obj-cover-url; saveObjective() la llegeix d'allà. -->
+    <div class="form-group">
+      <label data-i18n="obj_cover_label">Imatge de fons (opcional)</label>
+      <div class="obj-cover-hint" data-i18n="obj_cover_hint">Relació 3:1 (panoràmica) · recomanat 1200×400 px. Puja-la ja retallada — es mostrarà tal qual, sense recorte automàtic.</div>
+      <div id="obj-cover-preview" class="obj-cover-preview hidden"></div>
+      <input type="file" accept="image/*" id="obj-cover-input" onchange="handleObjectiveCoverSelect(event)">
+      <input type="hidden" id="obj-cover-url" value="">
+      <button type="button" class="btn btn-secondary btn-sm hidden" id="btn-remove-cover" onclick="removeObjectiveCover()" data-i18n="obj_cover_remove_btn">🗑 Eliminar imatge</button>
+    </div>
+    <!-- status is managed automatically, hidden field.
+         DECISIÓ (pla multi-repte, FEM_reptes.md Fase 4): l'Estat de la targeta
+         de repte a l'apartat Reptes és el badge de lectura (actiu/finalitzat) que
+         ja existeix — NO es converteix en un desplegable editable a mà. L'únic
+         canvi d'estat continua sent el botó "Finalitzar" (finalizeObjective()). -->
+    <input type="hidden" id="obj-status" value="active">
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('modal-objective')" data-i18n="cancel_btn">Cancel·lar</button>
+      <button type="button" class="btn btn-primary" onclick="saveObjective()" data-i18n="save_btn">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Member Modal -->
+<div class="modal-overlay" id="modal-member">
+  <div class="modal">
+    <h2 id="member-modal-title">Nou Soci</h2>
+    <input type="hidden" id="member-edit-id">
+    <div class="form-group">
+      <label data-i18n="fullname_label">Nom Complet</label>
+      <input type="text" id="member-name" data-i18n-placeholder="member_name_placeholder" placeholder="Ex: Joan Garcia">
+    </div>
+    <div class="form-group">
+      <label data-i18n="username_field_label">Nom d'Usuari</label>
+      <input type="text" id="member-username" data-i18n-placeholder="member_username_placeholder" placeholder="Ex: joan.garcia">
+    </div>
+    <div class="form-group">
+      <label data-i18n="password_label">Contrasenya</label>
+      <input type="password" id="member-password" placeholder="••••••••">
+    </div>
+    <div class="form-group">
+      <label data-i18n="member_role">Rol</label>
+      <select id="member-role">
+        <option value="participant" data-i18n="member_role_option">Participant/Soci</option>
+        <option value="expert" data-i18n="expert_role_option">Expert</option>
+        <option value="admin" data-i18n="admin_role_option">Administrador</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('modal-member')" data-i18n="cancel_btn">Cancel·lar</button>
+      <button type="button" class="btn btn-primary" onclick="saveMember()" data-i18n="save_btn">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Modal -->
+<div class="modal-overlay" id="modal-confirm">
+  <div class="modal">
+    <h2 id="confirm-title">Confirmar</h2>
+    <p id="confirm-msg" style="color:var(--text-muted);font-size:15px;line-height:1.6;"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('modal-confirm')" data-i18n="cancel_btn">Cancel·lar</button>
+      <button type="button" class="btn btn-danger" id="confirm-ok-btn">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Forced new-password modal (after admin reset) -->
+<div class="modal-overlay" id="modal-new-password">
+  <div class="modal">
+    <h2 data-i18n="new_pwd_modal_title">Crea una nova contrasenya</h2>
+    <p data-i18n="new_pwd_modal_msg" style="color:var(--text-muted);font-size:15px;line-height:1.6;margin-bottom:16px;">
+      L'administrador ha resetejat la teva contrasenya. Introdueix-ne una de nova per continuar.
+    </p>
+    <div class="form-group">
+      <label data-i18n="new_pwd_label">Nova contrasenya</label>
+      <input type="password" id="new-pwd-input" placeholder="••••••••" autocomplete="new-password">
+    </div>
+    <div class="form-group">
+      <label data-i18n="new_pwd_repeat">Repeteix la contrasenya</label>
+      <input type="password" id="new-pwd-repeat-input" placeholder="••••••••" autocomplete="new-password">
+    </div>
+    <div id="new-pwd-error" class="error-msg" style="display:none;margin-bottom:8px;"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-primary" onclick="saveNewPassword()" data-i18n="new_pwd_save">Desar i entrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Fullscreen image viewer with navigation -->
+<div id="modal-fullscreen" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:2000;align-items:center;justify-content:center;" onclick="handleLightboxClick(event)">
+  <!-- Navigation: Previous -->
+  <button type="button" class="lightbox-nav-btn prev" id="lightbox-prev" onclick="event.stopPropagation(); navigateLightbox(-1)" style="display:none;">‹</button>
+
+  <!-- Image -->
+  <img id="fullscreen-img" src="" style="max-width:85vw;max-height:85vh;object-fit:contain;border-radius:8px;box-shadow:0 0 60px rgba(0,0,0,0.8);cursor:default;" onclick="event.stopPropagation();">
+
+  <!-- Navigation: Next -->
+  <button type="button" class="lightbox-nav-btn next" id="lightbox-next" onclick="event.stopPropagation(); navigateLightbox(1)" style="display:none;">›</button>
+
+  <!-- Top buttons: Download + Close -->
+  <div style="position:absolute;top:20px;right:24px;display:flex;gap:10px;">
+    <button type="button" id="btn-fullscreen-download" style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);color:white;font-size:15px;cursor:pointer;border-radius:10px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);" onclick="event.stopPropagation(); downloadCurrentFullscreen()" title="Descarregar">⬇</button>
+    <button type="button" style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);color:white;font-size:22px;cursor:pointer;border-radius:10px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);" onclick="event.stopPropagation(); closeFullscreen()">✕</button>
+  </div>
+
+  <!-- Caption (títol/descripció + autor, només a la galeria) -->
+  <div id="fullscreen-caption" onclick="event.stopPropagation();" style="display:none;position:absolute;bottom:72px;left:50%;transform:translateX(-50%);max-width:85vw;background:rgba(0,0,0,0.6);color:#fff;padding:10px 18px;border-radius:12px;font-size:15px;line-height:1.4;text-align:center;white-space:pre-wrap;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);font-family:Arial,Helvetica,sans-serif;"></div>
+
+  <!-- Counter -->
+  <div class="lightbox-counter" id="lightbox-counter" style="display:none;">1 / 10</div>
+
+  <!-- Disparador ⭐ i cortineta de puntuació (només a Resultats Repte, si hi ha vot d'expert) -->
+  <button type="button" class="score-trigger" id="lightbox-score-trigger" style="display:none;" onclick="event.stopPropagation(); toggleScoreCurtain()" title="Puntuació i posició" aria-label="Puntuació i posició">★</button>
+  <div class="score-curtain" id="lightbox-score-curtain" onclick="event.stopPropagation();"></div>
+</div>
+
+<!-- GLOBAL LOADING OVERLAY -->
+<div id="global-loader" style="
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  background:rgba(10,10,20,0.75);
+  backdrop-filter:blur(4px);
+  -webkit-backdrop-filter:blur(4px);
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:20px;
+">
+  <div style="position:relative;width:64px;height:64px;">
+    <!-- Spinning ring -->
+    <svg viewBox="0 0 64 64" style="width:64px;height:64px;animation:spin 1s linear infinite;">
+      <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="5"/>
+      <circle cx="32" cy="32" r="28" fill="none" stroke="var(--accent)" stroke-width="5"
+              stroke-linecap="round" stroke-dasharray="60 120"
+              style="transform-origin:center;"/>
+    </svg>
+    <!-- FEM logo in center -->
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+                font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--accent);letter-spacing:1px;">
+      FEM
+    </div>
+  </div>
+  <div id="global-loader-text" data-i18n="connecting" style="
+    font-family:var(--font-body);
+    font-size:14px;
+    color:var(--text-muted);
+    letter-spacing:1px;
+  ">Connectant...</div>
+</div>
+
+<!-- ══════════════════════════════════
+     REDISSENY NAVEGACIÓ (2026-07) — edició de títol de la foto pujada.
+     Aquest script només gestiona quan apareix el botó "Desar canvis"
+     (compara el text actual amb el que hi havia quan el camp va rebre
+     el focus — es recalcula cada cop, per si updateUploadSection() ha
+     precarregat un valor nou). El desat real i el precarregat del valor
+     ja viuen a js/features/fotos.js (updateUploadSection / saveCaptionEdit).
+══════════════════════════════════ -->
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var editInput = document.getElementById('caption-edit-input');
+    var saveBtn = document.getElementById('btn-save-caption');
+    if (!editInput || !saveBtn) return;
+    var original = editInput.value;
+    editInput.addEventListener('focus', function () { original = editInput.value; });
+    editInput.addEventListener('input', function () {
+      saveBtn.classList.toggle('hidden', editInput.value === original);
+    });
+  });
+</script>
+
+<!-- App modular: punto de entrada -->
+<script type="module" src="js/main.js"></script>
+
+</body>
+</html>
