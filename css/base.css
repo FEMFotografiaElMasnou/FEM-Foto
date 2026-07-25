@@ -750,17 +750,6 @@ body::before {
 .rank-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 .rank-score { font-family: var(--font-display); font-weight: 700; font-size: 28px; color: var(--accent2); letter-spacing: 1px; }
 
-/* Rànquing detallat per repte: fila fina amb les 3 notes per criteri */
-.rank-criteria {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 12px;
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-top: 4px;
-}
-.rank-criteria span { white-space: nowrap; }
-
 /* ════════════════════════════════
    UPLOAD ZONE
 ════════════════════════════════ */

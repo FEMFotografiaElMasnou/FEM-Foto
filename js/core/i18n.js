@@ -48,6 +48,8 @@ export const TRANSLATIONS = {
     // Cortineta de puntuació (visor de fotos a Resultats Repte)
     score_curtain_expert: 'Votació Expert', score_curtain_socis: 'Vots Socis',
     score_curtain_all: 'Tots els Vots',
+    resultats_filter_vote_label: 'Vots a considerar',
+    gen_table_pos: 'Pos', gen_table_member: 'Soci/a', gen_table_total: 'Total',
     // Ranking
     current_ranking: 'Repte Actual', general_ranking: 'Ranking General',
     ranking_title: 'Ranking General', participations: 'participació(ns)',
@@ -413,6 +415,8 @@ export const TRANSLATIONS = {
     // Cortina de puntuación (visor de fotos en Resultados Reto)
     score_curtain_expert: 'Votación Experto', score_curtain_socis: 'Votos Socios',
     score_curtain_all: 'Todos los Votos',
+    resultats_filter_vote_label: 'Votos a considerar',
+    gen_table_pos: 'Pos', gen_table_member: 'Socio/a', gen_table_total: 'Total',
     // Ranking
     current_ranking: 'Reto Actual', general_ranking: 'Ranking General',
     ranking_title: 'Ranking General', participations: 'participación(es)',

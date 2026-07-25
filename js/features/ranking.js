@@ -79,6 +79,13 @@ export function objectiveHasExpertVoting(objectiveId) {
   return _submittedUserIdsForScope(objectiveId, 'expert').size > 0;
 }
 
+// Hi ha algú del scope triat que hagi enviat vot en aquest repte? Si no n'hi
+// ha cap, el repte no ha d'aportar punts a ningú a la Classificació General
+// sota aquest filtre (en lloc de repartir el màxim per empat a 0).
+export function objectiveHasVotesForScope(objectiveId, scope) {
+  return _submittedUserIdsForScope(objectiveId, scope).size > 0;
+}
+
 export function getPhotoScoreBreakdown(photoId, scope = 'all') {
   // Desglossament de la puntuació d'una foto: mitja per criteri + nota final.
   // `scope` permet restringir el càlcul a un subconjunt de votants (vegeu
@@ -138,9 +145,11 @@ function _photoPoolForObjective(objId) {
 }
 
 // Rànquing detallat d'un repte concret (per id), ordenat per nota final.
-export function computeRankingForObjective(objId) {
+// `scope` filtra els votants que compten ('all' | 'expert' | 'socis', vegeu
+// getPhotoScoreBreakdown); per defecte 'all' (comportament d'abans).
+export function computeRankingForObjective(objId, scope = 'all') {
   return _photoPoolForObjective(objId)
-    .map(photo => ({ photo, ...getPhotoScoreBreakdown(photo.id) }))
+    .map(photo => ({ photo, ...getPhotoScoreBreakdown(photo.id, scope) }))
     .sort((a, b) => b.final - a.final);
 }
 
@@ -210,17 +219,46 @@ function _authorName(userId) {
   return (u && u.name) ? u.name : '—';
 }
 
+// Miniatura gran per a la targeta de Resultat Repte (mateixa mida que la
+// pàgina original de Resultats, "card-thumb": 240x180 servits en una caixa
+// de 120x90 amb object-fit:cover).
+function _thumbUrl(url) {
+  if (!url) return null;
+  return url.replace('/image/upload/', '/image/upload/w_240,h_180,c_fill,q_auto,f_auto/');
+}
+
+// 5 icones ★ amb ompliment parcial (percentual), rèplica del component
+// Stars.jsx de la pàgina original de Resultats.
+function _starsHtml(score) {
+  let stars = '';
+  for (let i = 1; i <= 5; i++) {
+    if (score >= i) {
+      stars += `<span class="star full">★</span>`;
+    } else if (score > i - 1) {
+      const pct = Math.round((score - (i - 1)) * 100);
+      stars += `<span class="star partial" style="--pct:${pct}%">★</span>`;
+    } else {
+      stars += `<span class="star">★</span>`;
+    }
+  }
+  return `<span class="stars">${stars}</span>`;
+}
+
 // Pinta el rànquing detallat (nota final + 3 criteris) d'un repte finalitzat.
-export function renderResultatsRepte(objId, listId) {
+// Disseny i mides calcats de la pàgina original de Resultats (classes
+// .photo-card/.card-pos/.card-thumb/.card-body/.card-criteria/.card-total),
+// vegeu _reference-resultats/index.css — només es canvia 'Oswald' per la
+// tipografia de capçalera que ja fa servir Foto (var(--font-display)).
+export function renderResultatsRepte(objId, listId, scope = 'all') {
   const el = document.getElementById(listId);
   if (!el) return;
-  const ranked = computeRankingForObjective(objId);
+  const ranked = computeRankingForObjective(objId, scope);
   if (ranked.length === 0) {
     const msg = t('no_data_voting');
     el.innerHTML = `<div class="empty-state"><div class="empty-icon">🏆</div><p>${msg}</p></div>`;
     return;
   }
-  const rankNums = ['gold', 'silver', 'bronze'];
+  const posClasses = ['top1', 'top2', 'top3'];
 
   // Llista per al visor a pantalla completa. `resultsMode:true` + `id` és el
   // que activa (a lightbox.js) el disparador ⭐ i la cortineta de puntuació —
@@ -231,21 +269,48 @@ export function renderResultatsRepte(objId, listId) {
     id: photo.id, resultsMode: true,
   }));
 
-  el.innerHTML = ranked.map(({ photo, creativity, theme, composition, final }, idx) => `
-    <div class="rank-item rank-item-detailed">
-      <div class="rank-num ${rankNums[idx] || ''}">${idx + 1}</div>
-      <img class="rank-thumb" src="${photo.url}" alt="" style="cursor:pointer;" onclick="openResultatsLightbox(${idx})">
-      <div class="rank-info">
-        <div class="rank-name">${_authorName(photo.userId)}</div>
-        <div class="rank-criteria">
-          <span>${t('creativity')} ${formatScore(creativity)}</span>
-          <span>${t('composition')} ${formatScore(composition)}</span>
-          <span>${t('theme')} ${formatScore(theme)}</span>
+  const cards = ranked.map(({ photo, creativity, theme, composition, final }, idx) => `
+    <div class="photo-card">
+      <div class="card-pos ${posClasses[idx] || ''}">${idx + 1}</div>
+      <div class="card-thumb" onclick="openResultatsLightbox(${idx})">
+        <img src="${_thumbUrl(photo.url)}" alt="" loading="lazy">
+        <div class="zoom-icon">🔍</div>
+      </div>
+      <div class="card-body">
+        <div class="card-author">${_authorName(photo.userId)}</div>
+        <div class="card-criteria">
+          <div class="criterion">
+            <div class="criterion-label">${t('creativity')}</div>
+            <div class="criterion-row">
+              <span class="criterion-val">${formatScore(creativity)}</span>
+              ${_starsHtml(creativity)}
+            </div>
+          </div>
+          <div class="criterion">
+            <div class="criterion-label">${t('composition')}</div>
+            <div class="criterion-row">
+              <span class="criterion-val">${formatScore(composition)}</span>
+              ${_starsHtml(composition)}
+            </div>
+          </div>
+          <div class="criterion">
+            <div class="criterion-label">${t('theme')}</div>
+            <div class="criterion-row">
+              <span class="criterion-val">${formatScore(theme)}</span>
+              ${_starsHtml(theme)}
+            </div>
+          </div>
         </div>
       </div>
-      <div class="rank-score">${formatScore(final)}</div>
+      <div class="card-total">
+        <div class="total-label">${t('gen_table_total')}</div>
+        <div class="total-stars">${_starsHtml(final)}</div>
+        <div class="total-val">${formatScore(final)}</div>
+      </div>
     </div>
   `).join('');
+
+  el.innerHTML = `<div class="cards-list">${cards}</div>`;
 }
 
 // Obre el visor a pantalla completa des de la pantalla Resultats Repte.
@@ -255,6 +320,139 @@ export function openResultatsLightbox(index) {
   openFullscreen(photos[index].url, photos[index].fileName, photos, index);
 }
 window.openResultatsLightbox = openResultatsLightbox;
+
+// ═══════════════════════════════════
+// CLASSIFICACIÓ GENERAL (nativa, recàlcul en viu)
+// ═══════════════════════════════════
+// A diferència de computeGeneralRanking() de sota (punts acumulats a
+// state.generalRanking en finalitzar cada repte — mètode antic, encara usat
+// pel Ranking General de l'admin), aquesta versió recalcula TOTS els reptes
+// finalitzats cada cop, reutilitzant computeRankingForObjective()/
+// assignPositionPoints() — no depèn de re-finalitzar un repte si es corregeix
+// un vot després. Decisió presa en portar Resultats a nadiu (Fase 2.2): es
+// manté així fins que la Fase 3 canviï el sistema de puntuació.
+export function computeGeneralRankingLive(scope = 'all') {
+  const finished = state.objectives.filter(o => o.status === 'finished');
+  const userMap = {}; // userId -> { userId, totalScore, participations, reptes: {objId: {photo,points,position}} }
+
+  finished.forEach(obj => {
+    // Ningú del scope triat ha votat aquest repte: no aporta punts a ningú
+    // (en lloc de repartir el màxim per un empat fictici a nota 0).
+    if (!objectiveHasVotesForScope(obj.id, scope)) return;
+    const scored = assignPositionPoints(
+      computeRankingForObjective(obj.id, scope).map(r => ({ ...r, score: r.final }))
+    );
+    scored.forEach(item => {
+      const uid = item.photo.userId;
+      if (!userMap[uid]) userMap[uid] = { userId: uid, totalScore: 0, participations: 0, reptes: {} };
+      userMap[uid].totalScore += item.points;
+      userMap[uid].participations += 1;
+      userMap[uid].reptes[obj.id] = { photo: item.photo, points: item.points, position: item.position };
+    });
+  });
+
+  const participants = Object.values(userMap).map(u => ({
+    ...u,
+    user: state.users.find(x => x.id === u.userId) || { name: t('unknown_user'), id: u.userId },
+  }));
+  participants.sort((a, b) => b.totalScore - a.totalScore);
+
+  // Posició general (dense: empats al mateix total arrodonit comparteixen
+  // posició, mateix criteri que assignPositionPoints/formatPosition de dalt).
+  let lastPos = 0, prevDisplay = null;
+  participants.forEach(p => {
+    p.displayTotal = Math.floor(p.totalScore);
+    p.generalPosition = (prevDisplay !== null && p.displayTotal === prevDisplay) ? lastPos : lastPos + 1;
+    lastPos = p.generalPosition;
+    prevDisplay = p.displayTotal;
+  });
+
+  return { finishedObjectives: finished, participants };
+}
+
+// Miniatura petita per a la graella de reptes de cada soci (mateixa
+// transformació Cloudinary que la resta de l'app, només canvia la mida).
+function _thumbSmUrl(url) {
+  if (!url) return null;
+  return url.replace('/image/upload/', '/image/upload/w_120,h_90,c_fill,q_auto,f_auto/');
+}
+
+// Pinta la Classificació General: una fila per soci (posició + nom + total),
+// amb una miniatura+punts per cada repte finalitzat on hi ha participat.
+export function renderClassificacioGeneral(listId, scope = 'all') {
+  const el = document.getElementById(listId);
+  if (!el) return;
+  const { finishedObjectives, participants } = computeGeneralRankingLive(scope);
+
+  window._classificacioPhotosList = [];
+
+  if (participants.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🏅</div><p>${t('no_participations')}</p></div>`;
+    return;
+  }
+
+  const rankNums = ['gold', 'silver', 'bronze'];
+
+  const rows = participants.map(p => {
+    const entries = finishedObjectives.map(obj => {
+      const entry = p.reptes[obj.id];
+      if (!entry) {
+        return `
+          <div class="gen-repte-entry gen-repte-absent">
+            <div class="gen-repte-top">
+              <div class="gen-no-thumb">📷</div>
+              <span class="gen-repte-pts-dash">—</span>
+            </div>
+            <div class="gen-repte-name">${obj.title}</div>
+          </div>`;
+      }
+      const photoIdx = window._classificacioPhotosList.length;
+      window._classificacioPhotosList.push({
+        url: entry.photo.url,
+        fileName: entry.photo.fileName,
+        author: `${p.user.name} (${obj.title})`,
+      });
+      return `
+        <div class="gen-repte-entry">
+          <div class="gen-repte-top">
+            <div class="gen-repte-thumb" onclick="openClassificacioLightbox(${photoIdx})">
+              <img src="${_thumbSmUrl(entry.photo.url)}" alt="" loading="lazy">
+            </div>
+            <span class="gen-repte-pts">${Math.floor(entry.points)}</span>
+          </div>
+          <div class="gen-repte-name">${obj.title}</div>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="gen-row">
+        <div class="gen-cell-pos"><span class="rank-num ${rankNums[p.generalPosition - 1] || ''}">${p.generalPosition}</span></div>
+        <div class="gen-cell-name">${p.user.name}</div>
+        <div class="gen-cell-total"><span class="gen-total-badge">${p.displayTotal}</span></div>
+        <div class="gen-cell-reptes">${entries}</div>
+      </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="gen-table">
+      <div class="gen-header">
+        <div class="gen-header-pos">${t('gen_table_pos')}</div>
+        <div class="gen-header-name">${t('gen_table_member')}</div>
+        <div class="gen-header-total">${t('gen_table_total')}</div>
+        <div class="gen-header-reptes">${t('objectives')}</div>
+      </div>
+      ${rows}
+    </div>`;
+}
+
+// Obre el visor a pantalla completa des de la Classificació General (una
+// única foto, sense passar/tornar entre reptes diferents).
+export function openClassificacioLightbox(index) {
+  const photo = (window._classificacioPhotosList || [])[index];
+  if (!photo) return;
+  openFullscreen(photo.url, photo.fileName, [photo], 0);
+}
+window.openClassificacioLightbox = openClassificacioLightbox;
 
 export function computeCurrentRanking() {
   // Solo fotos de la temática activa

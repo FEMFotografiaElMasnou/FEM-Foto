@@ -327,6 +327,20 @@
   flex: 1;
   min-width: 140px;
 }
+/* Etiqueta més gran/llegible (Resultat Repte: "Repte" i "Vots a considerar") */
+.gallery-filter-title-lg {
+  font-size: 14px;
+  color: var(--text);
+}
+/* Quan un sol filtre és visible a la fila (p. ex. Resultat Repte sense vot
+   d'expert): que no s'estiri a tota l'amplada, mida proporcional al contingut */
+.gallery-filter--fit {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.gallery-filter--fit select {
+  width: auto;
+}
 .gallery-filter select {
   padding: 10px 12px;
   border-radius: 10px;
@@ -336,6 +350,284 @@
   font-family: inherit;
   font-size: 14px;
 }
+/* Classificació General — taula (rèplica fidel de l'antiga App Resultats
+   embeguda: capçalera Pos/Soci/Total/Reptes + miniatura+punts per repte) */
+.gen-table { display: flex; flex-direction: column; gap: 8px; }
+.gen-header {
+  display: grid;
+  grid-template-columns: 72px 190px 104px 1fr;
+  padding: 12px 16px;
+  background: rgba(75, 142, 245, 0.08);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+.gen-header-pos    { text-align: center; }
+.gen-header-name   { padding-left: 12px; }
+.gen-header-total  { text-align: center; }
+.gen-header-reptes { padding-left: 10px; }
+.gen-row {
+  display: grid;
+  grid-template-columns: 72px 190px 104px 1fr;
+  align-items: stretch;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.gen-cell-pos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 4px;
+  border-right: 1px solid var(--border);
+}
+.gen-cell-name {
+  display: flex;
+  align-items: center;
+  padding: 14px 12px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: 0.03em;
+  border-right: 1px solid var(--border);
+}
+.gen-cell-total {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 8px;
+  border-right: 1px solid var(--border);
+}
+.gen-total-badge {
+  display: inline-block;
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 30px;
+  line-height: 1;
+  padding: 7px 14px 5px;
+  border-radius: 6px;
+  min-width: 62px;
+  text-align: center;
+}
+.gen-cell-reptes {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  overflow-x: auto;
+}
+.gen-repte-entry {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  min-height: 62px;
+}
+.gen-repte-top { display: flex; align-items: center; }
+.gen-repte-thumb {
+  width: 88px;
+  min-width: 88px;
+  height: 66px;
+  overflow: hidden;
+  cursor: pointer;
+  background: #0e0f1a;
+  flex-shrink: 0;
+}
+.gen-repte-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gen-no-thumb {
+  width: 88px;
+  min-width: 88px;
+  height: 66px;
+  background: #0e0f1a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: var(--border2);
+  flex-shrink: 0;
+}
+.gen-repte-pts {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 28px;
+  color: var(--text);
+  line-height: 1;
+  padding: 0 12px;
+  flex: 1;
+  text-align: center;
+}
+.gen-repte-pts-dash {
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--text-muted);
+  padding: 0 12px;
+  flex: 1;
+  text-align: center;
+}
+.gen-repte-name {
+  font-family: var(--font-display);
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 3px 8px 4px;
+  border-top: 1px solid var(--border);
+}
+.gen-repte-absent { opacity: 0.35; }
+/* Número de posició una mica més gran que el .rank-num compartit (Resultat
+   Repte/admin), només en aquesta taula — millora de llegibilitat. */
+.gen-cell-pos .rank-num { font-size: 38px; min-width: auto; }
+
+@media (max-width: 640px) {
+  .gen-header { display: none; }
+  .gen-row { grid-template-columns: 60px 1fr 88px; grid-template-rows: auto auto; }
+  .gen-cell-reptes {
+    grid-column: 1 / -1;
+    border-right: none;
+    border-top: 1px solid var(--border);
+    padding: 10px 10px;
+  }
+  .gen-total-badge { font-size: 24px; padding: 5px 12px; min-width: 52px; }
+  .gen-cell-name { font-size: 16px; }
+  .gen-cell-pos .rank-num { font-size: 30px; }
+}
+
+/* Resultat Repte — targeta per foto, calcada de la pàgina original de
+   Resultats (_reference-resultats/index.css: .photo-card i classes filles).
+   Única diferència deliberada: 'Oswald' -> var(--font-display), que ja fa
+   servir Foto per a la resta de números destacats, per no afegir una
+   tipografia nova al projecte. */
+.cards-list { display: flex; flex-direction: column; gap: 14px; }
+.photo-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+.card-pos {
+  width: 60px;
+  min-width: 60px;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 32px;
+  color: var(--text-muted);
+  padding: 0 4px;
+  flex-shrink: 0;
+}
+.card-pos.top1 { color: var(--gold); }
+.card-pos.top2 { color: #c0c0c0; }
+.card-pos.top3 { color: #cd7f32; }
+.card-thumb {
+  width: 120px;
+  min-width: 120px;
+  height: 90px;
+  overflow: hidden;
+  cursor: pointer;
+  position: relative;
+  background: #111;
+  flex-shrink: 0;
+}
+.card-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.card-thumb .zoom-icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transition: opacity 0.2s;
+  font-size: 26px;
+}
+.card-thumb:hover .zoom-icon { opacity: 1; }
+.card-body { flex: 1; padding: 16px 20px; min-width: 0; }
+.card-author {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 0.08em;
+  margin-bottom: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card-criteria { display: flex; gap: 24px; flex-wrap: wrap; }
+.criterion { display: flex; flex-direction: column; gap: 4px; }
+.criterion-label {
+  font-family: var(--font-display);
+  font-size: 15px;
+  letter-spacing: 0.1em;
+  color: var(--text);
+  opacity: 0.7;
+}
+.criterion-row { display: flex; align-items: center; gap: 6px; }
+.criterion-val {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 17px;
+  color: var(--text);
+  min-width: 32px;
+}
+.stars { display: inline-flex; gap: 2px; }
+.star { font-size: 16px; color: var(--border); line-height: 1; }
+.star.full { color: var(--gold); }
+.star.partial { position: relative; color: var(--border); }
+.star.partial::before {
+  content: '★';
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--gold);
+  width: var(--pct);
+  overflow: hidden;
+  display: block;
+}
+.card-total {
+  background: var(--surface3);
+  border-left: 1px solid var(--border);
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 140px;
+  align-self: stretch;
+}
+.total-label {
+  font-family: var(--font-display);
+  font-size: 15px;
+  letter-spacing: 0.14em;
+  color: var(--text);
+  opacity: 0.65;
+}
+.total-stars { display: flex; gap: 2px; }
+.total-stars .star { font-size: 16px; }
+.total-val { font-family: var(--font-display); font-weight: 700; font-size: 35px; color: var(--text); line-height: 1; }
+
+@media (max-width: 640px) {
+  .card-thumb { width: 90px; min-width: 90px; height: 72px; }
+  .card-pos { width: 44px; min-width: 44px; font-size: 24px; }
+  .card-criteria { gap: 14px; }
+  .card-total { min-width: 100px; padding: 0 14px; }
+  .total-val { font-size: 26px; }
+}
+
 /* Card per repte: agrupa la capçalera del repte + la seva rejilla de fotos */
 .gallery-objective-card {
   background: rgba(255, 255, 255, 0.03);
@@ -396,103 +688,4 @@
   font-size: 11px;
   color: var(--text-muted);
   margin-top: 2px;
-}
-
-/* ════════════════════════════════
-   PANELL EMBEGUT (App Resultats d'Enric) — PANTALLA COMPLETA
-   L'iframe omple tota la finestra; només sura a sobre el botó ← Tornar (marge
-   esquerre). La resta de controls de FEM queden a la pàgina principal. S'activa
-   amb la classe body.embedded-fullscreen (la posa openEmbedded; la treu
-   _hideAllParticipantPanels en sortir per qualsevol via de navegació).
-   ════════════════════════════════ */
-#iframe-resultats { display: block; border: none; }
-
-body.embedded-fullscreen #participant-panel-embedded {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  margin: 0;
-}
-/* L'iframe omple la finestra. --iframe-zoom agranda el contingut d'Enric:
-   1 = mida normal; puja a 1.1 / 1.15 / 1.2... per fer-lo més gran. */
-body.embedded-fullscreen #iframe-resultats {
-  --iframe-zoom: 1.15;
-  width: calc(100vw / var(--iframe-zoom));
-  height: calc(100dvh / var(--iframe-zoom));
-  transform: scale(var(--iframe-zoom));
-  transform-origin: top left;
-}
-/* Botó ← Tornar surant al marge esquerre, a sobre de l'iframe */
-body.embedded-fullscreen #participant-panel-embedded > div:first-child {
-  position: fixed;
-  top: 14px;
-  left: 16px;
-  z-index: 1002;
-  margin: 0;
-}
-/* Mida del botó ← Tornar en mode pantalla completa (ajustable) */
-body.embedded-fullscreen #participant-panel-embedded > div:first-child .btn {
-  font-size: 15px;
-  padding: 10px 18px;
-}
-/* ESCRIPTORI ESTRET: quan la finestra és prou estreta perquè el títol de l'App
-   d'Enric arribi al marge esquerre (i el botó flotant el trepitgi), el ← Tornar
-   puja a una FILA FIXA a dalt i l'iframe baixa just aquesta fila. IMPORTANT:
-   es MANTÉ l'escala 1.15 (l'iframe NO s'empetiteix, només es desplaça avall).
-   Ajusta el max-width fins que coincideixi amb l'amplada on el títol toca el
-   marge esquerre. */
-@media (min-width: 641px) and (max-width: 1300px) {
-  body.embedded-fullscreen #participant-panel-embedded > div:first-child {
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    padding: 0 8px;
-    background: rgba(7,18,51,0.97);
-    border-bottom: 1px solid var(--border2);
-  }
-  /* L'iframe baixa la fila del botó però conserva l'escala (--iframe-zoom) */
-  body.embedded-fullscreen #iframe-resultats {
-    margin-top: 44px;
-    height: calc((100dvh - 44px) / var(--iframe-zoom));
-  }
-}
-
-/* En mòbil el ← Tornar es mou a la cantonada dreta i es fa compacte per no
-   trepitjar el títol de l'App d'Enric (les puntuacions retallades són cosa
-   d'aquella app, no de FEM). Posició ajustable després de veure-ho. */
-@media (max-width: 640px) {
-  /* En mòbil, el ← Tornar té la seva pròpia barra superior (no flota sobre
-     l'App d'Enric → no en trepitja el títol). L'iframe comença sota la barra. */
-  body.embedded-fullscreen #participant-panel-embedded > div:first-child {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    gap: 0;
-    padding: 0 8px;
-    margin: 0;
-    background: rgba(7,18,51,0.97);
-    border-bottom: 1px solid var(--border2);
-    z-index: 1002;
-  }
-  body.embedded-fullscreen #participant-panel-embedded > div:first-child .btn {
-    font-size: 13px;
-    padding: 6px 12px;
-  }
-  /* Iframe a mida real sota la barra, i SENSE transform (el scale trencava el
-     scroll tàctil dins de l'iframe en mòbil). */
-  body.embedded-fullscreen #iframe-resultats {
-    position: absolute;
-    top: 44px;
-    left: 0;
-    width: 100vw;
-    height: calc(100dvh - 44px);
-    transform: none;
-  }
 }

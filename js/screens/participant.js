@@ -5,7 +5,7 @@ import { state, actingAsAdmin } from '../core/state.js';
 import { t, applyTranslations } from '../core/i18n.js';
 import { showToast } from '../ui/toast.js';
 import { renderVotingGrid, updateVoteButtonsState, isVotingSubmitted } from '../features/votacio.js';
-import { renderRanking, renderResultatsRepte } from '../features/ranking.js';
+import { renderRanking, renderResultatsRepte, objectiveHasExpertVoting, renderClassificacioGeneral } from '../features/ranking.js';
 import { updateUploadSection, _formatDateEs, _formatDateSlash } from '../features/fotos.js';
 import { setActiveNav, switchTab } from '../core/router.js';
 import { populateGalleryFilters, renderGallery, startGalleryCarousel, stopGalleryCarousel } from '../features/galeria.js';
@@ -22,9 +22,7 @@ function _hideAllParticipantPanels() {
   document.getElementById('participant-panel-ranking').classList.add('hidden');
   document.getElementById('participant-panel-gallery').classList.add('hidden');
   document.getElementById('participant-panel-resultats').classList.add('hidden');
-  document.getElementById('participant-panel-embedded').classList.add('hidden');
-  // Sortir del mode pantalla completa de l'App embeguda (per qualsevol via de navegació)
-  document.body.classList.remove('embedded-fullscreen');
+  document.getElementById('participant-panel-classificacio').classList.add('hidden');
   // Aturar el carrusel de la card galeria (només viu al panell principal)
   stopGalleryCarousel();
 }
@@ -118,6 +116,23 @@ function _resultatsObjectives() {
     .sort((a, b) => String(_objDate(b)).localeCompare(String(_objDate(a))));  // recent → antic
 }
 
+// Mostra/amaga el bloc de filtre Tots/Socis/Expert segons si el repte triat
+// té algun vot d'expert — si no en té, els tres modes donarien el mateix
+// resultat, així que directament no té sentit mostrar cap filtre.
+function _updateResultatsVoteFilter(objId) {
+  const voteGroup = document.getElementById('resultats-vote-filter-group');
+  if (voteGroup) voteGroup.classList.toggle('hidden', !objectiveHasExpertVoting(objId));
+}
+
+// Scope efectiu pel rànquing principal: si el repte no té vot d'expert, el
+// desplegable queda amagat i sempre es calcula amb 'all' (equivalent a
+// "vots dels socis" quan no hi ha experts entre els votants).
+function _resultatsScope(objId) {
+  if (!objectiveHasExpertVoting(objId)) return 'all';
+  const sel = document.getElementById('resultats-vote-filter');
+  return sel ? sel.value : 'all';
+}
+
 export function showParticipantResultats() {
   _hideAllParticipantPanels();
   document.getElementById('participant-panel-resultats').classList.remove('hidden');
@@ -127,10 +142,10 @@ export function showParticipantResultats() {
   const empty = document.getElementById('resultats-empty');
   const list  = document.getElementById('resultats-list');
   const objs  = _resultatsObjectives();
-  const label = sel ? sel.closest('.gallery-filter') : null;
+  const label = sel ? sel.closest('.gallery-filters') : null;
 
   if (objs.length === 0) {
-    // Cap repte finalitzat encara: amagar desplegable, mostrar avís
+    // Cap repte finalitzat encara: amagar desplegables, mostrar avís
     if (label) label.style.display = 'none';
     if (list)  list.innerHTML = '';
     if (empty) empty.classList.remove('hidden');
@@ -143,43 +158,57 @@ export function showParticipantResultats() {
   const prev = sel ? sel.value : '';
   sel.innerHTML = objs.map(o => `<option value="${o.id}">${o.title}</option>`).join('');
   sel.value = objs.some(o => o.id === prev) ? prev : objs[0].id;
-  renderResultatsRepte(sel.value, 'resultats-list');
+  _updateResultatsVoteFilter(sel.value);
+  renderResultatsRepte(sel.value, 'resultats-list', _resultatsScope(sel.value));
 }
 
 export function onResultatsRepteChange() {
   const sel = document.getElementById('resultats-repte-select');
-  if (sel) renderResultatsRepte(sel.value, 'resultats-list');
+  if (!sel) return;
+  _updateResultatsVoteFilter(sel.value);
+  renderResultatsRepte(sel.value, 'resultats-list', _resultatsScope(sel.value));
+}
+
+export function onResultatsVoteFilterChange() {
+  const sel = document.getElementById('resultats-repte-select');
+  if (sel) renderResultatsRepte(sel.value, 'resultats-list', _resultatsScope(sel.value));
+}
+
+// ── NAVEGACIÓ — Classificació General (natiu, recàlcul en viu, Fase 2.2) ──
+// Hi ha algun repte finalitzat amb vot d'expert? Determina si té sentit
+// mostrar el filtre Tots/Socis/Expert (mateix criteri que a Resultat Repte,
+// però agregat: n'hi ha prou que UN dels reptes finalitzats en tingui).
+function _anyFinishedObjectiveHasExpertVoting() {
+  return state.objectives.some(o => o.status === 'finished' && objectiveHasExpertVoting(o.id));
+}
+
+function _updateClassificacioVoteFilter() {
+  const group = document.getElementById('classificacio-vote-filter-group');
+  if (group) group.classList.toggle('hidden', !_anyFinishedObjectiveHasExpertVoting());
+}
+
+function _classificacioScope() {
+  if (!_anyFinishedObjectiveHasExpertVoting()) return 'all';
+  const sel = document.getElementById('classificacio-vote-filter');
+  return sel ? sel.value : 'all';
+}
+
+export function showParticipantClassificacioGeneral() {
+  _hideAllParticipantPanels();
+  document.getElementById('participant-panel-classificacio').classList.remove('hidden');
+  setActiveNav('bnav-rank');
+  _updateClassificacioVoteFilter();
+  renderClassificacioGeneral('classificacio-list', _classificacioScope());
+}
+
+export function onClassificacioVoteFilterChange() {
+  renderClassificacioGeneral('classificacio-list', _classificacioScope());
 }
 
 // ── Classificació General (vista interna antiga; ja no enllaçada, es manté per referència) ──
 export function showParticipantClassificacio() {
   showParticipantRanking();
   switchTab('p-rank', 'general');
-}
-
-// ── APP RESULTATS (Enric) embeguda dins l'app ──
-// Carrega https://fem-resultats.vercel.app/ en un iframe, passant el rol de l'usuari.
-// view: 'resultats' (resultats del repte) | 'classificacio' (rànquing acumulat).
-const RESULTATS_BASE = 'https://fem-resultats.vercel.app/';
-
-export function openEmbedded(view) {
-  // L'app Resultats (fem-resultats.vercel.app) encara només sap interpretar
-  // 'admin'/'participant'. Els Experts s'hi passen com a 'participant' fins
-  // que aquella app es revisi per tractar-los de manera diferenciada.
-  const rawRole = state.currentUser ? state.currentUser.role : 'participant';
-  const role = rawRole === 'expert' ? 'participant' : rawRole;
-  document.getElementById('iframe-resultats').src =
-    `${RESULTATS_BASE}?role=${role}&view=${view}&embedded=true`;
-  // El títol el pinta la pròpia App d'Enric dins l'iframe; no en dupliquem un de nostre.
-  _hideAllParticipantPanels();
-  document.getElementById('participant-panel-embedded').classList.remove('hidden');
-  // Mode pantalla completa: l'iframe omple la finestra i els controls de FEM suren a sobre
-  document.body.classList.add('embedded-fullscreen');
-}
-
-export function closeEmbedded() {
-  document.getElementById('iframe-resultats').src = '';   // aturar la càrrega de l'iframe
-  showParticipantMain();
 }
 
 // ═══════════════════════════════════
@@ -314,9 +343,10 @@ window.showParticipantVoting = showParticipantVoting;
 window.showParticipantRanking = showParticipantRanking;
 window.showParticipantResultats = showParticipantResultats;
 window.onResultatsRepteChange = onResultatsRepteChange;
+window.onResultatsVoteFilterChange = onResultatsVoteFilterChange;
+window.showParticipantClassificacioGeneral = showParticipantClassificacioGeneral;
+window.onClassificacioVoteFilterChange = onClassificacioVoteFilterChange;
 window.showParticipantClassificacio = showParticipantClassificacio;
-window.openEmbedded = openEmbedded;
-window.closeEmbedded = closeEmbedded;
 window.showParticipantGallery = showParticipantGallery;
 window.refreshParticipantDashboard = refreshParticipantDashboard;
 window.renderVotingHeader = renderVotingHeader;

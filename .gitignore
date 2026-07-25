@@ -21,3 +21,4 @@ server.js
 Iniciar_FEM.bat
 .vercel
 .env*
+_reference-resultats/

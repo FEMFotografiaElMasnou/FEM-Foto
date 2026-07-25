@@ -491,12 +491,12 @@
 
       <!-- Accessos ràpids restants — Votar ja no hi és (viu dins la targeta de Repte) -->
       <div class="section-grid">
-        <div class="nav-card" id="nav-card-resultats" onclick="openEmbedded('resultat')">
+        <div class="nav-card" id="nav-card-resultats" onclick="showParticipantResultats()">
           <div class="nav-icon">🏅</div>
           <div class="nav-title" data-i18n="nav_resultats">Resultat Repte</div>
           <div class="nav-sub" data-i18n="nav_resultats_sub">Resultats dels reptes finalitzats</div>
         </div>
-        <div class="nav-card" id="nav-card-classificacio" onclick="openEmbedded('classificacio')">
+        <div class="nav-card" id="nav-card-classificacio" onclick="showParticipantClassificacioGeneral()">
           <div class="nav-icon">🏆</div>
           <div class="nav-title" data-i18n="nav_classificacio">Classificació General</div>
           <div class="nav-sub" data-i18n="nav_classificacio_sub">Classificació acumulada</div>
@@ -592,10 +592,20 @@
         <h2 style="font-family:var(--font-display);font-weight:700;font-size:24px;letter-spacing:2px;" data-i18n="nav_resultats">Resultat Repte</h2>
       </div>
       <div class="card">
-        <label class="gallery-filter" style="margin-bottom:16px;">
-          <span data-i18n="gallery_filter_objective">Repte</span>
-          <select id="resultats-repte-select" onchange="onResultatsRepteChange()"></select>
-        </label>
+        <div class="gallery-filters" style="margin-bottom:16px;">
+          <label class="gallery-filter gallery-filter--fit" id="resultats-repte-filter-group">
+            <span class="gallery-filter-title-lg" data-i18n="gallery_filter_objective">Repte</span>
+            <select id="resultats-repte-select" onchange="onResultatsRepteChange()"></select>
+          </label>
+          <label class="gallery-filter gallery-filter--fit" id="resultats-vote-filter-group">
+            <span class="gallery-filter-title-lg" data-i18n="resultats_filter_vote_label">Vots a considerar</span>
+            <select id="resultats-vote-filter" onchange="onResultatsVoteFilterChange()">
+              <option value="all" data-i18n="score_curtain_all">Tots els Vots</option>
+              <option value="socis" data-i18n="score_curtain_socis">Vots Socis</option>
+              <option value="expert" data-i18n="score_curtain_expert">Votació Expert</option>
+            </select>
+          </label>
+        </div>
         <div id="resultats-list" class="ranking-list"></div>
         <div id="resultats-empty" class="hidden" style="text-align:center;padding:40px;color:var(--text-muted);">
           <div style="font-size:42px;">🏆</div>
@@ -604,15 +614,30 @@
       </div>
     </div>
 
-    <!-- Panel Resultats (App Resultats d'Enric, embeguda) -->
-    <div id="participant-panel-embedded" class="hidden">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-        <button type="button" class="btn btn-secondary btn-sm" onclick="closeEmbedded()">
+    <!-- Panel Classificació General — punts acumulats de tots els reptes finalitzats,
+         recàlcul en viu (natiu, Fase 2.2) -->
+    <div id="participant-panel-classificacio" class="hidden">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="showParticipantMain()">
           <span data-i18n="embedded_back">← Tornar</span>
         </button>
+        <h2 style="font-family:var(--font-display);font-weight:700;font-size:24px;letter-spacing:2px;" data-i18n="nav_classificacio">Classificació General</h2>
       </div>
-      <iframe id="iframe-resultats" src="" title="Resultats"></iframe>
+      <div class="card">
+        <div class="gallery-filters" style="margin-bottom:16px;" id="classificacio-vote-filter-group">
+          <label class="gallery-filter gallery-filter--fit">
+            <span class="gallery-filter-title-lg" data-i18n="resultats_filter_vote_label">Vots a considerar</span>
+            <select id="classificacio-vote-filter" onchange="onClassificacioVoteFilterChange()">
+              <option value="all" data-i18n="score_curtain_all">Tots els Vots</option>
+              <option value="socis" data-i18n="score_curtain_socis">Vots Socis</option>
+              <option value="expert" data-i18n="score_curtain_expert">Votació Expert</option>
+            </select>
+          </label>
+        </div>
+        <div id="classificacio-list" class="ranking-list"></div>
+      </div>
     </div>
+
   </div>
 </div>
 
