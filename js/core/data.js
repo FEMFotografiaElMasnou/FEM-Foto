@@ -46,6 +46,29 @@ export async function loadAppTexts() {
   }
 }
 
+// Supabase/PostgREST limita cada resposta a 1000 files per defecte, EN
+// SILENCI (sense error, `content-range: 0-999/*`) — bug detectat 25/07/2026
+// quan `votes` va superar aquest llindar (1059 files) i es truncaven ~59
+// vots de forma pràcticament arbitrària (sense ORDER BY explícit). `votes`
+// és l'única taula d'aquesta app amb risc real de créixer per sobre de
+// 1000, així que pagina explícitament en lloc de confiar en el límit per
+// defecte — necessari perquè seguirà creixent.
+// `queryFactory` ha de crear una consulta NOVA cada vegada (no reutilitzar
+// el mateix builder), perquè .range() encadeni net a cada volta del bucle.
+async function _fetchAllRows(queryFactory) {
+  const pageSize = 1000;
+  let allRows = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await queryFactory().range(from, from + pageSize - 1);
+    if (error) return { data: null, error };
+    allRows = allRows.concat(data || []);
+    if (!data || data.length < pageSize) break;
+    from += pageSize;
+  }
+  return { data: allRows, error: null };
+}
+
 export async function loadAllData() {
   const results = await Promise.all([
     sb.from('users').select('id,display_name,email,password,role,created_at').order('id', { ascending: true }),
@@ -61,7 +84,16 @@ export async function loadAllData() {
     // repte, box "Repte / Foto pujada" (costat participant). Opcional.
     sb.from('objectives').select('id,name,description,status,uploads_enabled,voting_enabled,names_revealed,start_date,end_date,created_by,cal_upload_start,cal_upload_end,cal_voting_start,cal_voting_end,upload_mode,voting_mode,cover_image_url'),
     sb.from('photo_submissions').select('id,user_id,objective_id,file_name,file_url,original_url,file_size,published,revealed,submitted_at,caption'),
-    sb.from('votes').select('id,user_id,photo_id,objective_id,creativity,theme,composition'),
+    // valoracio (Fase 3, Pas 1): nova nota única 0-10, calculada per un trigger
+    // de Supabase a partir de creativity/theme/composition — es llegeix aquí
+    // perquè hi hagi accés des del client (Valoració Repte, ranking.js), sense
+    // que ningú del client l'escrigui encara.
+    // Paginat amb _fetchAllRows (vegeu comentari a dalt) — .order() és
+    // imprescindible perquè les pàgines successives no es solapin ni deixin
+    // buits (sense ordre estable, Postgres no garanteix res entre consultes).
+    _fetchAllRows(() =>
+      sb.from('votes').select('id,user_id,photo_id,objective_id,creativity,theme,composition,valoracio').order('id', { ascending: true })
+    ),
     sb.from('app_settings').select('key,value'),
     sb.from('seguiment_votacio').select('user_id,objective_id,es_esborrany,submitted_at'),
   ]);
@@ -152,9 +184,10 @@ export async function loadAllData() {
     userId:      String(v.user_id || ''),
     photoId:     String(v.photo_id || ''),
     objectiveId: String(v.objective_id || ''),
-    creativity:  parseInt(v.creativity) || 0,
-    theme:       parseInt(v.theme) || 0,
-    composition: parseInt(v.composition) || 0,
+    creativity:  parseFloat(v.creativity) || 0,
+    theme:       parseFloat(v.theme) || 0,
+    composition: parseFloat(v.composition) || 0,
+    valoracio:   parseFloat(v.valoracio) || 0,
     created_at:  v.created_at || '',
   }));
 

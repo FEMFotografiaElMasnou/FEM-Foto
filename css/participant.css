@@ -584,10 +584,21 @@
   min-width: 32px;
 }
 .stars { display: inline-flex; gap: 2px; }
-.star { font-size: 16px; color: var(--border); line-height: 1; }
-.star.full { color: var(--gold); }
-.star.partial { position: relative; color: var(--border); }
-.star.partial::before {
+/* Àmbit propi (.stars .star, no .star sol): base.css ja fa servir .star per
+   a les estrelles CLICABLES de la pantalla de votació (mida, cursor i
+   transicions diferents) — sense aquest àmbit, aquestes propietats es
+   filtraven a les estrelles de només lectura de Resultats. */
+.stars .star {
+  font-size: 16px;
+  color: var(--border);
+  line-height: 1;
+  padding: 0;
+  cursor: default;
+  transition: none;
+}
+.stars .star.full { color: var(--gold); }
+.stars .star.partial { position: relative; color: var(--border); }
+.stars .star.partial::before {
   content: '★';
   position: absolute;
   left: 0;
@@ -617,8 +628,23 @@
   opacity: 0.65;
 }
 .total-stars { display: flex; gap: 2px; }
-.total-stars .star { font-size: 16px; }
 .total-val { font-family: var(--font-display); font-weight: 700; font-size: 35px; color: var(--text); line-height: 1; }
+
+/* Valoració Repte — barra de progrés 0-10, substitueix les 5 estrelles
+   (forçades per a una escala de 10 punts) a la targeta de foto. Ocupa
+   l'espai que abans quedava buit sota el nom de l'autor. */
+.valoracio-bar-track {
+  margin-top: 10px;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--border);
+  overflow: hidden;
+}
+.valoracio-bar-fill {
+  height: 100%;
+  border-radius: 5px;
+  background: var(--gold);
+}
 
 @media (max-width: 640px) {
   .card-thumb { width: 90px; min-width: 90px; height: 72px; }

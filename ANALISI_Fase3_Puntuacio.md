@@ -226,12 +226,57 @@ no perquè calgui resoldre'l ara.
 **Fet i verificat (2026-07-24)**: aplicat a Test (969/969 vots, 0 inconsistències) i a Normal
 (1059/1059 vots, 0 inconsistències), trigger comprovat en calent a Test. Pas 1 tancat.
 
-### Pas 2 — Càlcul de resultats de repte (a analitzar quan es tanqui el Pas 1)
-Toca `getPhotoScoreBreakdown()`/`computeRankingForObjective()` (ranking.js) — passar de
-`(creativity+theme+composition)/3` a llegir `valoracio` directament. Pendent d'anàlisi
-detallada fins que el Pas 1 estigui validat.
+### Pas 1b — Correcció de precisió (2026-07-25)
+**Bug detectat per Enric** comparant la pantalla amb un càlcul manual en full de càlcul
+(repte "Dominant verda", 1 sol votant): la "Valoració" mostrada no tenia mai decimals, quan
+la normalització 15→10 hauria de generar-ne gairebé sempre. Diagnòstic final (dues capes,
+totes dues arrodonien/truncaven a enter):
+- **BD**: `votes.valoracio` es va crear com a `integer` al Pas 1, i tant el backfill com el
+  trigger `fem_sync_valoracio()` feien `round(...)::int`, descartant els decimals.
+- **Client**: `js/core/data.js` llegia `creativity`/`theme`/`composition`/`valoracio` amb
+  `parseInt(...)`, truncant-los de nou encara que la BD els enviés bé. Això afectava també
+  `getPhotoScoreBreakdown()` i per tant **"Resultat Repte" (Fase 2, ja publicada)** per als
+  reptes amb notes decimals reals (els que es van haver d'informar amb una sola nota
+  consolidada per foto, "Dominant verda"/"Dominant vermell" — vegeu incidència §"Errors i
+  fixes" de la conversa).
 
-### Pas 3 — Assignació de punts per a la Classificació General (a analitzar després del Pas 2)
+**Fix aplicat**:
+- `sql/2026-07-25_fase3_valoracio_pas1b_decimals.sql`: `votes.valoracio` passa de `integer`
+  a `numeric(4,2)`; backfill refet sense arrodonir a enter (només a 2 decimals); trigger
+  `fem_sync_valoracio()` actualitzat igual. Aplicat i verificat a Test i Normal — valors
+  coincidents al detall amb el càlcul manual de referència (ex.: creativity 4,1 + theme 4 +
+  composition 4,02 → valoracio 8,08, exacte).
+- `js/core/data.js`: els 4 camps passen de `parseInt` a `parseFloat`.
+
+Matemàticament, mitjana-de-`valoracio`-per-vot i "mitjana-per-criteri, després normalitzar"
+són equivalents (linealitat de la mitjana) — el problema mai va ser la fórmula, sempre la
+pèrdua de decimals en dos punts diferents. Pas 1b tancat.
+
+### Pas 2 — Pantalla "Valoració Repte" (FET, 2026-07-25)
+En lloc de tocar `getPhotoScoreBreakdown()`/`computeRankingForObjective()` (que seguirien
+alimentant "Resultat Repte", intocat), es va optar per una **pantalla nova en paral·lel**
+(decisió d'Enric, per poder comparar side-by-side sense arriscar l'existent):
+- `getPhotoValoracio(photoId, scope)` i `computeValoracioRankingForObjective(objId, scope)`
+  (ranking.js) — mateix `_photoPoolForObjective`/`_submittedUserIdsForScope` que Resultat
+  Repte (mateix pool de fotos i mateix denominador per scope), però la nota surt de
+  `votes.valoracio` en lloc de la mitjana dels 3 criteris.
+- `renderValoracioRepte()` — mateixa targeta `.photo-card` que Resultat Repte, sense el bloc
+  de 3 criteris (ja no n'hi ha), amb una **barra de progrés 0–10** (no estrelles: 5 estrelles
+  fixes queda forçat per a una escala de 10 punts) i, sota el nom de l'autor, el títol de la
+  foto si n'hi ha.
+- Posicions amb la mateixa regla "generosa" de dense-ranking que la resta de l'app (empats
+  comparteixen posició).
+- Accés: nova entrada "Valoració Repte" a la pantalla d'inici del participant, **visible
+  només amb rol admin real** (no amb `actingAsAdmin()` — un admin només arriba a la pantalla
+  d'inici en mode "veure com a participant", on `actingAsAdmin()` és fals a propòsit).
+- De pas, es va arreglar una col·lisió de noms CSS (`.star` definida tant a `base.css`,
+  per a les estrelles clicables de votació, com a `participant.css`, per a les de només
+  lectura de Resultats) que filtrava propietats d'una a l'altra — ara `.stars .star` té
+  àmbit propi.
+
+Pas 2 tancat.
+
+### Pas 3 — Assignació de punts per a la Classificació General (pendent)
 `assignPositionPoints`/`getPointsForPosition` (§3.7) ja s'ha comprovat que **no depenen del
 rang de la nota** — probablement aquest pas sigui trivial o gairebé nul, però es confirmarà
 quan hi arribem.

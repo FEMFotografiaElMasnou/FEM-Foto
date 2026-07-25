@@ -5,7 +5,7 @@ import { state, actingAsAdmin } from '../core/state.js';
 import { t, applyTranslations } from '../core/i18n.js';
 import { showToast } from '../ui/toast.js';
 import { renderVotingGrid, updateVoteButtonsState, isVotingSubmitted } from '../features/votacio.js';
-import { renderRanking, renderResultatsRepte, objectiveHasExpertVoting, renderClassificacioGeneral } from '../features/ranking.js';
+import { renderRanking, renderResultatsRepte, objectiveHasExpertVoting, renderClassificacioGeneral, renderValoracioRepte } from '../features/ranking.js';
 import { updateUploadSection, _formatDateEs, _formatDateSlash } from '../features/fotos.js';
 import { setActiveNav, switchTab } from '../core/router.js';
 import { populateGalleryFilters, renderGallery, startGalleryCarousel, stopGalleryCarousel } from '../features/galeria.js';
@@ -23,6 +23,7 @@ function _hideAllParticipantPanels() {
   document.getElementById('participant-panel-gallery').classList.add('hidden');
   document.getElementById('participant-panel-resultats').classList.add('hidden');
   document.getElementById('participant-panel-classificacio').classList.add('hidden');
+  document.getElementById('participant-panel-valoracio-repte').classList.add('hidden');
   // Aturar el carrusel de la card galeria (només viu al panell principal)
   stopGalleryCarousel();
 }
@@ -174,6 +175,61 @@ export function onResultatsVoteFilterChange() {
   if (sel) renderResultatsRepte(sel.value, 'resultats-list', _resultatsScope(sel.value));
 }
 
+// ── NAVEGACIÓ — Valoració Repte (nom de treball, Fase 3 Pas 2) ──
+// Eina només per a l'admin: compara el nou sistema de puntuació (1 sola nota,
+// valoracio 0-10) amb l'actual (Resultat Repte, 3 criteris), sense tocar-lo.
+// Mateix patró exacte que Resultat Repte, incloent _resultatsObjectives()
+// (l'admin ja hi veu reptes actius+tancats) reutilitzada tal qual.
+function _updateValoracioVoteFilter(objId) {
+  const group = document.getElementById('valoracio-vote-filter-group');
+  if (group) group.classList.toggle('hidden', !objectiveHasExpertVoting(objId));
+}
+
+function _valoracioScope(objId) {
+  if (!objectiveHasExpertVoting(objId)) return 'all';
+  const sel = document.getElementById('valoracio-vote-filter');
+  return sel ? sel.value : 'all';
+}
+
+export function showParticipantValoracioRepte() {
+  _hideAllParticipantPanels();
+  document.getElementById('participant-panel-valoracio-repte').classList.remove('hidden');
+  setActiveNav('bnav-rank');
+
+  const sel   = document.getElementById('valoracio-repte-select');
+  const empty = document.getElementById('valoracio-empty');
+  const list  = document.getElementById('valoracio-list');
+  const objs  = _resultatsObjectives();
+  const label = sel ? sel.closest('.gallery-filters') : null;
+
+  if (objs.length === 0) {
+    if (label) label.style.display = 'none';
+    if (list)  list.innerHTML = '';
+    if (empty) empty.classList.remove('hidden');
+    return;
+  }
+
+  if (label) label.style.display = '';
+  if (empty) empty.classList.add('hidden');
+  const prev = sel ? sel.value : '';
+  sel.innerHTML = objs.map(o => `<option value="${o.id}">${o.title}</option>`).join('');
+  sel.value = objs.some(o => o.id === prev) ? prev : objs[0].id;
+  _updateValoracioVoteFilter(sel.value);
+  renderValoracioRepte(sel.value, 'valoracio-list', _valoracioScope(sel.value));
+}
+
+export function onValoracioRepteChange() {
+  const sel = document.getElementById('valoracio-repte-select');
+  if (!sel) return;
+  _updateValoracioVoteFilter(sel.value);
+  renderValoracioRepte(sel.value, 'valoracio-list', _valoracioScope(sel.value));
+}
+
+export function onValoracioVoteFilterChange() {
+  const sel = document.getElementById('valoracio-repte-select');
+  if (sel) renderValoracioRepte(sel.value, 'valoracio-list', _valoracioScope(sel.value));
+}
+
 // ── NAVEGACIÓ — Classificació General (natiu, recàlcul en viu, Fase 2.2) ──
 // Hi ha algun repte finalitzat amb vot d'expert? Determina si té sentit
 // mostrar el filtre Tots/Socis/Expert (mateix criteri que a Resultat Repte,
@@ -290,6 +346,16 @@ export function refreshParticipantDashboard() {
   // Aplicar visibilitat de nav-cards (estat repte + forçats admin)
   applyParticipantButtonVisibility();
 
+  // "Valoració Repte" (Fase 3, Pas 2): eina de comparació només per a comptes
+  // amb rol admin. OJO: NO es pot fer servir actingAsAdmin() aquí — l'únic
+  // camí pel qual un admin arriba a veure aquesta pantalla de nav-cards és
+  // posant-se en mode "veure com a participant" (toggleAdminParticipantView,
+  // router.js), i en aquell mode actingAsAdmin() és fals a propòsit (perquè
+  // tota la resta es vegi exactament com ho veu un soci). Cal el rol real.
+  const valoracioCard = document.getElementById('nav-card-valoracio-repte');
+  const isRealAdmin = !!(state.currentUser && state.currentUser.role === 'admin');
+  if (valoracioCard) valoracioCard.classList.toggle('hidden', !isRealAdmin);
+
   // Carrusel de la card galeria: només si la card és visible i som al panell principal
   const galCard    = document.getElementById('nav-card-gallery');
   const mainVisible = !document.getElementById('participant-panel-main').classList.contains('hidden');
@@ -346,6 +412,9 @@ window.onResultatsRepteChange = onResultatsRepteChange;
 window.onResultatsVoteFilterChange = onResultatsVoteFilterChange;
 window.showParticipantClassificacioGeneral = showParticipantClassificacioGeneral;
 window.onClassificacioVoteFilterChange = onClassificacioVoteFilterChange;
+window.showParticipantValoracioRepte = showParticipantValoracioRepte;
+window.onValoracioRepteChange = onValoracioRepteChange;
+window.onValoracioVoteFilterChange = onValoracioVoteFilterChange;
 window.showParticipantClassificacio = showParticipantClassificacio;
 window.showParticipantGallery = showParticipantGallery;
 window.refreshParticipantDashboard = refreshParticipantDashboard;

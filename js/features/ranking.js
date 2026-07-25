@@ -227,6 +227,26 @@ function _thumbUrl(url) {
   return url.replace('/image/upload/', '/image/upload/w_240,h_180,c_fill,q_auto,f_auto/');
 }
 
+// Posició densa ("generosa"): fotos empatades comparteixen la mateixa
+// posició; la següent puntuació diferent avança exactament 1, encara que
+// hi hagi hagut un empat de N fotos (mai es salten posicions). Mateix
+// criteri que ja fa servir assignPositionPoints() per als punts de la
+// Classificació General — aquí només serveix per pintar el número, no
+// assigna punts. `sortedList` ha d'arribar ja ordenat descendent.
+function _densePosition(sortedList, scoreOf) {
+  let lastPosition = 0;
+  let previousScore = null;
+  return sortedList.map(item => {
+    const score = scoreOf(item);
+    const position = (previousScore !== null && score === previousScore)
+      ? lastPosition
+      : lastPosition + 1;
+    lastPosition = position;
+    previousScore = score;
+    return { ...item, position };
+  });
+}
+
 // 5 icones ★ amb ompliment parcial (percentual), rèplica del component
 // Stars.jsx de la pàgina original de Resultats.
 function _starsHtml(score) {
@@ -252,12 +272,13 @@ function _starsHtml(score) {
 export function renderResultatsRepte(objId, listId, scope = 'all') {
   const el = document.getElementById(listId);
   if (!el) return;
-  const ranked = computeRankingForObjective(objId, scope);
-  if (ranked.length === 0) {
+  const raw = computeRankingForObjective(objId, scope);
+  if (raw.length === 0) {
     const msg = t('no_data_voting');
     el.innerHTML = `<div class="empty-state"><div class="empty-icon">🏆</div><p>${msg}</p></div>`;
     return;
   }
+  const ranked = _densePosition(raw, r => r.final);
   const posClasses = ['top1', 'top2', 'top3'];
 
   // Llista per al visor a pantalla completa. `resultsMode:true` + `id` és el
@@ -269,9 +290,12 @@ export function renderResultatsRepte(objId, listId, scope = 'all') {
     id: photo.id, resultsMode: true,
   }));
 
-  const cards = ranked.map(({ photo, creativity, theme, composition, final }, idx) => `
+  // `idx` (índex de l'array) és per al visor a pantalla completa; `position`
+  // (posició densa, pot repetir-se en empats) és el que es pinta i el que
+  // determinaria els punts de la Classificació General.
+  const cards = ranked.map(({ photo, creativity, theme, composition, final, position }, idx) => `
     <div class="photo-card">
-      <div class="card-pos ${posClasses[idx] || ''}">${idx + 1}</div>
+      <div class="card-pos ${posClasses[position - 1] || ''}">${position}</div>
       <div class="card-thumb" onclick="openResultatsLightbox(${idx})">
         <img src="${_thumbUrl(photo.url)}" alt="" loading="lazy">
         <div class="zoom-icon">🔍</div>
@@ -320,6 +344,105 @@ export function openResultatsLightbox(index) {
   openFullscreen(photos[index].url, photos[index].fileName, photos, index);
 }
 window.openResultatsLightbox = openResultatsLightbox;
+
+// ═══════════════════════════════════
+// VALORACIÓ REPTE (nom de treball, Fase 3 Pas 2) — nova pantalla EN PARAL·LEL
+// a Resultat Repte, per comparar el nou sistema de puntuació (1 sola nota,
+// valoracio 0-10) amb l'actual (3 criteris) sense tocar res d'existent.
+// Reutilitza tota la infraestructura de Resultat Repte (pool de fotos, escala
+// de vot per rol, disseny de targeta) — només canvia LA FONT de la nota.
+// ═══════════════════════════════════
+
+// Mitjana de `valoracio` (0-10) per a una foto, restringida a l'scope de vot
+// triat. Mateixa lògica que getPhotoScoreBreakdown (mateix denominador —
+// _submittedUserIdsForScope és agnòstic a l'escala de la nota), però d'un
+// sol camp en lloc de 3.
+export function getPhotoValoracio(photoId, scope = 'all') {
+  const photo = state.publishedPhotos.find(p => p.id === photoId)
+             || state.photos.find(p => p.id === photoId);
+  if (!photo || !photo.objectiveId) return 0;
+  const objectiveId = photo.objectiveId;
+
+  const submittedUserIds = _submittedUserIdsForScope(objectiveId, scope);
+  const totalVotants = submittedUserIds.size;
+  if (totalVotants === 0) return 0;
+
+  const photoVotes = state.votes.filter(
+    v => v.photoId === photoId && submittedUserIds.has(String(v.userId))
+  );
+  if (photoVotes.length === 0) return 0;
+
+  const sum = photoVotes
+    .filter(v => v.valoracio > 0)
+    .reduce((acc, v) => acc + v.valoracio, 0);
+  return sum / totalVotants;
+}
+
+// Rànquing d'un repte segons `valoracio`. Mateix pool de fotos que Resultat
+// Repte (_photoPoolForObjective, sense tocar) — només canvia la nota.
+export function computeValoracioRankingForObjective(objId, scope = 'all') {
+  return _photoPoolForObjective(objId)
+    .map(photo => ({ photo, valoracio: getPhotoValoracio(photo.id, scope) }))
+    .sort((a, b) => b.valoracio - a.valoracio);
+}
+
+// Pinta "Valoració Repte". Mateixa targeta que Resultat Repte (.photo-card)
+// però sense el bloc de 3 criteris (ja no n'hi ha, només la nota total),
+// i amb una barra de progrés 0-10 en lloc d'estrelles (5 estrelles fixes
+// queda forçat per a una escala de 10 punts; vegeu _starsHtml, pensada
+// per a escala 0-5, que Resultat Repte sí que continua fent servir).
+export function renderValoracioRepte(objId, listId, scope = 'all') {
+  const el = document.getElementById(listId);
+  if (!el) return;
+  const raw = computeValoracioRankingForObjective(objId, scope);
+  if (raw.length === 0) {
+    const msg = t('no_data_voting');
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🏆</div><p>${msg}</p></div>`;
+    return;
+  }
+  const ranked = _densePosition(raw, r => r.valoracio);
+  const posClasses = ['top1', 'top2', 'top3'];
+
+  window._valoracioPhotosList = ranked.map(({ photo }) => ({
+    url: photo.url, fileName: photo.fileName, author: _authorName(photo.userId),
+    id: photo.id, resultsMode: true,
+  }));
+
+  // `idx` (índex de l'array) és per al visor a pantalla completa; `position`
+  // (posició densa, pot repetir-se en empats) és el que es pinta.
+  const cards = ranked.map(({ photo, valoracio, position }, idx) => {
+    const title = photo.caption ? ` - ${photo.caption}` : '';
+    const pct = Math.max(0, Math.min(100, (valoracio / 10) * 100));
+    return `
+    <div class="photo-card">
+      <div class="card-pos ${posClasses[position - 1] || ''}">${position}</div>
+      <div class="card-thumb" onclick="openValoracioLightbox(${idx})">
+        <img src="${_thumbUrl(photo.url)}" alt="" loading="lazy">
+        <div class="zoom-icon">🔍</div>
+      </div>
+      <div class="card-body">
+        <div class="card-author">${_authorName(photo.userId)}${title}</div>
+        <div class="valoracio-bar-track">
+          <div class="valoracio-bar-fill" style="width:${pct}%"></div>
+        </div>
+      </div>
+      <div class="card-total">
+        <div class="total-val">${formatScore(valoracio)}</div>
+      </div>
+    </div>
+  `;
+  }).join('');
+
+  el.innerHTML = `<div class="cards-list">${cards}</div>`;
+}
+
+// Obre el visor a pantalla completa des de Valoració Repte.
+export function openValoracioLightbox(index) {
+  const photos = window._valoracioPhotosList || [];
+  if (photos.length === 0) return;
+  openFullscreen(photos[index].url, photos[index].fileName, photos, index);
+}
+window.openValoracioLightbox = openValoracioLightbox;
 
 // ═══════════════════════════════════
 // CLASSIFICACIÓ GENERAL (nativa, recàlcul en viu)
