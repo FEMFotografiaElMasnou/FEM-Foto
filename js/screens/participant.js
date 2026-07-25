@@ -5,7 +5,7 @@ import { state, actingAsAdmin } from '../core/state.js';
 import { t, applyTranslations } from '../core/i18n.js';
 import { showToast } from '../ui/toast.js';
 import { renderVotingGrid, updateVoteButtonsState, isVotingSubmitted } from '../features/votacio.js';
-import { renderRanking, renderResultatsRepte, objectiveHasExpertVoting, renderClassificacioGeneral, renderValoracioRepte } from '../features/ranking.js';
+import { renderRanking, renderResultatsRepte, objectiveHasExpertVoting, renderClassificacioGeneral, renderValoracioRepte, renderTaulaClassificacio } from '../features/ranking.js';
 import { updateUploadSection, _formatDateEs, _formatDateSlash } from '../features/fotos.js';
 import { setActiveNav, switchTab } from '../core/router.js';
 import { populateGalleryFilters, renderGallery, startGalleryCarousel, stopGalleryCarousel } from '../features/galeria.js';
@@ -24,6 +24,7 @@ function _hideAllParticipantPanels() {
   document.getElementById('participant-panel-resultats').classList.add('hidden');
   document.getElementById('participant-panel-classificacio').classList.add('hidden');
   document.getElementById('participant-panel-valoracio-repte').classList.add('hidden');
+  document.getElementById('participant-panel-taula-classificacio').classList.add('hidden');
   // Aturar el carrusel de la card galeria (només viu al panell principal)
   stopGalleryCarousel();
 }
@@ -261,6 +262,35 @@ export function onClassificacioVoteFilterChange() {
   renderClassificacioGeneral('classificacio-list', _classificacioScope());
 }
 
+// ── NAVEGACIÓ — Taula de Classificació (nom de treball, Fase 3 Pas 3) ──
+// Eina només per a l'admin: compara el nou sistema de puntuació (valoracio
+// 0-10) amb l'actual (Classificació General, 3 criteris), sense tocar-lo.
+// Mateix patró exacte que Classificació General, incloent
+// _anyFinishedObjectiveHasExpertVoting() reutilitzada tal qual (el criteri
+// per mostrar el filtre no depèn de quin sistema de puntuació es faci servir).
+function _updateTaulaClassificacioVoteFilter() {
+  const group = document.getElementById('taula-classificacio-vote-filter-group');
+  if (group) group.classList.toggle('hidden', !_anyFinishedObjectiveHasExpertVoting());
+}
+
+function _taulaClassificacioScope() {
+  if (!_anyFinishedObjectiveHasExpertVoting()) return 'all';
+  const sel = document.getElementById('taula-classificacio-vote-filter');
+  return sel ? sel.value : 'all';
+}
+
+export function showParticipantTaulaClassificacio() {
+  _hideAllParticipantPanels();
+  document.getElementById('participant-panel-taula-classificacio').classList.remove('hidden');
+  setActiveNav('bnav-rank');
+  _updateTaulaClassificacioVoteFilter();
+  renderTaulaClassificacio('taula-classificacio-list', _taulaClassificacioScope());
+}
+
+export function onTaulaClassificacioVoteFilterChange() {
+  renderTaulaClassificacio('taula-classificacio-list', _taulaClassificacioScope());
+}
+
 // ── Classificació General (vista interna antiga; ja no enllaçada, es manté per referència) ──
 export function showParticipantClassificacio() {
   showParticipantRanking();
@@ -353,8 +383,10 @@ export function refreshParticipantDashboard() {
   // router.js), i en aquell mode actingAsAdmin() és fals a propòsit (perquè
   // tota la resta es vegi exactament com ho veu un soci). Cal el rol real.
   const valoracioCard = document.getElementById('nav-card-valoracio-repte');
+  const taulaClassificacioCard = document.getElementById('nav-card-taula-classificacio');
   const isRealAdmin = !!(state.currentUser && state.currentUser.role === 'admin');
   if (valoracioCard) valoracioCard.classList.toggle('hidden', !isRealAdmin);
+  if (taulaClassificacioCard) taulaClassificacioCard.classList.toggle('hidden', !isRealAdmin);
 
   // Carrusel de la card galeria: només si la card és visible i som al panell principal
   const galCard    = document.getElementById('nav-card-gallery');
@@ -415,6 +447,8 @@ window.onClassificacioVoteFilterChange = onClassificacioVoteFilterChange;
 window.showParticipantValoracioRepte = showParticipantValoracioRepte;
 window.onValoracioRepteChange = onValoracioRepteChange;
 window.onValoracioVoteFilterChange = onValoracioVoteFilterChange;
+window.showParticipantTaulaClassificacio = showParticipantTaulaClassificacio;
+window.onTaulaClassificacioVoteFilterChange = onTaulaClassificacioVoteFilterChange;
 window.showParticipantClassificacio = showParticipantClassificacio;
 window.showParticipantGallery = showParticipantGallery;
 window.refreshParticipantDashboard = refreshParticipantDashboard;

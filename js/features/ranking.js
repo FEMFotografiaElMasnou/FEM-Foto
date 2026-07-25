@@ -628,6 +628,127 @@ export function openClassificacioLightbox(index) {
 }
 window.openClassificacioLightbox = openClassificacioLightbox;
 
+// ═══════════════════════════════════
+// TAULA DE CLASSIFICACIÓ (nom de treball, Fase 3 Pas 3) — nova pantalla EN
+// PARAL·LEL a Classificació General, per comparar el nou sistema de
+// puntuació (valoracio 0-10) amb l'actual (3 criteris) abans de decidir res
+// més. Mateix patró que Valoració Repte (Pas 2): es duplica en lloc de
+// refactoritzar computeGeneralRankingLive()/renderClassificacioGeneral().
+// ═══════════════════════════════════
+
+// Idèntica a computeGeneralRankingLive(), només canvia la font de la nota
+// (computeValoracioRankingForObjective en lloc de computeRankingForObjective).
+// assignPositionPoints() no distingeix escala de nota, només posició — vegeu
+// §3.7/Pas 3 de ANALISI_Fase3_Puntuacio.md.
+export function computeValoracioGeneralRankingLive(scope = 'all') {
+  const finished = state.objectives.filter(o => o.status === 'finished');
+  const userMap = {};
+
+  finished.forEach(obj => {
+    if (!objectiveHasVotesForScope(obj.id, scope)) return;
+    const scored = assignPositionPoints(
+      computeValoracioRankingForObjective(obj.id, scope).map(r => ({ ...r, score: r.valoracio }))
+    );
+    scored.forEach(item => {
+      const uid = item.photo.userId;
+      if (!userMap[uid]) userMap[uid] = { userId: uid, totalScore: 0, participations: 0, reptes: {} };
+      userMap[uid].totalScore += item.points;
+      userMap[uid].participations += 1;
+      userMap[uid].reptes[obj.id] = { photo: item.photo, points: item.points, position: item.position };
+    });
+  });
+
+  const participants = Object.values(userMap).map(u => ({
+    ...u,
+    user: state.users.find(x => x.id === u.userId) || { name: t('unknown_user'), id: u.userId },
+  }));
+  participants.sort((a, b) => b.totalScore - a.totalScore);
+
+  let lastPos = 0, prevDisplay = null;
+  participants.forEach(p => {
+    p.displayTotal = Math.floor(p.totalScore);
+    p.generalPosition = (prevDisplay !== null && p.displayTotal === prevDisplay) ? lastPos : lastPos + 1;
+    lastPos = p.generalPosition;
+    prevDisplay = p.displayTotal;
+  });
+
+  return { finishedObjectives: finished, participants };
+}
+
+// Idèntica a renderClassificacioGeneral(), només canvia la font de dades.
+export function renderTaulaClassificacio(listId, scope = 'all') {
+  const el = document.getElementById(listId);
+  if (!el) return;
+  const { finishedObjectives, participants } = computeValoracioGeneralRankingLive(scope);
+
+  window._taulaClassificacioPhotosList = [];
+
+  if (participants.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🏅</div><p>${t('no_participations')}</p></div>`;
+    return;
+  }
+
+  const rankNums = ['gold', 'silver', 'bronze'];
+
+  const rows = participants.map(p => {
+    const entries = finishedObjectives.map(obj => {
+      const entry = p.reptes[obj.id];
+      if (!entry) {
+        return `
+          <div class="gen-repte-entry gen-repte-absent">
+            <div class="gen-repte-top">
+              <div class="gen-no-thumb">📷</div>
+              <span class="gen-repte-pts-dash">—</span>
+            </div>
+            <div class="gen-repte-name">${obj.title}</div>
+          </div>`;
+      }
+      const photoIdx = window._taulaClassificacioPhotosList.length;
+      window._taulaClassificacioPhotosList.push({
+        url: entry.photo.url,
+        fileName: entry.photo.fileName,
+        author: `${p.user.name} (${obj.title})`,
+      });
+      return `
+        <div class="gen-repte-entry">
+          <div class="gen-repte-top">
+            <div class="gen-repte-thumb" onclick="openTaulaClassificacioLightbox(${photoIdx})">
+              <img src="${_thumbSmUrl(entry.photo.url)}" alt="" loading="lazy">
+            </div>
+            <span class="gen-repte-pts">${Math.floor(entry.points)}</span>
+          </div>
+          <div class="gen-repte-name">${obj.title}</div>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="gen-row">
+        <div class="gen-cell-pos"><span class="rank-num ${rankNums[p.generalPosition - 1] || ''}">${p.generalPosition}</span></div>
+        <div class="gen-cell-name">${p.user.name}</div>
+        <div class="gen-cell-total"><span class="gen-total-badge">${p.displayTotal}</span></div>
+        <div class="gen-cell-reptes">${entries}</div>
+      </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="gen-table">
+      <div class="gen-header">
+        <div class="gen-header-pos">${t('gen_table_pos')}</div>
+        <div class="gen-header-name">${t('gen_table_member')}</div>
+        <div class="gen-header-total">${t('gen_table_total')}</div>
+        <div class="gen-header-reptes">${t('objectives')}</div>
+      </div>
+      ${rows}
+    </div>`;
+}
+
+export function openTaulaClassificacioLightbox(index) {
+  const photo = (window._taulaClassificacioPhotosList || [])[index];
+  if (!photo) return;
+  openFullscreen(photo.url, photo.fileName, [photo], 0);
+}
+window.openTaulaClassificacioLightbox = openTaulaClassificacioLightbox;
+
 export function computeCurrentRanking() {
   // Solo fotos de la temática activa
   return getActivePublishedPhotos().map(photo => ({

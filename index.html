@@ -509,6 +509,14 @@
           <div class="nav-title" data-i18n="nav_valoracio">Valoració Repte</div>
           <div class="nav-sub" data-i18n="nav_valoracio_sub">Prova del nou sistema de puntuació (només admin)</div>
         </div>
+        <!-- Taula de Classificació (nom de treball, Fase 3 Pas 3) — eina de
+             comparació del nou sistema de puntuació per a la Classificació
+             General, només per a l'admin real. Amagada per defecte. -->
+        <div class="nav-card hidden" id="nav-card-taula-classificacio" onclick="showParticipantTaulaClassificacio()">
+          <div class="nav-icon">🧮</div>
+          <div class="nav-title" data-i18n="nav_taula_classificacio">Taula de Classificació</div>
+          <div class="nav-sub" data-i18n="nav_taula_classificacio_sub">Prova del nou sistema de puntuació (només admin)</div>
+        </div>
       </div>
     </div>
 
@@ -676,6 +684,32 @@
           </label>
         </div>
         <div id="classificacio-list" class="ranking-list"></div>
+      </div>
+    </div>
+
+    <!-- Panel Taula de Classificació (nom de treball, Fase 3 Pas 3) — compara
+         el nou sistema de puntuació amb Classificació General, sense
+         tocar-la. Només accessible per a l'admin (nav-card amagada per
+         defecte). -->
+    <div id="participant-panel-taula-classificacio" class="hidden">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="showParticipantMain()">
+          <span data-i18n="embedded_back">← Tornar</span>
+        </button>
+        <h2 style="font-family:var(--font-display);font-weight:700;font-size:24px;letter-spacing:2px;" data-i18n="nav_taula_classificacio">Taula de Classificació</h2>
+      </div>
+      <div class="card">
+        <div class="gallery-filters" style="margin-bottom:16px;" id="taula-classificacio-vote-filter-group">
+          <label class="gallery-filter gallery-filter--fit">
+            <span class="gallery-filter-title-lg" data-i18n="resultats_filter_vote_label">Vots a considerar</span>
+            <select id="taula-classificacio-vote-filter" onchange="onTaulaClassificacioVoteFilterChange()">
+              <option value="all" data-i18n="score_curtain_all">Tots els Vots</option>
+              <option value="socis" data-i18n="score_curtain_socis">Vots Socis</option>
+              <option value="expert" data-i18n="score_curtain_expert">Votació Expert</option>
+            </select>
+          </label>
+        </div>
+        <div id="taula-classificacio-list" class="ranking-list"></div>
       </div>
     </div>
 

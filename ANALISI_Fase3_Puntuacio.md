@@ -326,10 +326,54 @@ concepte.
 
 Pas 2b tancat.
 
-### Pas 3 — Assignació de punts per a la Classificació General (pendent)
-`assignPositionPoints`/`getPointsForPosition` (§3.7) ja s'ha comprovat que **no depenen del
-rang de la nota** — probablement aquest pas sigui trivial o gairebé nul, però es confirmarà
-quan hi arribem.
+### Pas 3 — Assignació de punts per a la Classificació General (FET, 2026-07-25)
+Confirmada la hipòtesi del §3.7: `assignPositionPoints`/`getPointsForPosition` només fan
+servir la nota per detectar empats (comparació d'igualtat), mai la seva magnitud — la taula
+de punts surt exclusivament de la posició. Per tant, el Pas 3 ha estat un simple canvi
+d'origen de dades, no de l'algorisme.
+
+Mateix patró que Pas 2/2b (duplicar, no refactoritzar, per poder comparar en paral·lel sense
+arriscar l'existent):
+- `computeValoracioGeneralRankingLive(scope)` (ranking.js) — còpia de
+  `computeGeneralRankingLive()`, però alimentada per `computeValoracioRankingForObjective()`
+  (nota `valoracio`) en lloc de `computeRankingForObjective()` (mitjana de 3 criteris).
+- `renderTaulaClassificacio(listId, scope)` — còpia de `renderClassificacioGeneral()`, mateix
+  disseny de taula/targetes, sense selector de repte (agrega tots els reptes tancats, com
+  l'actual).
+- Nova entrada "Taula de Classificació" a l'inici, amagada rere el mateix gate d'admin real
+  que "Valoració Repte".
+- **Verificat per Enric**: amb els reptes ja tancats, "Taula de Classificació" dona
+  **exactament els mateixos punts i posicions** que "Classificació General" — el resultat
+  esperat (vegeu la nota matemàtica del Pas 1b: `valoracio` és una transformació lineal de
+  les mateixes dades de vot, i el backfill del Pas 1 va ser universal). El valor d'aquesta
+  pantalla, doncs, és de comparació/validació ara mateix; el canvi real de números només
+  arribarà amb vots nous capturats directament en 0-10.
+- Fitxers tocats: `js/features/ranking.js`, `index.html`, `js/screens/participant.js`,
+  `js/core/i18n.js` (noves claus ca/es). "Classificació General" no s'ha tocat.
+
+Pas 3 tancat.
+
+### Incidència de dades — usuari duplicat José Antonio Sancho Pastor (FET, 2026-07-25)
+Detectat en revisar "Taula de Classificació": la taula `users` (compartida amb l'app del
+club "Zampa") tenia dues files per a la mateixa persona — `u_1779390719550`
+(sanchopastor@gmail.com, només 1 foto, cap altra dada) i `u_1779644516606`
+(contacto@joseantoniosancho.com, el compte amb tota l'activitat real: vots emesos,
+seguiment_votacio, dades de Zampa). Provocava que sortís com dues files diferents a
+Classificació General. Sense relació amb la Fase 3 ni introduït per aquesta feina —
+sembla que la persona es va tornar a registrar amb un altre email, oblidant que ja en
+tenia un.
+
+Solució aplicada (`sql/2026-07-25_merge_duplicate_user_sancho.sql`, només a Normal —
+Test no reproduïa el problema): reassignada l'única foto del compte buit
+("Dominant vermell") al compte real, i esborrada la fila `users` duplicada (verificat
+prèviament que no quedava cap altra referència). Verificat: només queda un compte
+"Sancho", amb les dues fotos al seu nom.
+
+**Mateix patró detectat i deixat intacte, a petició d'Enric**, per a Harald Hausleithner
+(`u_1775410565990` vs `usr_1780738611829`) — actualment inofensiu perquè el segon compte
+només té dades de Zampa, cap activitat de FEM-Foto, així que no apareix a cap rànquing.
+Pendent d'un possible escaneig més ampli de `users` per detectar més casos similars, no fet
+encara (no demanat).
 
 ### Passos pendents de calendaritzar (fora d'aquesta conversa per ara)
 - Captura del vot (nou control 0-10, substitueix les estrelles) — §3.5.
