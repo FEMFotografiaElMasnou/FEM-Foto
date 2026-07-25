@@ -797,8 +797,16 @@
   <!-- Navigation: Previous -->
   <button type="button" class="lightbox-nav-btn prev" id="lightbox-prev" onclick="event.stopPropagation(); navigateLightbox(-1)" style="display:none;">‹</button>
 
-  <!-- Image -->
-  <img id="fullscreen-img" src="" style="max-width:85vw;max-height:85vh;object-fit:contain;border-radius:8px;box-shadow:0 0 60px rgba(0,0,0,0.8);cursor:default;" onclick="event.stopPropagation();">
+  <!-- Imatge, embolcallada perquè el disparador/panell de Valoració Repte es
+       puguin ancorar a la vora real de la foto (variable segons orientació),
+       no a la vora de la pantalla -->
+  <div class="lightbox-img-wrap">
+    <img id="fullscreen-img" src="" style="max-width:85vw;max-height:85vh;object-fit:contain;border-radius:8px;box-shadow:0 0 60px rgba(0,0,0,0.8);cursor:default;" onclick="event.stopPropagation();">
+
+    <!-- Disparador ⓘ i panell de puntuació (només a Valoració Repte, si hi ha vot d'expert) -->
+    <button type="button" class="valoracio-trigger" id="lightbox-valoracio-trigger" style="display:none;" onclick="event.stopPropagation(); toggleScoreCurtain()" title="Puntuació i posició" aria-label="Puntuació i posició">ⓘ</button>
+    <div class="valoracio-panel" id="lightbox-valoracio-panel" onclick="event.stopPropagation();"></div>
+  </div>
 
   <!-- Navigation: Next -->
   <button type="button" class="lightbox-nav-btn next" id="lightbox-next" onclick="event.stopPropagation(); navigateLightbox(1)" style="display:none;">›</button>

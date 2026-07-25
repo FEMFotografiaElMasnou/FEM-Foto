@@ -1298,6 +1298,77 @@ body::before {
 .mini-stars .empty { color: rgba(79,143,255,0.2); }
 .mini-stars .filled { position: absolute; top: 0; left: 0; overflow: hidden; white-space: nowrap; color: var(--accent2); }
 
+/* ════════════════════════════════
+   PANELL DE PUNTUACIÓ (Valoració Repte)
+   El disparador ⓘ i el panell s'ancoren a .lightbox-img-wrap (mida real de
+   la foto renderitzada), no a la pantalla — així la cantonada inferior
+   esquerra és sempre la de la foto, sigui quina sigui la seva orientació.
+════════════════════════════════ */
+.lightbox-img-wrap { position: relative; }
+
+.valoracio-trigger {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin: 12px 0 0 12px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  color: white;
+  transition: background 0.2s;
+  z-index: 16;
+}
+.valoracio-trigger:hover { background: rgba(255,255,255,0.1); }
+
+.valoracio-panel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  margin: 0 0 12px 12px;
+  min-width: 230px;
+  max-width: min(80vw, 320px);
+  background: rgba(7,20,36,0.8);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(36,71,126,0.6);
+  border-radius: 14px;
+  padding: 10px 14px;
+  transform-origin: bottom left;
+  transform: translateY(8px) scale(0.96);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  z-index: 15;
+}
+.valoracio-panel.open { transform: translateY(0) scale(1); opacity: 1; pointer-events: auto; }
+
+.valoracio-panel-table { width: 100%; border-collapse: collapse; font-size: 14px; table-layout: fixed; line-height: 1.15; }
+.valoracio-panel-table th {
+  text-align: right; font-weight: 500; color: var(--text-muted);
+  font-size: 11px; padding: 0 0 4px 10px; white-space: nowrap;
+}
+.valoracio-panel-table th:first-child { text-align: left; padding-left: 0; }
+.valoracio-panel-table th:nth-child(2), .valoracio-panel-table th:nth-child(3) { width: 68px; }
+
+.valoracio-panel-table td.vp-row-label {
+  text-align: left; padding: 3px 10px 3px 0; font-family: inherit;
+  font-weight: 400; color: var(--text-muted); font-size: 12px; white-space: nowrap;
+}
+.valoracio-panel-table td.vp-score,
+.valoracio-panel-table td.vp-pos {
+  text-align: right; padding: 3px 0 3px 10px;
+  font-family: var(--font-cond); font-weight: 500;
+}
+.valoracio-panel-table td.vp-score { color: var(--accent2); font-size: 16px; }
+.valoracio-panel-table td.vp-pos { color: var(--text); font-size: 17px; font-weight: 600; }
+
 @media (max-width: 640px) {
   .lightbox-nav-btn {
     width: 44px;

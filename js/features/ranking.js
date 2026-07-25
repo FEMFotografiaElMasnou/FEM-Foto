@@ -386,6 +386,57 @@ export function computeValoracioRankingForObjective(objId, scope = 'all') {
     .sort((a, b) => b.valoracio - a.valoracio);
 }
 
+// Mateix rànquing que computeValoracioRankingForObjective, amb posició
+// assignada (empats comparteixen posició) — necessari per al panell de
+// puntuació del visor (vegeu getPhotoValoracioBreakdown).
+function _valoracioRankingForObjectiveScoped(objId, scope) {
+  const scored = _photoPoolForObjective(objId)
+    .map(photo => ({ photo, valoracio: getPhotoValoracio(photo.id, scope) }))
+    .sort((a, b) => b.valoracio - a.valoracio);
+
+  let lastPosition = 0;
+  let previousScore = null;
+  scored.forEach(item => {
+    item.position = (previousScore !== null && item.valoracio === previousScore)
+      ? lastPosition
+      : lastPosition + 1;
+    lastPosition = item.position;
+    previousScore = item.valoracio;
+  });
+  return scored;
+}
+
+// Desglossament per al panell de puntuació del visor a "Valoració Repte":
+// una fila per Total Vots / Vots Socis / Vots Experts (columna "Votants",
+// és l'àmbit de la fila, no un recompte), amb puntuació (valoracio) i
+// posició. Mateixa condició de visibilitat que getPhotoResultsBreakdown
+// (només si el repte té vot d'expert) — si no n'hi ha, Total i Socis
+// coincideixen i la nota/posició ja s'ha vist a la pantalla de llista, així
+// que no cal mostrar el panell.
+export function getPhotoValoracioBreakdown(photoId) {
+  const photo = state.publishedPhotos.find(p => p.id === photoId)
+             || state.photos.find(p => p.id === photoId);
+  if (!photo || !photo.objectiveId) return null;
+  const objectiveId = photo.objectiveId;
+  if (!objectiveHasExpertVoting(objectiveId)) return null;
+
+  const scopes = [
+    { key: 'all',    labelKey: 'valoracio_curtain_total' },
+    { key: 'socis',  labelKey: 'valoracio_curtain_socis' },
+    { key: 'expert', labelKey: 'valoracio_curtain_expert' },
+  ];
+  const blocks = scopes.map(({ key, labelKey }) => {
+    const ranked = _valoracioRankingForObjectiveScoped(objectiveId, key);
+    const entry = ranked.find(r => r.photo.id === photoId);
+    return {
+      key, labelKey,
+      valoracio: entry ? entry.valoracio : 0,
+      position:  entry ? entry.position  : null,
+    };
+  });
+  return { objectiveId, blocks };
+}
+
 // Pinta "Valoració Repte". Mateixa targeta que Resultat Repte (.photo-card)
 // però sense el bloc de 3 criteris (ja no n'hi ha, només la nota total),
 // i amb una barra de progrés 0-10 en lloc d'estrelles (5 estrelles fixes
@@ -405,7 +456,7 @@ export function renderValoracioRepte(objId, listId, scope = 'all') {
 
   window._valoracioPhotosList = ranked.map(({ photo }) => ({
     url: photo.url, fileName: photo.fileName, author: _authorName(photo.userId),
-    id: photo.id, resultsMode: true,
+    id: photo.id, valoracioMode: true,
   }));
 
   // `idx` (índex de l'array) és per al visor a pantalla completa; `position`

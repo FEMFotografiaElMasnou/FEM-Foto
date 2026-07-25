@@ -276,6 +276,56 @@ alimentant "Resultat Repte", intocat), es va optar per una **pantalla nova en pa
 
 Pas 2 tancat.
 
+### Pas 2b — Redisseny del panell de puntuació del lightbox a "Valoració Repte" (FET, 2026-07-25)
+Responent la pregunta oberta del §3.6/§5.6: **no es toca "Resultat Repte"** (queda amb
+la seva estrella ⭐ i cortina completa de 3 criteris, intacte); es construeix un
+disparador i panell **independents** només per a "Valoració Repte".
+
+**Problema detectat abans de dissenyar la solució**: `renderResultatsRepte()` i
+`renderValoracioRepte()` marcaven totes dues les fotos amb el mateix flag
+`resultsMode:true`, i `lightbox.js` només sabia mostrar `getPhotoResultsBreakdown()`
+(el desglossament vell de 3 criteris). Resultat: obrint una foto des de "Valoració
+Repte" es veia la cortina vella (3 criteris), sense sentit amb el nou sistema d'1
+concepte.
+
+**Solució**:
+- `renderValoracioRepte()` ara marca les seves fotos amb `valoracioMode:true` (no
+  `resultsMode`), flag independent del de "Resultat Repte".
+- Nova funció `getPhotoValoracioBreakdown(photoId)` (ranking.js) — mateixa condició
+  de visibilitat que l'antiga (`objectiveHasExpertVoting`, no es mostra si el repte
+  no té vot d'expert), però calcula posició+nota a partir de `valoracio`, amb un
+  bloc per Total Vots / Vots Socis / Vots Experts.
+- `lightbox.js` gestiona ara **dos disparadors i panells independents** en paral·lel
+  (`_currentBreakdown`/`lightbox-score-trigger` per a Resultat Repte, sense tocar;
+  `_currentValoracioBreakdown`/`lightbox-valoracio-trigger` nou), mai actius alhora
+  per a la mateixa foto.
+- Disseny final del panell nou (iterat amb captures reals, diverses rondes):
+  taula d'1 sol bloc, 3 columnes amb capçalera **Votants | Puntuació | Posició**
+  (la columna "Votants" és l'àmbit de la fila —Total Vots/Vots Socis/Vots Experts—
+  no un recompte de persones), Puntuació en blau accent, Posició en blanc una mica
+  més emfatitzada (però sense pes de lletra excessiu — la negreta forta quedava
+  "empastada" a mida petita), interlineat compacte.
+- Ubicació: el disparador ⓘ i el panell **no es posicionen respecte a la pantalla**
+  sinó respecte a la **mida real renderitzada de la foto** (nou contenidor
+  `.lightbox-img-wrap`, `position:relative`, que la imatge omple exactament) —
+  així la cantonada inferior-esquerra és sempre la de la foto, sigui quina sigui
+  la seva orientació, en lloc de quedar "perduda" a la cantonada de la pantalla
+  (el mateix problema que ja tenia, sense revisar, l'estrella ⭐ de Resultat Repte).
+  El disparador es mostra 12px per sota de la foto; en clicar, el panell s'obre
+  cap amunt superposat a la base-esquerra de la foto.
+- Estil final del disparador: unificat visualment amb `.lightbox-counter` (mateix
+  padding/radi/mida de lletra/color blanc, vora semitransparent), però **sense el
+  fons fosc del comptador** (només marc, transparent per dins).
+- **Limitació coneguda, acceptada conscientment**: el disparador/panell no
+  reposicionen si l'usuari fa zoom a la foto (el zoom escala visualment la imatge
+  sense moure la seva caixa de layout, que és la referència de posicionament) —
+  Enric ho ha vist i ha decidit no arreglar-ho, cas d'ús massa puntual.
+- Fitxers tocats: `js/features/ranking.js`, `js/ui/lightbox.js`, `index.html`,
+  `css/base.css`, `js/core/i18n.js` (noves claus ca/es). "Resultat Repte" no s'ha
+  tocat en cap d'aquests fitxers.
+
+Pas 2b tancat.
+
 ### Pas 3 — Assignació de punts per a la Classificació General (pendent)
 `assignPositionPoints`/`getPointsForPosition` (§3.7) ja s'ha comprovat que **no depenen del
 rang de la nota** — probablement aquest pas sigui trivial o gairebé nul, però es confirmarà
@@ -301,6 +351,10 @@ quan hi arribem.
    antic/nou (§3.4)?
 5. Quin dels tres formats de control de captura (§3.5) — o un altre — prefereixes per a
    l'usuari de ~65 anys?
-6. La cortina de puntuació del lightbox i "Resultat Repte" (§3.6): es manté la mateixa
-   interacció (disparador ⭐ + panell) només amb 1 fila, o es simplifica encara més?
+6. ~~La cortina de puntuació del lightbox i "Resultat Repte" (§3.6): es manté la mateixa
+   interacció (disparador ⭐ + panell) només amb 1 fila, o es simplifica encara més?~~
+   **Resolta (Pas 2b, 2026-07-25)** — només per a "Valoració Repte": disparador i
+   panell nous i independents (vegeu §4, Pas 2b). "Resultat Repte" queda intacte,
+   amb la seva estrella i cortina de 3 criteris; es revisarà si mai s'hi retira
+   l'antic sistema de puntuació.
 7. Es manté el nom de columna `valoracio` a `votes`, o preferiu un altre nom?

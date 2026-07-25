@@ -5,17 +5,23 @@ import { state, actingAsAdmin } from '../core/state.js';
 import { t } from '../core/i18n.js';
 import { showToast, showLoader, hideLoader } from './toast.js';
 import { getActiveAllPhotos, getParticipantNumber } from '../core/data.js';
-import { getPhotoResultsBreakdown, formatScore, formatPosition } from '../features/ranking.js';
+import { getPhotoResultsBreakdown, getPhotoValoracioBreakdown, formatScore, formatPosition } from '../features/ranking.js';
 
 let _fullscreenFileName = 'foto.jpg';
 let _lightboxPhotos = [];      // Array of {url, fileName} for navigation
 let _lightboxCurrentIndex = 0; // Current photo index
 
 // ═══════════════════════════════════
-// CORTINETA DE PUNTUACIÓ (només Resultats Repte, si hi ha vot d'expert)
+// CORTINETA/PANELL DE PUNTUACIÓ — dos disparadors independents:
+// - "Resultat Repte" (llegat, resultsMode:true): disparador ⭐ dalt-esquerra
+//   + cortina completa amb els 3 criteris. Intacte.
+// - "Valoració Repte" (nou, valoracioMode:true): disparador ⓘ baix-esquerra
+//   + panell petit ancorat amb la taula Votants/Puntuació/Posició.
+// Només un dels dos és rellevant per foto — es decideix a _updateScoreContext.
 // ═══════════════════════════════════
 let _scoreCurtainOpen = false;
-let _currentBreakdown = null; // { objectiveId, blocks: [...] } o null
+let _currentBreakdown = null;          // { objectiveId, blocks: [...] } o null (Resultat Repte)
+let _currentValoracioBreakdown = null; // { objectiveId, blocks: [...] } o null (Valoració Repte)
 
 const _BLOCK_LABEL_KEYS = {
   expert: 'score_curtain_expert',
@@ -51,24 +57,80 @@ function _scoreCurtainHtml(breakdown) {
   return `<div class="score-blocks">${blocks}</div>`;
 }
 
-// Actualitza el context de la cortineta a partir del "photo" actiu al visor.
-// Només es mostra el disparador ⭐ si la foto ve de Resultats Repte
-// (resultsMode:true, vegeu ranking.js) i el seu repte té vot d'expert.
+// Igual que _posColor (medalles per al top-3), però sense el gris apagat
+// per a la resta de posicions: aquí Posició ha de quedar més viva que
+// Puntuació, no més apagada.
+function _valoracioPosColor(position) {
+  if (position === 1) return '#f5c842';
+  if (position === 2) return '#b0b8c8';
+  if (position === 3) return '#c87941';
+  return null;
+}
+
+function _valoracioPanelHtml(breakdown) {
+  const rows = breakdown.blocks.map(b => {
+    const posColor = _valoracioPosColor(b.position);
+    return `
+    <tr>
+      <td class="vp-row-label">${_escapeHtml(t(b.labelKey))}</td>
+      <td class="vp-score">${formatScore(b.valoracio)}</td>
+      <td class="vp-pos"${posColor ? ` style="color:${posColor}"` : ''}>${formatPosition(b.position)}</td>
+    </tr>
+  `;
+  }).join('');
+  return `
+    <table class="valoracio-panel-table">
+      <thead>
+        <tr>
+          <th>${t('valoracio_curtain_col_votants')}</th>
+          <th>${t('valoracio_curtain_col_score')}</th>
+          <th>${t('valoracio_curtain_col_pos')}</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+// Actualitza el context del panell a partir del "photo" actiu al visor.
+// Cada mode (resultsMode / valoracioMode, vegeu ranking.js) controla el seu
+// propi disparador; mai els dos alhora per a la mateixa foto.
 function _updateScoreContext(photoObj) {
   _closeScoreCurtain();
-  const trigger = document.getElementById('lightbox-score-trigger');
-  const photoId = photoObj && photoObj.resultsMode ? photoObj.id : null;
-  _currentBreakdown = photoId ? getPhotoResultsBreakdown(photoId) : null;
-  if (trigger) trigger.style.display = _currentBreakdown ? 'flex' : 'none';
+  const resultsTrigger   = document.getElementById('lightbox-score-trigger');
+  const valoracioTrigger = document.getElementById('lightbox-valoracio-trigger');
+
+  const resultsPhotoId   = photoObj && photoObj.resultsMode   ? photoObj.id : null;
+  const valoracioPhotoId = photoObj && photoObj.valoracioMode ? photoObj.id : null;
+
+  _currentBreakdown           = resultsPhotoId   ? getPhotoResultsBreakdown(resultsPhotoId)     : null;
+  _currentValoracioBreakdown  = valoracioPhotoId ? getPhotoValoracioBreakdown(valoracioPhotoId)  : null;
+
+  if (resultsTrigger)   resultsTrigger.style.display   = _currentBreakdown          ? 'flex' : 'none';
+  if (valoracioTrigger) valoracioTrigger.style.display = _currentValoracioBreakdown ? 'flex' : 'none';
 }
 
 function _closeScoreCurtain() {
   _scoreCurtainOpen = false;
   const panel = document.getElementById('lightbox-score-curtain');
   if (panel) panel.classList.remove('open');
+  const vpanel = document.getElementById('lightbox-valoracio-panel');
+  if (vpanel) vpanel.classList.remove('open');
 }
 
 export function toggleScoreCurtain() {
+  if (_currentValoracioBreakdown) {
+    const panel = document.getElementById('lightbox-valoracio-panel');
+    if (!panel) return;
+    _scoreCurtainOpen = !_scoreCurtainOpen;
+    if (_scoreCurtainOpen) {
+      panel.innerHTML = _valoracioPanelHtml(_currentValoracioBreakdown);
+      panel.classList.add('open');
+    } else {
+      panel.classList.remove('open');
+    }
+    return;
+  }
   if (!_currentBreakdown) return;
   const panel = document.getElementById('lightbox-score-curtain');
   if (!panel) return;
@@ -209,8 +271,11 @@ export function closeFullscreen() {
   if (cap) { cap.textContent = ''; cap.style.display = 'none'; }
   _closeScoreCurtain();
   _currentBreakdown = null;
+  _currentValoracioBreakdown = null;
   const trigger = document.getElementById('lightbox-score-trigger');
   if (trigger) trigger.style.display = 'none';
+  const vtrigger = document.getElementById('lightbox-valoracio-trigger');
+  if (vtrigger) vtrigger.style.display = 'none';
 }
 
 // Wrapper para el botón de descarga del lightbox (antes el onclick usaba la

@@ -48,6 +48,11 @@ export const TRANSLATIONS = {
     // Cortineta de puntuació (visor de fotos a Resultats Repte)
     score_curtain_expert: 'Votació Expert', score_curtain_socis: 'Vots Socis',
     score_curtain_all: 'Tots els Vots',
+    // Panell de puntuació (visor de fotos a Valoració Repte)
+    valoracio_curtain_total: 'Total Vots', valoracio_curtain_socis: 'Vots Socis',
+    valoracio_curtain_expert: 'Vots Experts',
+    valoracio_curtain_col_votants: 'Votants', valoracio_curtain_col_score: 'Puntuació',
+    valoracio_curtain_col_pos: 'Posició',
     resultats_filter_vote_label: 'Vots a considerar',
     gen_table_pos: 'Pos', gen_table_member: 'Soci/a', gen_table_total: 'Total',
     // Ranking
@@ -417,6 +422,11 @@ export const TRANSLATIONS = {
     // Cortina de puntuación (visor de fotos en Resultados Reto)
     score_curtain_expert: 'Votación Experto', score_curtain_socis: 'Votos Socios',
     score_curtain_all: 'Todos los Votos',
+    // Panel de puntuación (visor de fotos en Valoración Reto)
+    valoracio_curtain_total: 'Total Votos', valoracio_curtain_socis: 'Votos Socios',
+    valoracio_curtain_expert: 'Votos Expertos',
+    valoracio_curtain_col_votants: 'Votantes', valoracio_curtain_col_score: 'Puntuación',
+    valoracio_curtain_col_pos: 'Posición',
     resultats_filter_vote_label: 'Votos a considerar',
     gen_table_pos: 'Pos', gen_table_member: 'Socio/a', gen_table_total: 'Total',
     // Ranking
