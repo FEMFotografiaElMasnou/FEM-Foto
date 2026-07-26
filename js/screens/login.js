@@ -145,36 +145,43 @@ export async function handleLogin() {
     return;
   }
 
-  // Match by email, username, or display name — case-insensitive
-  const input = username.toLowerCase().trim();
-  const pass  = String(password).trim();
+  // Verificació al servidor (fem_login, funció SECURITY DEFINER a Supabase,
+  // sql/2026-07-26_login_seguretat_fem_login.sql): el client ja no compara
+  // la contrasenya en memòria ni necessita llegir-la — tanca l'exposició
+  // detectada a ANALISI_Login_Navegacio.md §1.2 (qualsevol podia llegir-la
+  // en clar via l'API pública).
+  const { data: rows, error: rpcError } = await sb.rpc('fem_login', {
+    p_identity: username,
+    p_password: password,
+  });
 
-  // First, find the user by identity (without password check) to detect reset state
-  const userByIdentity = state.users.find(u =>
-    u.email.toLowerCase().trim() === input ||
-    u.username.toLowerCase().trim() === input ||
-    u.name.toLowerCase().trim() === input
-  );
-
-  // If user exists but password is empty in DB → admin has reset it → force new-password flow.
-  if (userByIdentity && String(userByIdentity.password || '').trim() === '') {
-    openNewPasswordModal(userByIdentity);
+  if (rpcError) {
+    console.error('fem_login error', rpcError);
+    errEl.style.display = 'block';
+    errEl.textContent   = t('generic_error');
     return;
   }
 
-  const user = state.users.find(u =>
-    (u.email.toLowerCase().trim() === input ||
-     u.username.toLowerCase().trim() === input ||
-     u.name.toLowerCase().trim() === input) &&
-    String(u.password).trim() === pass
-  );
+  const result = (rows && rows[0]) || { status: 'invalid' };
 
-  if (!user) {
+  // Contrasenya buida a la BD → admin l'ha reiniciat → força el flux de nova contrasenya.
+  if (result.status === 'reset_required') {
+    openNewPasswordModal({
+      id: result.id, name: result.display_name, email: result.email, role: result.role,
+    });
+    return;
+  }
+
+  if (result.status !== 'ok') {
     errEl.style.display = 'block';
     errEl.textContent   = t('login_invalid');
     return;
   }
 
+  const user = {
+    id: result.id, name: result.display_name, email: result.email,
+    username: result.email, role: result.role,
+  };
   state.currentUser = user;
   saveSession(user);
   if (user.role === 'admin') {
@@ -256,7 +263,6 @@ export async function saveNewPassword() {
   }
 
   // Update local state and proceed with login
-  _pendingPasswordUser.password = p1;
   state.currentUser = _pendingPasswordUser;
   saveSession(_pendingPasswordUser);
   closeModal('modal-new-password');

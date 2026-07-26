@@ -147,7 +147,10 @@ export function openMemberModal(id) {
     document.getElementById('member-modal-title').textContent = t('edit_member_title');
     document.getElementById('member-name').value     = u.name;
     document.getElementById('member-username').value = u.email || u.username;
-    document.getElementById('member-password').value = u.password;
+    // Sempre buit (2026-07-26): el client ja no rep la contrasenya real
+    // (columna no llegible, vegeu sql/2026-07-26_login_seguretat_fem_login.sql)
+    // — buit vol dir "no canviar-la", igual que ja interpreta saveMember().
+    document.getElementById('member-password').value = '';
     document.getElementById('member-role').value     = u.role;
   } else {
     document.getElementById('member-modal-title').textContent = t('new_member_btn');

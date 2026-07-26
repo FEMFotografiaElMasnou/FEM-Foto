@@ -71,7 +71,10 @@ async function _fetchAllRows(queryFactory) {
 
 export async function loadAllData() {
   const results = await Promise.all([
-    sb.from('users').select('id,display_name,email,password,role,created_at').order('id', { ascending: true }),
+    // password NO es demana (2026-07-26): la columna ja no és llegible pel
+    // client (REVOKE, sql/2026-07-26_login_seguretat_fem_login.sql) — el
+    // login passa per fem_login(), que la verifica al servidor.
+    sb.from('users').select('id,display_name,email,role,created_at').order('id', { ascending: true }),
     // names_revealed afegit a la Fase 2 (multi-repte): vegeu FEM_reptes.md.
     // uploads_enabled/voting_enabled ja existien a la taula però eren lletra
     // morta fins la Fase 2 — ara SÍ que en depèn el mirall de state.settings.
@@ -130,7 +133,6 @@ export async function loadAllData() {
     name:     u.display_name || '',
     email:    u.email || '',
     username: u.email || '',
-    password: u.password || '',
     role:     u.role || 'participant',
     created_at: u.created_at || '',
   }));

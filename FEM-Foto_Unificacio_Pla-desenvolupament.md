@@ -101,7 +101,11 @@ A partir d'aquí, t'aniré guiant pas a pas pel xat, un pas a la vegada:
 
 **Fase 1 — Bastida:** repo GitHub FEMFotografiaElMasnou/FEM-Foto creat i connectat (origin/main). Projecte Vercel i variables d'entorn: pendents de confirmar amb Enric (no verificable des de la sessió de Claude Code).
 
-**Fase 2 — Integració nativa de Resultats: FETA i validada per Enric.** Resultat Repte i Classificació General són pantalles natives (sense iframe), amb selector de vot Tots/Socis/Expert i l'estètica calcada de FEM-Resultats. RESULTATS_BASE i tot el codi de l'iframe retirats.
+**Fase 2 — Integració nativa de Resultats: FETA i validada per Enric, sense cap dependència pendent de FEM-Resultats.** Resultat Repte i Classificació General són pantalles natives (sense iframe), amb selector de vot Tots/Socis/Expert i l'estètica calcada de FEM-Resultats. RESULTATS_BASE i tot el codi de l'iframe retirats.
+
+**Confirmat (26/07/2026):** aquesta fase es pot donar per completament tancada, independentment del que passi amb l'app FEM-Resultats. Cerca a tot el codi de Foto (`js/`, `index.html`, `vercel.json`) de `iframe`, `RESULTATS_BASE` i `FEM-Resultats`: **cap resultat**. L'únic rastre que queda al repo és `_reference-resultats/` (còpia estàtica del codi font React d'abans, mantinguda només com a referència de consulta) — no es carrega ni es construeix mai des de Foto, no és una dependència en temps d'execució. És a dir: si avui s'esborrés el repo i el desplegament de FEM-Resultats, "Resultat Repte" i "Classificació General" de Foto continuarien funcionant exactament igual, amb el seu propi motor de càlcul natiu (`ranking.js`).
+
+Aquesta confirmació és independent del tall encara pendent de la Fase 3 (vegeu més avall i `ANALISI_Fase3_Puntuacio.md` §6) — aquell tall és sobre el canvi de sistema de puntuació (amagar el sistema antic de 3 criteris dins la mateixa Foto), no sobre la integració de Resultats, que ja no té cap fil pendent amb l'app externa.
 
 **Fase 3 — Nou sistema de puntuació: EN CURS.** Pas 1: columna votes.valoracio (0–10) afegida i sincronitzada amb un trigger a partir dels 3 criteris antics (sense eliminar-los ni tocar-los), coherent amb la proposta original de la secció 3 (vegeu aclariment). Pas 1b (25/07/2026): es va detectar que tant el trigger com el client (data.js) arrodonien/truncaven a enter, perdent els decimals que la normalització 15→10 hauria de conservar (detectat comparant amb un càlcul manual en full de càlcul) — corregit: valoracio ara es guarda com a numeric amb 2 decimals, backfill refet, i el client ja no trunca cap dels 4 camps de vot (creativity/theme/composition/valoracio). Verificat a Test i Normal, valors coincidents amb el càlcul manual. Pas 2 (25/07/2026): construïda «Valoració Repte», pantalla nova en paral·lel a Resultat Repte (que es manté intacta), amb el mateix disseny de targeta però una barra de progrés 0–10 en lloc d'estrelles; accessible només des del compte admin (nova entrada a la pantalla d'inici), per comparar el nou sistema amb l'actual abans de decidir res més. Pas 2b (25/07/2026): el visor de fotos a pantalla completa, obert des de «Valoració Repte», mostrava fins ara la cortina vella de 3 criteris (bug de disseny compartit amb «Resultat Repte»); es va construir un disparador i panell propis i independents per a «Valoració Repte» — icona ⓘ ancorada a la cantonada inferior-esquerra de la pròpia foto (no de la pantalla), i en clicar-hi, una taula compacta amb 3 columnes (Votants/Puntuació/Posició) i 3 files (Total Vots/Vots Socis/Vots Experts). Iterat amb Enric sobre captures reals (tipografia, interlineat, ubicació, estil del disparador). «Resultat Repte» no s'ha tocat. Pas 3 (25/07/2026): confirmada la hipòtesi que l'assignació de punts per posició no depèn del rang de la nota (només detecta empats per igualtat) — es va construir «Taula de Classificació», pantalla nova en paral·lel a Classificació General (que es manté intacta), mateix motor de punts alimentat per valoracio en lloc dels 3 criteris, amagada rere el mateix gate d'admin real que «Valoració Repte». Enric ho ha provat en viu i confirma que dona exactament els mateixos punts i posicions que l'actual Classificació General, el resultat matemàticament esperat. Amb això es tanca el pla per passos de la Fase 3 acordat el 24/07/2026; queden pendents de calendaritzar el nou control de vot 0–10 a la UI de captura i el redisseny de les pantalles de resultat.
 
@@ -120,10 +124,20 @@ a ser visibles per a tothom — però les pantalles i nav-cards antics **no s'es
 codi**, només quedaran ocults, per si mai calgués un retorn (poc probable però no impossible)
 al sistema antic.
 
+**Treball transversal, fora de la numeració de fases (obert 26/07/2026):** aprofitant que
+Fase 2 i Fase 3 estan tancades, Enric vol abordar dos aspectes pendents a nivell de tota
+l'app, independents d'aquesta unificació: (1) el sistema de login/autenticació/gestió
+d'usuaris, i (2) la navegació (comportament en refrescar i en prémer "enrere"). Anàlisi
+completa a `ANALISI_Login_Navegacio.md` — inclou dades reals dels advisors de seguretat de
+Supabase (RLS "activada" però amb polítiques permissives a totes les taules, incloent
+`users.password` en clar llegible per qualsevol via l'API pública). Encara en fase de
+decisió, cap codi tocat.
+
 **Documents de treball relacionats (dins del repo FEM-Foto):**
 
 - `HANDOFF_Fase2_Resultats.md` — detall tècnic de la integració nativa de Resultats (Fase 2).
 - `ANALISI_Fase3_Puntuacio.md` — anàlisi d'implicacions del nou sistema de puntuació, pla per passos i decisions preses als Pas 1/1b/2/2b/3/4.
+- `ANALISI_Login_Navegacio.md` — anàlisi del sistema de login/autenticació i de la navegació de l'app (treball transversal, fora de fases).
 - `sql/2026-07-24_fase3_valoracio_pas1.sql` — migració SQL del Pas 1, ja aplicada a Test i Normal.
 - `sql/2026-07-25_fase3_valoracio_pas1b_decimals.sql` — migració SQL del Pas 1b (correcció de precisió), ja aplicada a Test i Normal.
 
