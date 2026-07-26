@@ -414,7 +414,7 @@ Cosmèticament estrany si algú s'hi fixa, però inofensiu i acceptat explícita
 Enric — coherent amb el fet que aquestes pantalles ja estan "congelades" fins que es
 retirin (§3.6, encara sense calendaritzar).
 
-**Implementat (2026-07-26):** nova pantalla "Puntuació Repte", mateix patró que
+**Implementat (2026-07-26):** nova pantalla "Puntuar Repte" (renombrada de "Puntuació Repte" el 26/07/2026, a petició d'Enric, per distingir-la de "Valoració Repte" — vegeu §6), mateix patró que
 "Valoració Repte"/"Taula de Classificació" (panell nou dins `screen-participant`, targeta
 de nav pròpia, res de `votacio.js`/`base.css` de la votació real tocat). Diferència clau
 respecte les altres dues eines de Fase 3: com que és una eina de **captura** (escriu
@@ -465,7 +465,7 @@ la seleccionada ni el desplegable.
 
 **Dades de prova a Test** (2026-07-26, no toca Normal): 4 usuaris ficticis
 (`u_test_*`, nom amb prefix "TEST") i les seves fotos publicades a "Repte de proves",
-per completar el cicle de prova (captura → Puntuació Repte → Taula de Classificació)
+per completar el cicle de prova (captura → Puntuar Repte → Taula de Classificació)
 amb més de 2 votants. Verificat en directe: la Taula de Classificació ja reflecteix
 correctament els punts d'aquest repte.
 
@@ -491,10 +491,14 @@ amb les mateixes dades.
 - Redisseny de les pantalles de resultat (cortina del lightbox, Resultat Repte) — §3.6.
   Ara sí és el següent pas lògic: Pas 4 (captura) ja tancat, i "Resultat Repte" segueix
   mostrant el desglossament de 3 criteris que ja no tindrà sentit quan es faci el tall.
+  Nota: no cal "redissenyar" pròpiament aquestes pantalles — l'estratègia acordada (§6) és
+  deixar-les intactes i amagar-ne l'accés en fer el tall, no editar-les.
 - Reptes actius durant el tall (§3.3) i decisió final sobre backfill universal vs només
   reptes tancats (§3.2) — amb el Pas 1 ja hem optat, de facto, per la via "universal"
   (backfill de TOTS els vots, no només els de reptes finalitzats), perquè el trigger no
   distingeix per estat de repte.
+- El moment i mecanisme exacte del tall (§6): quan es considerarà "finalitzada" la
+  integració per amagar els nav-cards antics i mostrar els nous a tothom.
 
 ## 5. Preguntes concretes per a la propera conversa (abans de tocar codi)
 
@@ -515,3 +519,49 @@ amb les mateixes dades.
    amb la seva estrella i cortina de 3 criteris; es revisarà si mai s'hi retira
    l'antic sistema de puntuació.
 7. Es manté el nom de columna `valoracio` a `votes`, o preferiu un altre nom?
+
+## 6. Estratègia de transició: pantalles noves, convivència i retirada (aclarit 2026-07-26)
+
+**Resum del canvi de fons**: el club passa d'un sistema de vot amb **3 criteris** (Creativitat/
+Temàtica/Composició, 0-5 cadascun, mitjana per obtenir la nota final) a **1 sol concepte**
+("Puntuació"/"Valoració", 0-10). Aquest document (Fase 3) és el seguiment tècnic d'aquest
+canvi.
+
+**Mètode de desplegament (confirmat, ja aplicat consistentment des del Pas 2)**: en lloc de
+modificar in-place les pantalles existents afectades pel sistema de puntuació, per cadascuna
+es crea una **pantalla nova en paral·lel**, sense tocar l'original:
+
+| Pantalla original (sistema antic, intacta) | Pantalla nova (sistema nou) |
+|---|---|
+| Votació real (`votacio.js`, 3 files d'estrelles) | **Puntuar Repte** (Pas 4) — renombrada el 26/07/2026 (abans "Puntuació Repte"; vegeu nota de naming més avall) |
+| Resultat Repte (+ cortina de 3 criteris al lightbox) | **Valoració Repte** (Pas 2/2b) |
+| Classificació General | **Taula de Classificació** (Pas 3) |
+
+Només es toquen les pantalles que depenen del sistema de puntuació. Altres pantalles de
+l'app **no es toquen ni es dupliquen** perquè el canvi no les afecta — per exemple, la
+Galeria.
+
+**Convivència (fase actual)**: totes les pantalles noves són visibles només per a l'usuari
+admin real (i, en el cas de "Puntuar Repte" per ser una eina de captura, també quan la BD
+activa és Test — vegeu Pas 4), precisament per poder-les provar i comparar amb les originals
+sense arriscar l'experiència real dels socis. Les pantalles antigues i la votació real
+segueixen sent les úniques visibles per a la resta d'usuaris durant tot aquest període.
+
+**Tall (encara sense calendaritzar, §3.3/§5.3)**: quan es doni per finalitzada la integració
+de les apps i el canvi de sistema de puntuació, els nav-cards d'accés a les pantalles
+antigues (votació de 3 estrelles, Resultat Repte, Classificació General) deixaran de
+mostrar-se, i els de les pantalles noves passaran a ser-hi per a tothom (no només admin/Test).
+
+**Retirada (no esborrat)**: les pantalles antigues i els seus nav-cards **no s'eliminaran del
+codi** en fer el tall — quedaran inaccessibles (nav-card ocult, com ja ho són ara les noves)
+però presents, per si mai calgués revertir al sistema antic. Es considera un escenari poc
+probable però no impossible; per això es manté com a xarxa de seguretat en lloc de fer neteja
+immediata del codi. (Nota: això és una decisió específica d'aquestes pantalles de puntuació,
+diferent de la retirada dels repositoris/desplegaments sencers de Reptes/Resultats prevista a
+la Fase 7 del pla general.)
+
+**Nota de naming (2026-07-26)**: la pantalla de captura del Pas 4 es deia de treball
+"Puntuació Repte", massa semblant a "Valoració Repte" (la de resultats/lectura) i que
+generava confusió real entre totes dues. Renombrada a **"Puntuar Repte"** (ca) / "Puntuar
+Reto" (es) — el verb deixa clar que és on es fa l'acció de puntuar, per contrast amb
+"Valoració Repte" on només es consulta. "Valoració Repte" no canvia de nom.

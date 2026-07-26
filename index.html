@@ -517,14 +517,14 @@
           <div class="nav-title" data-i18n="nav_taula_classificacio">Taula de Classificació</div>
           <div class="nav-sub" data-i18n="nav_taula_classificacio_sub">Prova del nou sistema de puntuació (només admin)</div>
         </div>
-        <!-- Puntuació Repte (nom de treball, Fase 3 Pas 4) — captura de prova
-             del nou sistema de puntuació (1 nota 0-10), en paral·lel a la
-             pantalla real de votació (participant-panel-voting), sense
-             tocar-la. Només per a l'admin real (vegeu
-             refreshParticipantDashboard, participant.js). Amagada per defecte. -->
+        <!-- Puntuar Repte (Fase 3 Pas 4) — captura de prova del nou sistema
+             de puntuació (1 nota 0-10), en paral·lel a la pantalla real de
+             votació (participant-panel-voting), sense tocar-la. Només per a
+             l'admin real (vegeu refreshParticipantDashboard, participant.js).
+             Amagada per defecte. -->
         <div class="nav-card hidden" id="nav-card-puntuacio" onclick="showParticipantPuntuacioRepte()">
           <div class="nav-icon">🔟</div>
-          <div class="nav-title" data-i18n="nav_puntuacio">Puntuació Repte</div>
+          <div class="nav-title" data-i18n="nav_puntuacio">Puntuar Repte</div>
           <div class="nav-sub" data-i18n="nav_puntuacio_sub">Prova de captura del nou sistema (només admin)</div>
         </div>
       </div>
@@ -558,14 +558,14 @@
       </div>
     </div>
 
-    <!-- Panel Puntuació Repte (nom de treball, Fase 3 Pas 4) — captura de prova
-         del nou sistema de puntuació (1 nota 0-10), en paral·lel a la pantalla
-         real de votació (participant-panel-voting), sense tocar-la. Només
+    <!-- Panel Puntuar Repte (Fase 3 Pas 4) — captura de prova del nou sistema
+         de puntuació (1 nota 0-10), en paral·lel a la pantalla real de
+         votació (participant-panel-voting), sense tocar-la. Només
          accessible per a l'admin real (nav-card amagada per defecte). -->
     <div id="participant-panel-puntuacio-repte" class="hidden">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
         <button type="button" class="btn btn-secondary btn-sm" onclick="showParticipantMain()" data-i18n="embedded_back">← Tornar</button>
-        <h2 style="font-family:var(--font-display);font-weight:700;font-size:24px;letter-spacing:2px;" data-i18n="nav_puntuacio">Puntuació Repte</h2>
+        <h2 style="font-family:var(--font-display);font-weight:700;font-size:24px;letter-spacing:2px;" data-i18n="nav_puntuacio">Puntuar Repte</h2>
       </div>
       <div class="card">
         <div class="card-subtitle voting-instructions" style="margin-bottom:16px;" data-i18n="puntuacio_screen_subtitle">Puntua cada foto de l'1 al 10. Eina de prova, no pots votar la teva pròpia foto.</div>

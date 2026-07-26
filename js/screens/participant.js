@@ -89,7 +89,7 @@ export function renderVotingHeader() {
   }
 }
 
-// ── NAVEGACIÓ — Puntuació Repte (nom de treball, Fase 3 Pas 4) ──
+// ── NAVEGACIÓ — Puntuar Repte (Fase 3 Pas 4) ──
 // Eina només per a l'admin: captura de prova del nou sistema de puntuació (1
 // sola nota 0-10, capsules+desplegable), en paral·lel a la pantalla real de
 // votació (showParticipantVoting/participant-voting-grid), sense tocar-la.
@@ -409,7 +409,7 @@ export function refreshParticipantDashboard() {
   const isRealAdmin = !!(state.currentUser && state.currentUser.role === 'admin');
   if (valoracioCard) valoracioCard.classList.toggle('hidden', !isRealAdmin);
   if (taulaClassificacioCard) taulaClassificacioCard.classList.toggle('hidden', !isRealAdmin);
-  // Puntuació Repte (Pas 4): a diferència de les altres dues (només lectura,
+  // Puntuar Repte (Pas 4): a diferència de les altres dues (només lectura,
   // només admin), aquesta és una eina de CAPTURA que cal poder provar amb
   // diversos usuaris de prova reals (no admin). Es mostra també quan la BD
   // activa és Test — els socis reals mai hi són (no tenen manera de canviar

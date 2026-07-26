@@ -400,7 +400,7 @@ export function updateVoteButtonsState() {
     }
   }
 
-  // Puntuació Repte (Fase 3, Pas 4) — mateix tractament, abans no es tocava
+  // Puntuar Repte (Fase 3, Pas 4) — mateix tractament, abans no es tocava
   // enlloc i es quedava amb l'estat per defecte (bug: semblava inhabilitat
   // sense motiu aparent perquè mai s'actualitzava).
   const puntuacioBtn = document.getElementById('btn-save-puntuacio-votes');
@@ -641,7 +641,7 @@ window._refreshVotingGrids = function () {
   // Capçalera de la pantalla de votació (v0.1.30, participant.js): repte,
   // estat d'enviament i recompte — també generada amb t(), també cal repintar.
   if (typeof window.renderVotingHeader === 'function') window.renderVotingHeader();
-  // Puntuació Repte (Fase 3, Pas 4): mateix motiu — repintar si el panell
+  // Puntuar Repte (Fase 3, Pas 4): mateix motiu — repintar si el panell
   // existeix (el propi renderPuntuacioGrid ja comprova que el contenidor hi és).
   renderPuntuacioGrid('puntuacio-voting-grid');
 };
