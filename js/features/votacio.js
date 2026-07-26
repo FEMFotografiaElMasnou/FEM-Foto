@@ -10,6 +10,7 @@ import { getActivePublishedPhotos, getParticipantNumber } from '../core/data.js'
 import { renderRanking } from './ranking.js';
 import { refreshAdminDashboard } from '../screens/admin.js';
 import { refreshParticipantDashboard } from '../screens/participant.js';
+import { openFullscreen } from '../ui/lightbox.js';
 
 // ── VOTE HELPERS ──
 export function getMyVote(photoId) {
@@ -551,7 +552,15 @@ export function renderPuntuacioGrid(containerId) {
       </div>`;
   }
 
-  grid.innerHTML = lockedBanner + activePhotos.map(photo => {
+  // Llista per al visor a pantalla completa: `puntuacioMode:true` + `id` +
+  // `userId` activen (a lightbox.js) la tira de càpsules + desplegable dins
+  // de la pròpia foto (cantonada inferior esquerra), amb el mateix valor i
+  // permetent modificar-lo des d'allà. Mai es passa `author` (anonimat).
+  window._puntuacioPhotosList = activePhotos.map(photo => ({
+    url: photo.url, fileName: photo.fileName, id: photo.id, userId: photo.userId, puntuacioMode: true,
+  }));
+
+  grid.innerHTML = lockedBanner + activePhotos.map((photo, idx) => {
     const isOwn = photo.userId === uid;
     const myVote = getMyVote(photo.id);
     const val = myVote ? (myVote.valoracio || 0) : 0;
@@ -567,7 +576,7 @@ export function renderPuntuacioGrid(containerId) {
 
     return `
       <div class="vote-card ${val > 0 ? 'voted' : ''}" data-photo="${photo.id}">
-        <img src="${photo.url}" alt="Foto" loading="lazy" onclick="openFullscreen('${photo.url}')" style="cursor:zoom-in;width:100%;display:block;max-height:280px;object-fit:contain;background:var(--surface);">
+        <img src="${photo.url}" alt="Foto" loading="lazy" onclick="openPuntuacioLightbox(${idx})" style="cursor:zoom-in;width:100%;display:block;max-height:280px;object-fit:contain;background:var(--surface);">
         <div class="vote-card-footer" style="flex-direction:column;align-items:stretch;gap:8px;">
           <div style="display:flex;justify-content:space-between;align-items:center;min-height:16px;gap:8px;">
             <span class="photo-caption-label">${photo.caption ? photo.caption : ''}</span>
@@ -626,6 +635,30 @@ export async function saveVotsPuntuacio() {
   });
 }
 
+// Obre el visor a pantalla completa des de Puntuar Repte.
+export function openPuntuacioLightbox(index) {
+  const photos = window._puntuacioPhotosList || [];
+  if (!photos.length) return;
+  openFullscreen(photos[index].url, photos[index].fileName, photos, index);
+}
+
+// Variants dels handlers de càpsula/desplegable per quan es puntua des del
+// visor a pantalla completa (lightbox.js): a més d'aplicar el vot (mateixa
+// lògica que _applyPuntuacio, repinta el mosaic de darrere), cal repintar
+// també la tira dins del propi visor perquè reflecteixi el nou valor sense
+// tancar-lo.
+export async function handleCapsuleLightbox(photoId, value) {
+  const myVote = getMyVote(photoId);
+  const newVal = (myVote && myVote.valoracio === value) ? 0 : value;
+  await _applyPuntuacio(photoId, newVal, 'puntuacio-voting-grid');
+  if (typeof window.refreshLightboxPuntuacio === 'function') window.refreshLightboxPuntuacio();
+}
+
+export async function handlePuntuacioSelectLightbox(photoId, value) {
+  await _applyPuntuacio(photoId, parseInt(value, 10) || 0, 'puntuacio-voting-grid');
+  if (typeof window.refreshLightboxPuntuacio === 'function') window.refreshLightboxPuntuacio();
+}
+
 // Exponer en window las funciones usadas desde onclick del HTML
 window.handleStar = handleStar;
 window.saveAdminVotes = saveAdminVotes;
@@ -633,6 +666,9 @@ window.saveParticipantVotes = saveParticipantVotes;
 window.handleCapsule = handleCapsule;
 window.handlePuntuacioSelect = handlePuntuacioSelect;
 window.saveVotsPuntuacio = saveVotsPuntuacio;
+window.openPuntuacioLightbox = openPuntuacioLightbox;
+window.handleCapsuleLightbox = handleCapsuleLightbox;
+window.handlePuntuacioSelectLightbox = handlePuntuacioSelectLightbox;
 // Exposada perquè applyTranslations() (i18n.js) repinti els mosaics de votació
 // en canviar d'idioma (contingut dinàmic generat amb t()).
 window._refreshVotingGrids = function () {

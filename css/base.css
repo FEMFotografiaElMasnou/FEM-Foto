@@ -1420,6 +1420,28 @@ body::before {
 }
 .valoracio-panel.open { transform: translateY(0) scale(1); opacity: 1; pointer-events: auto; }
 
+/* ════════════════════════════════
+   TIRA DE PUNTUACIÓ AL VISOR (Puntuar Repte)
+   Mateix ancoratge que .valoracio-panel (cantonada inferior esquerra de la
+   foto real), però sempre visible — no és un panell de consulta amb
+   disparador, és el mateix control d'ús actiu que al mosaic (reutilitza
+   .puntuacio-row/.capsule-strip/.capsule/.puntuacio-select).
+════════════════════════════════ */
+.puntuacio-lightbox-panel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  margin: 0 0 12px 12px;
+  max-width: min(92vw, 420px);
+  background: rgba(7,20,36,0.8);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(36,71,126,0.6);
+  border-radius: 14px;
+  padding: 10px 14px;
+  z-index: 15;
+}
+
 .valoracio-panel-table { width: 100%; border-collapse: collapse; font-size: 14px; table-layout: fixed; line-height: 1.15; }
 .valoracio-panel-table th {
   text-align: right; font-weight: 500; color: var(--text-muted);

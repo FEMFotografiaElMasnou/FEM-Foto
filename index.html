@@ -870,6 +870,11 @@
     <!-- Disparador ⓘ i panell de puntuació (només a Valoració Repte, si hi ha vot d'expert) -->
     <button type="button" class="valoracio-trigger" id="lightbox-valoracio-trigger" style="display:none;" onclick="event.stopPropagation(); toggleScoreCurtain()" title="Puntuació i posició" aria-label="Puntuació i posició">ⓘ</button>
     <div class="valoracio-panel" id="lightbox-valoracio-panel" onclick="event.stopPropagation();"></div>
+
+    <!-- Tira de puntuació (només a Puntuar Repte): sempre visible (no cal
+         disparador, és un control d'ús actiu), mostra el valor ja votat i
+         permet modificar-lo sense tancar el visor. -->
+    <div class="puntuacio-lightbox-panel" id="lightbox-puntuacio-panel" style="display:none;" onclick="event.stopPropagation();"></div>
   </div>
 
   <!-- Navigation: Next -->

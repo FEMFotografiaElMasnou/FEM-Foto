@@ -6,6 +6,7 @@ import { t } from '../core/i18n.js';
 import { showToast, showLoader, hideLoader } from './toast.js';
 import { getActiveAllPhotos, getParticipantNumber } from '../core/data.js';
 import { getPhotoResultsBreakdown, getPhotoValoracioBreakdown, formatScore, formatPosition } from '../features/ranking.js';
+import { getMyVote, isVotingSubmitted } from '../features/votacio.js';
 
 let _fullscreenFileName = 'foto.jpg';
 let _lightboxPhotos = [];      // Array of {url, fileName} for navigation
@@ -22,6 +23,15 @@ let _lightboxCurrentIndex = 0; // Current photo index
 let _scoreCurtainOpen = false;
 let _currentBreakdown = null;          // { objectiveId, blocks: [...] } o null (Resultat Repte)
 let _currentValoracioBreakdown = null; // { objectiveId, blocks: [...] } o null (Valoració Repte)
+
+// ═══════════════════════════════════
+// TIRA DE PUNTUACIÓ (Puntuar Repte) — a diferència dels dos anteriors, no és
+// un disparador+cortina que s'obre a demanda: es mostra sempre, directament
+// dins la foto (cantonada inferior esquerra, mateix ancoratge que
+// .lightbox-img-wrap), perquè és un control d'ús actiu (permet puntuar),
+// no només de consulta.
+// ═══════════════════════════════════
+let _currentPuntuacioPhotoObj = null; // { id, userId, ... } o null
 
 const _BLOCK_LABEL_KEYS = {
   expert: 'score_curtain_expert',
@@ -92,9 +102,60 @@ function _valoracioPanelHtml(breakdown) {
   `;
 }
 
+// La tira només té sentit al visor quan la foto és realment votable ara
+// mateix: no és pròpia, hi ha repte actiu amb votacions obertes, i l'usuari
+// encara no ha enviat la seva votació definitiva. Si no, es amaga del tot
+// (a diferència del mosaic, que sí mostra la tira apagada com a resum).
+function _isPhotoVotable(photoObj) {
+  const uid = state.currentUser ? state.currentUser.id : null;
+  if (photoObj.userId && uid && photoObj.userId === uid) return false;
+  const hasActiveObj = state.objectives.some(o => o.status === 'active');
+  if (!hasActiveObj || !state.settings.voting_enabled) return false;
+  const objId = state.currentObjective ? state.currentObjective.id : null;
+  const userSubmitted = (uid && objId) ? isVotingSubmitted(uid, objId) : false;
+  return !userSubmitted;
+}
+
+// Genera la mateixa tira de càpsules + desplegable que el mosaic de
+// Puntuar Repte (votacio.js renderPuntuacioGrid), però des del visor —
+// onclick apunten als handlers "Lightbox" (votacio.js) que, a més de desar
+// el vot, repinten aquest mateix panell (window.refreshLightboxPuntuacio).
+function _puntuacioPanelHtml(photoObj) {
+  const myVote = getMyVote(photoObj.id);
+  const val = myVote ? (myVote.valoracio || 0) : 0;
+
+  const capsules = Array.from({ length: 10 }, (_, i) => i + 1).map(n =>
+    `<span class="capsule ${val === n ? 'active' : ''}" onclick="handleCapsuleLightbox('${photoObj.id}',${n})">${n}</span>`
+  ).join('');
+  const options = ['<option value="0">—</option>'].concat(
+    Array.from({ length: 10 }, (_, i) => i + 1).map(n =>
+      `<option value="${n}" ${val === n ? 'selected' : ''}>${n}</option>`)
+  ).join('');
+
+  return `
+    <div class="puntuacio-row">
+      <div class="capsule-strip">${capsules}</div>
+      <select class="puntuacio-select" onchange="handlePuntuacioSelectLightbox('${photoObj.id}',this.value)">${options}</select>
+    </div>
+  `;
+}
+
+function _renderPuntuacioPanel() {
+  const panel = document.getElementById('lightbox-puntuacio-panel');
+  if (!panel) return;
+  if (!_currentPuntuacioPhotoObj || !_isPhotoVotable(_currentPuntuacioPhotoObj)) {
+    panel.style.display = 'none';
+    panel.innerHTML = '';
+    return;
+  }
+  panel.innerHTML = _puntuacioPanelHtml(_currentPuntuacioPhotoObj);
+  panel.style.display = 'block';
+}
+
 // Actualitza el context del panell a partir del "photo" actiu al visor.
-// Cada mode (resultsMode / valoracioMode, vegeu ranking.js) controla el seu
-// propi disparador; mai els dos alhora per a la mateixa foto.
+// Cada mode (resultsMode / valoracioMode / puntuacioMode, vegeu ranking.js/
+// votacio.js) controla el seu propi disparador o panell; mai més d'un
+// alhora per a la mateixa foto.
 function _updateScoreContext(photoObj) {
   _closeScoreCurtain();
   const resultsTrigger   = document.getElementById('lightbox-score-trigger');
@@ -108,6 +169,9 @@ function _updateScoreContext(photoObj) {
 
   if (resultsTrigger)   resultsTrigger.style.display   = _currentBreakdown          ? 'flex' : 'none';
   if (valoracioTrigger) valoracioTrigger.style.display = _currentValoracioBreakdown ? 'flex' : 'none';
+
+  _currentPuntuacioPhotoObj = (photoObj && photoObj.puntuacioMode) ? photoObj : null;
+  _renderPuntuacioPanel();
 }
 
 function _closeScoreCurtain() {
@@ -276,6 +340,8 @@ export function closeFullscreen() {
   if (trigger) trigger.style.display = 'none';
   const vtrigger = document.getElementById('lightbox-valoracio-trigger');
   if (vtrigger) vtrigger.style.display = 'none';
+  _currentPuntuacioPhotoObj = null;
+  _renderPuntuacioPanel();
 }
 
 // Wrapper para el botón de descarga del lightbox (antes el onclick usaba la
@@ -554,3 +620,4 @@ window.downloadPhoto = downloadPhoto;
 window.downloadAllPhotos = downloadAllPhotos;
 window.downloadCurrentFullscreen = downloadCurrentFullscreen;
 window.toggleScoreCurtain = toggleScoreCurtain;
+window.refreshLightboxPuntuacio = _renderPuntuacioPanel;
