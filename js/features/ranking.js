@@ -505,8 +505,18 @@ window.openValoracioLightbox = openValoracioLightbox;
 // assignPositionPoints() — no depèn de re-finalitzar un repte si es corregeix
 // un vot després. Decisió presa en portar Resultats a nadiu (Fase 2.2): es
 // manté així fins que la Fase 3 canviï el sistema de puntuació.
+// Ordena de més recent a més antic (end_date si en té, si no start_date) —
+// mateix criteri que _resultatsObjectives() (participant.js) per al
+// desplegable de Resultat Repte/Valoració Repte. Bug corregit 2026-07-26:
+// la consulta a `objectives` no porta cap .order(), així que sense aquest
+// sort l'ordre de les miniatures depenia de l'ordre físic (indefinit) de la
+// taula a Supabase.
+function _byRecentFirst(a, b) {
+  return String(b.end_date || b.start_date || '').localeCompare(String(a.end_date || a.start_date || ''));
+}
+
 export function computeGeneralRankingLive(scope = 'all') {
-  const finished = state.objectives.filter(o => o.status === 'finished');
+  const finished = state.objectives.filter(o => o.status === 'finished').sort(_byRecentFirst);
   const userMap = {}; // userId -> { userId, totalScore, participations, reptes: {objId: {photo,points,position}} }
 
   finished.forEach(obj => {
@@ -641,7 +651,16 @@ window.openClassificacioLightbox = openClassificacioLightbox;
 // assignPositionPoints() no distingeix escala de nota, només posició — vegeu
 // §3.7/Pas 3 de ANALISI_Fase3_Puntuacio.md.
 export function computeValoracioGeneralRankingLive(scope = 'all') {
-  const finished = state.objectives.filter(o => o.status === 'finished');
+  // A diferència de computeGeneralRankingLive() (sempre només finalitzats,
+  // per a tothom): per a l'admin real també s'hi inclouen els reptes actius
+  // (p.ex. "Repte de proves"), mateix criteri que _resultatsObjectives()
+  // (participant.js) ja aplica a "Valoració Repte" — acordat amb Enric
+  // 2026-07-26 perquè es pugui veure l'efecte d'un repte en curs sense
+  // esperar a finalitzar-lo.
+  const isRealAdmin = !!(state.currentUser && state.currentUser.role === 'admin');
+  const finished = state.objectives
+    .filter(o => o.status === 'finished' || (isRealAdmin && o.status === 'active'))
+    .sort(_byRecentFirst);
   const userMap = {};
 
   finished.forEach(obj => {

@@ -292,7 +292,7 @@
   color: var(--text);
   margin-bottom: 12px;
 }
-.voting-status-line.is-submitted { color: var(--success); }
+.voting-status-line.is-submitted { color: var(--gold); }
 
 /* .card-subtitle genèric és 13px — aquí es puja mida i contrast (deixa de ser
    "text-muted" pur) perquè la instrucció es llegeixi bé. */

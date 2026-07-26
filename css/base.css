@@ -150,7 +150,6 @@ body::before {
 .btn-primary {
   background: linear-gradient(135deg, var(--accent) 0%, #2b6fd4 100%);
   color: #fff;
-  width: 100%;
   box-shadow: 0 4px 20px rgba(79,143,255,0.35);
   font-size: 16px;
   letter-spacing: 1px;
@@ -705,6 +704,78 @@ body::before {
 }
 .star.flash {
   animation: starFlash 0.8s ease-out;
+}
+
+/* ════════════════════════════════
+   PUNTUACIÓ REPTE (Fase 3, Pas 4) — mosaic de prova, captura 0-10
+   Grid propi (NO toca .voting-grid, que és la pantalla real de votació):
+   1 columna a mòbil (prioritat mida de foto), 2 columnes fixes a la resta.
+════════════════════════════════ */
+.puntuacio-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+@media (min-width: 641px) {
+  .puntuacio-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.photo-caption-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.puntuacio-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.capsule-strip { display: flex; gap: 4px; flex-wrap: wrap; }
+
+.capsule {
+  min-width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 2px solid var(--accent2);
+  color: var(--accent2);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.15s, color 0.15s, background 0.15s, transform 0.1s;
+}
+.capsule:hover { border-color: var(--accent2); }
+.capsule.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+.capsule:active { transform: scale(1.15); }
+
+/* Bloquejat (votació ja enviada / tancada): només s'apaguen les càpsules NO
+   seleccionades — la seleccionada i el desplegable es mantenen a plena
+   nitidesa, és el resultat final desat, no té sentit apagar-lo. */
+.puntuacio-row.locked .capsule:not(.active) { opacity: 0.4; }
+
+.puntuacio-select {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  color: #fff;
+  min-width: 56px;
 }
 
 /* ════════════════════════════════

@@ -4,13 +4,14 @@
 import { state, actingAsAdmin } from '../core/state.js';
 import { t, applyTranslations } from '../core/i18n.js';
 import { showToast } from '../ui/toast.js';
-import { renderVotingGrid, updateVoteButtonsState, isVotingSubmitted } from '../features/votacio.js';
+import { renderVotingGrid, updateVoteButtonsState, isVotingSubmitted, renderPuntuacioGrid } from '../features/votacio.js';
 import { renderRanking, renderResultatsRepte, objectiveHasExpertVoting, renderClassificacioGeneral, renderValoracioRepte, renderTaulaClassificacio } from '../features/ranking.js';
 import { updateUploadSection, _formatDateEs, _formatDateSlash } from '../features/fotos.js';
 import { setActiveNav, switchTab } from '../core/router.js';
 import { populateGalleryFilters, renderGallery, startGalleryCarousel, stopGalleryCarousel } from '../features/galeria.js';
 import { getActiveCalendar } from '../features/calendari.js';
 import { getVotingProgress } from '../core/data.js';
+import { _dbMode } from '../core/config.js';
 
 // ═══════════════════════════════════
 // PANELES
@@ -25,6 +26,7 @@ function _hideAllParticipantPanels() {
   document.getElementById('participant-panel-classificacio').classList.add('hidden');
   document.getElementById('participant-panel-valoracio-repte').classList.add('hidden');
   document.getElementById('participant-panel-taula-classificacio').classList.add('hidden');
+  document.getElementById('participant-panel-puntuacio-repte').classList.add('hidden');
   // Aturar el carrusel de la card galeria (només viu al panell principal)
   stopGalleryCarousel();
 }
@@ -85,6 +87,25 @@ export function renderVotingHeader() {
         : t('voting_status_pending_nodate').replace('{n}', votesReceived);
     }
   }
+}
+
+// ── NAVEGACIÓ — Puntuació Repte (nom de treball, Fase 3 Pas 4) ──
+// Eina només per a l'admin: captura de prova del nou sistema de puntuació (1
+// sola nota 0-10, capsules+desplegable), en paral·lel a la pantalla real de
+// votació (showParticipantVoting/participant-voting-grid), sense tocar-la.
+// Opera sobre el repte actiu (state.currentObjective), igual que la votació
+// real — no necessita desplegable de repte com Valoració Repte/Resultat
+// Repte (que llisten reptes finalitzats).
+export function showParticipantPuntuacioRepte() {
+  _hideAllParticipantPanels();
+  document.getElementById('participant-panel-puntuacio-repte').classList.remove('hidden');
+  setActiveNav('bnav-rank');
+  renderPuntuacioGrid('puntuacio-voting-grid');
+  // Bug corregit 2026-07-26: el botó "Enviar Vots" no es tocava mai des d'aquí
+  // (updateVoteButtonsState() només gestionava els altres dos), així que es
+  // quedava congelat amb l'estat del primer render encara que la votació
+  // s'obrís/tanqués després — semblava "inhabilitat sense motiu".
+  updateVoteButtonsState();
 }
 
 export function showParticipantRanking() {
@@ -384,9 +405,17 @@ export function refreshParticipantDashboard() {
   // tota la resta es vegi exactament com ho veu un soci). Cal el rol real.
   const valoracioCard = document.getElementById('nav-card-valoracio-repte');
   const taulaClassificacioCard = document.getElementById('nav-card-taula-classificacio');
+  const puntuacioCard = document.getElementById('nav-card-puntuacio');
   const isRealAdmin = !!(state.currentUser && state.currentUser.role === 'admin');
   if (valoracioCard) valoracioCard.classList.toggle('hidden', !isRealAdmin);
   if (taulaClassificacioCard) taulaClassificacioCard.classList.toggle('hidden', !isRealAdmin);
+  // Puntuació Repte (Pas 4): a diferència de les altres dues (només lectura,
+  // només admin), aquesta és una eina de CAPTURA que cal poder provar amb
+  // diversos usuaris de prova reals (no admin). Es mostra també quan la BD
+  // activa és Test — els socis reals mai hi són (no tenen manera de canviar
+  // de BD), així que no queda exposada en producció.
+  const isTestDb = _dbMode === 'test';
+  if (puntuacioCard) puntuacioCard.classList.toggle('hidden', !(isRealAdmin || isTestDb));
 
   // Carrusel de la card galeria: només si la card és visible i som al panell principal
   const galCard    = document.getElementById('nav-card-gallery');
@@ -449,6 +478,7 @@ window.onValoracioRepteChange = onValoracioRepteChange;
 window.onValoracioVoteFilterChange = onValoracioVoteFilterChange;
 window.showParticipantTaulaClassificacio = showParticipantTaulaClassificacio;
 window.onTaulaClassificacioVoteFilterChange = onTaulaClassificacioVoteFilterChange;
+window.showParticipantPuntuacioRepte = showParticipantPuntuacioRepte;
 window.showParticipantClassificacio = showParticipantClassificacio;
 window.showParticipantGallery = showParticipantGallery;
 window.refreshParticipantDashboard = refreshParticipantDashboard;

@@ -139,9 +139,9 @@ export function renderVotingGrid(containerId) {
   let lockedBanner = '';
   if (userSubmitted) {
     lockedBanner = `
-      <div style="grid-column:1/-1;background:rgba(62,207,142,0.1);border:1px solid rgba(62,207,142,0.3);
+      <div style="grid-column:1/-1;background:rgba(245,166,35,0.12);border:1px solid rgba(245,166,35,0.35);
                   border-radius:10px;padding:12px 16px;text-align:center;
-                  color:var(--success);font-size:13px;margin-bottom:4px;">
+                  color:var(--gold);font-size:13px;margin-bottom:4px;">
         ✅ ${t('already_voted_locked_msg')}
       </div>`;
   } else if (!hasActiveObj || !state.settings.voting_enabled) {
@@ -290,7 +290,7 @@ export async function submitFinalVoting(btnId, refreshCallback) {
   // Open confirm modal — reuses generic confirmAction
   confirmAction(title, msg, async () => {
     await doSubmitFinalVoting(btnId, uid, objId, refreshCallback);
-  });
+  }, t('confirm_send_vote_btn'));
 }
 
 // Performs the actual UPDATE and UI lock
@@ -328,13 +328,15 @@ export async function doSubmitFinalVoting(btnId, uid, objId, refreshCallback) {
   showToast(t('vote_sent_ok'), 'success');
 }
 
-// Mark a vote button as "saved" (green, permanent)
+// Mark a vote button as "saved" (permanent). Color ambre/daurat (2026-07-26,
+// petició Enric): el verd suggeria "endavant/acció", quan en realitat vol dir
+// el contrari — ja no hi ha res més a fer.
 export function markVoteButtonSaved(btn) {
   if (!btn) return;
   btn.innerHTML = t('votes_sent_btn');
-  btn.style.background = 'rgba(62,207,142,0.2)';
-  btn.style.borderColor = 'var(--success)';
-  btn.style.color = 'var(--success)';
+  btn.style.background = 'rgba(245,166,35,0.2)';
+  btn.style.borderColor = 'var(--gold)';
+  btn.style.color = 'var(--gold)';
   btn.disabled = true;
 }
 
@@ -397,12 +399,240 @@ export function updateVoteButtonsState() {
       partBtn.style.cursor = canVote ? 'pointer' : 'not-allowed';
     }
   }
+
+  // Puntuació Repte (Fase 3, Pas 4) — mateix tractament, abans no es tocava
+  // enlloc i es quedava amb l'estat per defecte (bug: semblava inhabilitat
+  // sense motiu aparent perquè mai s'actualitzava).
+  const puntuacioBtn = document.getElementById('btn-save-puntuacio-votes');
+  if (puntuacioBtn) {
+    if (submitted) {
+      markVoteButtonSaved(puntuacioBtn);
+    } else {
+      puntuacioBtn.innerHTML = t('save_votes_btn');
+      puntuacioBtn.style.background = '';
+      puntuacioBtn.style.borderColor = '';
+      puntuacioBtn.style.color = '';
+      puntuacioBtn.disabled = !canVote;
+      puntuacioBtn.style.opacity = canVote ? '1' : '0.4';
+      puntuacioBtn.style.cursor = canVote ? 'pointer' : 'not-allowed';
+    }
+  }
+}
+
+// ═══════════════════════════════════
+// PUNTUACIÓ REPTE (Fase 3, Pas 4) — captura de prova del nou sistema 0-10
+// Duplicat de setVoteCriteria/saveVoteOnClick/renderVotingGrid/handleStar,
+// NO els substitueix (aquells segueixen intactes per a la votació real).
+// Escriu directament a `valoracio` i reparteix `creativity=theme=composition
+// = valoracio/2` (vegeu ANALISI_Fase3_Puntuacio.md, Pas 4): el trigger
+// fem_sync_valoracio() (Pas 1) recalcula sempre `valoracio` a partir dels 3
+// camps antics en cada insert/update, així que cal alimentar-lo amb un
+// repartiment que hi torni a l'exacte valor original (×10/15 del trigger
+// compensat amb /2, no /3).
+// ═══════════════════════════════════
+function setVotePuntuacio(photoId, value) {
+  if (!state.currentUser) return;
+  let vote = state.votes.find(v => v.photoId === photoId && v.userId === state.currentUser.id);
+  const half = Math.round((value / 2) * 100) / 100;
+  if (!vote) {
+    vote = {
+      id:          'v_' + Date.now() + '_' + Math.random().toString(36).slice(2),
+      userId:      state.currentUser.id,
+      photoId,
+      objectiveId: state.currentObjective ? state.currentObjective.id : '',
+      creativity:  half,
+      theme:       half,
+      composition: half,
+      valoracio:   value,
+      created_at:  new Date().toISOString(),
+    };
+    state.votes.push(vote);
+  } else {
+    vote.creativity = half;
+    vote.theme       = half;
+    vote.composition = half;
+    vote.valoracio    = value;
+  }
+
+  if (!_localVoteEdits[photoId]) {
+    _localVoteEdits[photoId] = { creativity: half, theme: half, composition: half, valoracio: value };
+  } else {
+    _localVoteEdits[photoId].creativity  = half;
+    _localVoteEdits[photoId].theme       = half;
+    _localVoteEdits[photoId].composition = half;
+    _localVoteEdits[photoId].valoracio    = value;
+  }
+}
+
+async function saveVoteOnClickPuntuacio(photoId, value) {
+  if (!state.currentUser) return false;
+  const uid  = state.currentUser.id;
+  const objId = state.currentObjective ? state.currentObjective.id : null;
+  if (!objId) {
+    console.warn('saveVoteOnClickPuntuacio: no active objective');
+    return false;
+  }
+
+  const half = Math.round((value / 2) * 100) / 100;
+  const row = {
+    user_id:      uid,
+    photo_id:     photoId,
+    objective_id: objId,
+    valoracio:    value,
+    creativity:   half,
+    theme:        half,
+    composition:  half,
+  };
+
+  const { error: voteErr } = await sb
+    .from('votes')
+    .upsert(row, { onConflict: 'user_id,photo_id,objective_id' });
+
+  if (voteErr) {
+    console.error('saveVoteOnClickPuntuacio upsert error', voteErr);
+    return false;
+  }
+
+  const key = `${uid}__${objId}`;
+  const existingStatus = state.submittedVoting[key];
+  if (!existingStatus) {
+    const { error: segErr } = await sb
+      .from('seguiment_votacio')
+      .upsert(
+        { user_id: uid, objective_id: objId, es_esborrany: true },
+        { onConflict: 'user_id,objective_id' }
+      );
+    if (segErr) {
+      console.error('saveVoteOnClickPuntuacio seguiment_votacio error', segErr);
+    } else {
+      state.submittedVoting[key] = { es_esborrany: true, submitted_at: null };
+    }
+  }
+
+  return true;
+}
+
+export function renderPuntuacioGrid(containerId) {
+  const grid = document.getElementById(containerId);
+  if (!grid || !state.currentUser) return;
+
+  const activePhotos = getActivePublishedPhotos();
+
+  if (activePhotos.length === 0) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🗳️</div><p>${t('no_photos_to_vote')}</p></div>`;
+    return;
+  }
+
+  const uid = state.currentUser.id;
+  const hasActiveObj = state.objectives.some(o => o.status === 'active');
+  const objId = state.currentObjective ? state.currentObjective.id : null;
+  const userSubmitted = (uid && objId) ? isVotingSubmitted(uid, objId) : false;
+  const votingLocked = !hasActiveObj || !state.settings.voting_enabled || userSubmitted;
+  // Bloquejat: només s'apaguen les càpsules NO seleccionades (.puntuacio-row.locked
+  // .capsule:not(.active) a base.css) — la seleccionada i el desplegable es
+  // mantenen a plena nitidesa, és el resultat final, no té sentit apagar-lo.
+  const lockClass = votingLocked ? ' locked' : '';
+  const lockStyle = votingLocked ? 'pointer-events:none;' : '';
+
+  let lockedBanner = '';
+  if (userSubmitted) {
+    lockedBanner = `
+      <div style="grid-column:1/-1;background:rgba(245,166,35,0.12);border:1px solid rgba(245,166,35,0.35);
+                  border-radius:10px;padding:12px 16px;text-align:center;
+                  color:var(--gold);font-size:15px;margin-bottom:4px;">
+        ✅ ${t('already_voted_locked_msg')}
+      </div>`;
+  } else if (!hasActiveObj || !state.settings.voting_enabled) {
+    lockedBanner = `
+      <div style="grid-column:1/-1;background:rgba(240,82,82,0.15);border:1px solid rgba(240,82,82,0.5);
+                  border-radius:10px;padding:12px 16px;text-align:center;
+                  color:var(--danger);font-size:15px;font-weight:600;margin-bottom:4px;">
+        🔒 ${t('voting_not_open_msg')}
+      </div>`;
+  }
+
+  grid.innerHTML = lockedBanner + activePhotos.map(photo => {
+    const isOwn = photo.userId === uid;
+    const myVote = getMyVote(photo.id);
+    const val = myVote ? (myVote.valoracio || 0) : 0;
+
+    const capsules = Array.from({ length: 10 }, (_, i) => i + 1).map(n =>
+      `<span class="capsule ${val === n ? 'active' : ''}" onclick="handleCapsule('${photo.id}',${n},'${containerId}')">${n}</span>`
+    ).join('');
+
+    const options = ['<option value="0">—</option>'].concat(
+      Array.from({ length: 10 }, (_, i) => i + 1).map(n =>
+        `<option value="${n}" ${val === n ? 'selected' : ''}>${n}</option>`)
+    ).join('');
+
+    return `
+      <div class="vote-card ${val > 0 ? 'voted' : ''}" data-photo="${photo.id}">
+        <img src="${photo.url}" alt="Foto" loading="lazy" onclick="openFullscreen('${photo.url}')" style="cursor:zoom-in;width:100%;display:block;max-height:280px;object-fit:contain;background:var(--surface);">
+        <div class="vote-card-footer" style="flex-direction:column;align-items:stretch;gap:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;min-height:16px;gap:8px;">
+            <span class="photo-caption-label">${photo.caption ? photo.caption : ''}</span>
+            ${val > 0 ? `<span style="font-size:13px;color:var(--success);flex-shrink:0;">${t('voted_label')}</span>` : ''}
+          </div>
+          ${isOwn
+            ? `<div style="font-size:12px;color:var(--accent);text-align:center;padding:6px 0;font-weight:600;">${t('your_photo')}</div>`
+            : `<div class="puntuacio-row${lockClass}" style="${lockStyle}">
+                 <div class="capsule-strip">${capsules}</div>
+                 <select class="puntuacio-select" onchange="handlePuntuacioSelect('${photo.id}',this.value,'${containerId}')">${options}</select>
+               </div>`
+          }
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function _applyPuntuacio(photoId, value, containerId) {
+  const hasActiveObj = state.objectives.some(o => o.status === 'active');
+  if (!hasActiveObj || !state.settings.voting_enabled) {
+    showToast(t('voting_closed_error'), 'error');
+    return;
+  }
+
+  const uid = state.currentUser ? state.currentUser.id : null;
+  const objId = state.currentObjective ? state.currentObjective.id : null;
+  if (uid && objId && isVotingSubmitted(uid, objId)) {
+    showToast(t('already_voted_error'), 'error');
+    return;
+  }
+
+  setVotePuntuacio(photoId, value);
+  window._hasUnsavedVotes = true;
+  renderPuntuacioGrid(containerId);
+
+  const ok = await saveVoteOnClickPuntuacio(photoId, value);
+  if (!ok) {
+    showToast(t('vote_save_error'), 'error');
+  }
+}
+
+export async function handleCapsule(photoId, value, containerId) {
+  const myVote = getMyVote(photoId);
+  const newVal = (myVote && myVote.valoracio === value) ? 0 : value;
+  await _applyPuntuacio(photoId, newVal, containerId);
+}
+
+export async function handlePuntuacioSelect(photoId, value, containerId) {
+  await _applyPuntuacio(photoId, parseInt(value, 10) || 0, containerId);
+}
+
+export async function saveVotsPuntuacio() {
+  await submitFinalVoting('btn-save-puntuacio-votes', () => {
+    renderPuntuacioGrid('puntuacio-voting-grid');
+  });
 }
 
 // Exponer en window las funciones usadas desde onclick del HTML
 window.handleStar = handleStar;
 window.saveAdminVotes = saveAdminVotes;
 window.saveParticipantVotes = saveParticipantVotes;
+window.handleCapsule = handleCapsule;
+window.handlePuntuacioSelect = handlePuntuacioSelect;
+window.saveVotsPuntuacio = saveVotsPuntuacio;
 // Exposada perquè applyTranslations() (i18n.js) repinti els mosaics de votació
 // en canviar d'idioma (contingut dinàmic generat amb t()).
 window._refreshVotingGrids = function () {
@@ -411,4 +641,7 @@ window._refreshVotingGrids = function () {
   // Capçalera de la pantalla de votació (v0.1.30, participant.js): repte,
   // estat d'enviament i recompte — també generada amb t(), també cal repintar.
   if (typeof window.renderVotingHeader === 'function') window.renderVotingHeader();
+  // Puntuació Repte (Fase 3, Pas 4): mateix motiu — repintar si el panell
+  // existeix (el propi renderPuntuacioGrid ja comprova que el contenidor hi és).
+  renderPuntuacioGrid('puntuacio-voting-grid');
 };

@@ -375,9 +375,122 @@ només té dades de Zampa, cap activitat de FEM-Foto, així que no apareix a cap
 Pendent d'un possible escaneig més ampli de `users` per detectar més casos similars, no fet
 encara (no demanat).
 
+### Pas 4 — Captura del vot 0-10 (FET, 2026-07-26)
+Substitueix les 3 files d'estrelles (`votacio.js` `starRow('creativity'...)` etc.) per un
+control únic 0-10 a `.vote-card`. Decisions preses amb Enric abans d'escriure cap línia
+de codi:
+
+**Disseny de la targeta:**
+- Mosaic (`.voting-grid`) de **2 columnes fixes** a tauleta/desktop i **1 columna** a
+  mòbil (substitueix l'actual 1/2/3 per breakpoint) — prioritat: foto més gran, pensant
+  en el públic ~65 anys.
+- Sota la imatge: el **`caption`** de `photo_submissions` si n'hi ha (mai el número de
+  participant ni l'autor — l'anonimat del vot es manté).
+- Una sola fila de **10 càpsules clicables** (valors 1-10; 0 = sense vot, estat inicial,
+  igual que ara amb les estrelles) + a la seva dreta un **`<select>` desplegable** amb el
+  mateix valor, sincronitzat en tots dos sentits (clic a una càpsula actualitza el
+  desplegable i viceversa). No hi ha cap tercer element de "lectura" separat — el
+  desplegable fa also de indicador de valor actual.
+
+**Coexistència amb el trigger `fem_sync_valoracio()` (Pas 1/1b) — decisió clau:**
+El trigger recalcula sempre `valoracio` a partir de `creativity+theme+composition`
+(`×10/15`) en qualsevol INSERT (sempre) o UPDATE que toqui aquestes 3 columnes. Si la
+nova captura escrivís `valoracio` directament sense omplir els 3 camps antics, el
+trigger el trepitjaria a 0 en el primer INSERT.
+
+**Solució acordada (2026-07-26):** en lloc de tocar el trigger, la nova captura escriu
+també als 3 camps antics amb el valor **`Puntuació / 2`** a cadascun (no `/3` — cal
+tenir en compte que el trigger ja multiplica per `10/15`; amb `/3` als tres camps la
+suma seria `Puntuació` i el trigger la convertiria en `Puntuació × 0.667`, no en
+`Puntuació`). Amb `/2` a cada camp, la suma és `1.5 × Puntuació`, i el trigger fa
+`1.5×Puntuació × 10/15 = Puntuació` exacte — viatge d'anada i tornada sense pèrdua, i
+cada camp queda dins el rang 0-5 permès (màxim 5 quan Puntuació=10).
+
+**Efecte secundari acceptat:** les pantalles antigues encara vives per a tothom
+("Resultat Repte" i la seva cortina de 3 criteris) mostraran els 3 valors **idèntics**
+per a qualsevol vot fet amb el sistema nou (perquè es reparteixen per igual, no hi ha
+manera de reconstruir un desglossament real per criteri a partir d'una sola nota).
+Cosmèticament estrany si algú s'hi fixa, però inofensiu i acceptat explícitament per
+Enric — coherent amb el fet que aquestes pantalles ja estan "congelades" fins que es
+retirin (§3.6, encara sense calendaritzar).
+
+**Implementat (2026-07-26):** nova pantalla "Puntuació Repte", mateix patró que
+"Valoració Repte"/"Taula de Classificació" (panell nou dins `screen-participant`, targeta
+de nav pròpia, res de `votacio.js`/`base.css` de la votació real tocat). Diferència clau
+respecte les altres dues eines de Fase 3: com que és una eina de **captura** (escriu
+vots), no només de lectura, calia poder-la provar amb diversos usuaris de prova reals,
+no només amb l'admin — la targeta és visible per a l'admin real **o** quan la BD activa
+és Test (`_dbMode==='test'`, `js/core/config.js`), no només per rol admin.
+
+Fitxers tocats: `index.html` (targeta + panell), `js/screens/participant.js`
+(`showParticipantPuntuacioRepte`, gating), `js/features/votacio.js`
+(`renderPuntuacioGrid`/`handleCapsule`/`handlePuntuacioSelect`/
+`saveVoteOnClickPuntuacio`/`saveVotsPuntuacio`, tot nou, en paral·lel a
+`renderVotingGrid`/`handleStar`/`saveVoteOnClick` que resten intactes),
+`js/core/i18n.js` (claus noves), `css/base.css` (`.puntuacio-grid`/`.capsule`/
+`.puntuacio-select`, classes noves).
+
+**Bugs reals trobats i corregits durant les proves** (no eren nous, ja hi eren abans
+d'aquesta feina, però s'han detectat provant la pantalla nova):
+- El botó del modal de confirmació d'enviar vot deia "Canviar" en lloc d'"Enviar":
+  `confirmAction()` (`js/ui/modals.js`) no netejava mai el text del botó — es quedava
+  enganxat del darrer ús de `toggleDbMode()` (`router.js`), que l'escriu directament al
+  DOM. Corregit: `confirmAction()` accepta ara una etiqueta opcional i sempre la
+  imposa.
+- `.btn-primary` portava `width:100%` fix a la classe (afectava totes les pantalles amb
+  aquest botó, no només la nova) — eliminat; els botons ara ocupen només l'amplada del
+  text, centrats.
+- `updateVoteButtonsState()` (`votacio.js`) mai gestionava el botó de "Puntuació
+  Repte" — es quedava congelat amb l'estat del primer render. Corregit: gestionat
+  igual que els altres dos botons de vot.
+- `computeValoracioGeneralRankingLive()` (Taula de Classificació) no aplicava el mateix
+  criteri d'inclusió d'admin que "Valoració Repte" (només `status==='finished'`,
+  ignorant reptes actius) — corregit perquè, per a l'admin real, també inclogui els
+  actius (mateix criteri que `_resultatsObjectives()`, `participant.js`).
+- Ni `computeGeneralRankingLive()` ni `computeValoracioGeneralRankingLive()` ordenaven
+  els reptes per data — la consulta a `objectives` no porta `.order()`, així que
+  l'ordre de les miniatures a Classificació General/Taula de Classificació depenia de
+  l'ordre físic (indefinit) de la taula. Corregit amb un sort explícit (més recent
+  primer, mateix criteri que el desplegable de Resultat/Valoració Repte) — arregla
+  també la Classificació General real, no només la de prova.
+
+**Decisions de disseny visual preses provant en directe** (feedback Enric,
+2026-07-26): subtítol i avisos amb `.voting-instructions` (mida accessible ~65 anys);
+avís "votacions no obertes" en vermell viu (`--danger`) en lloc de l'anterior barreja
+groc/blau; estat "ja enviat" (títol, botó, avís) en ambre/daurat (`--gold`) en lloc de
+verd — el verd suggeria "endavant", quan el missatge és el contrari; càpsula/desplegable
+seleccionats en blanc sobre blau sòlid (`--accent`) per contrast, i quan la pantalla
+queda bloquejada (vot ja enviat) **només** s'apaguen les càpsules no seleccionades, mai
+la seleccionada ni el desplegable.
+
+**Dades de prova a Test** (2026-07-26, no toca Normal): 4 usuaris ficticis
+(`u_test_*`, nom amb prefix "TEST") i les seves fotos publicades a "Repte de proves",
+per completar el cicle de prova (captura → Puntuació Repte → Taula de Classificació)
+amb més de 2 votants. Verificat en directe: la Taula de Classificació ja reflecteix
+correctament els punts d'aquest repte.
+
+Pendent (fora d'aquesta conversa): el mateix punt (dot mig, "l·l") de "Cancel·lar" es
+renderitza envitricollat en negreta condensada (`--font-cond`, Barlow Condensed) —
+confirmat que el caràcter és el correcte (interpunct U+00B7), és un problema de la
+font, no de les dades. Sense pedaç net trobat encara; queda com a peculiaritat menor
+acceptada, a revisar si mai es canvia la tipografia dels botons.
+
+### Incidència de dades — "Contrallums" duplicat a Test (detectat i resolt 2026-07-26)
+Test tenia dos objectius actius anomenats "Contrallums": `obj_1784880752160` (creat
+primer, amb les dates originals incorrectes que Enric va introduir, i únic amb fila a
+`reptes_calendari`) i `obj_1784882067351` (creat ~13 min després, amb les dates ja
+corregides). A **Normal** només existeix `obj_1784882067351` (mateix ID, mateixes
+dates) — indici que en algun moment la versió corregida es va copiar/re-crear també a
+Test amb el mateix ID, sense esborrar la fila vella. No és un bug de codi actual
+(`saveObjective()` no escriu mai a dos projectes alhora); origen exacte no confirmat.
+Verificat que `obj_1784880752160` no tenia cap foto ni vot enganxat. Esborrat de Test
+(2026-07-26, confirmat per Enric); Test i Normal tornen a tenir un únic "Contrallums"
+amb les mateixes dades.
+
 ### Passos pendents de calendaritzar (fora d'aquesta conversa per ara)
-- Captura del vot (nou control 0-10, substitueix les estrelles) — §3.5.
 - Redisseny de les pantalles de resultat (cortina del lightbox, Resultat Repte) — §3.6.
+  Ara sí és el següent pas lògic: Pas 4 (captura) ja tancat, i "Resultat Repte" segueix
+  mostrant el desglossament de 3 criteris que ja no tindrà sentit quan es faci el tall.
 - Reptes actius durant el tall (§3.3) i decisió final sobre backfill universal vs només
   reptes tancats (§3.2) — amb el Pas 1 ja hem optat, de facto, per la via "universal"
   (backfill de TOTS els vots, no només els de reptes finalitzats), perquè el trigger no

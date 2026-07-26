@@ -211,7 +211,7 @@
         <div id="admin-voting-grid" class="voting-grid">
           <div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🗳️</div><p data-i18n="no_photos_to_vote">No hi ha fotos publicades per votar.</p></div>
         </div>
-        <div style="margin-top:20px;">
+        <div style="margin-top:20px;text-align:center;">
           <button type="button" class="btn btn-primary" onclick="saveAdminVotes()" id="btn-save-admin-votes" data-i18n="save_votes_btn">Enviar Vots</button>
         </div>
       </div>
@@ -517,6 +517,16 @@
           <div class="nav-title" data-i18n="nav_taula_classificacio">Taula de Classificació</div>
           <div class="nav-sub" data-i18n="nav_taula_classificacio_sub">Prova del nou sistema de puntuació (només admin)</div>
         </div>
+        <!-- Puntuació Repte (nom de treball, Fase 3 Pas 4) — captura de prova
+             del nou sistema de puntuació (1 nota 0-10), en paral·lel a la
+             pantalla real de votació (participant-panel-voting), sense
+             tocar-la. Només per a l'admin real (vegeu
+             refreshParticipantDashboard, participant.js). Amagada per defecte. -->
+        <div class="nav-card hidden" id="nav-card-puntuacio" onclick="showParticipantPuntuacioRepte()">
+          <div class="nav-icon">🔟</div>
+          <div class="nav-title" data-i18n="nav_puntuacio">Puntuació Repte</div>
+          <div class="nav-sub" data-i18n="nav_puntuacio_sub">Prova de captura del nou sistema (només admin)</div>
+        </div>
       </div>
     </div>
 
@@ -542,8 +552,28 @@
         <div id="participant-voting-grid" class="voting-grid">
           <div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🗳️</div><p data-i18n="no_photos_published">No hi ha fotos publicades.</p></div>
         </div>
-        <div style="margin-top:20px;">
+        <div style="margin-top:20px;text-align:center;">
           <button type="button" class="btn btn-primary" onclick="saveParticipantVotes()" id="btn-save-participant-votes" data-i18n="save_votes_btn">Enviar Vots</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel Puntuació Repte (nom de treball, Fase 3 Pas 4) — captura de prova
+         del nou sistema de puntuació (1 nota 0-10), en paral·lel a la pantalla
+         real de votació (participant-panel-voting), sense tocar-la. Només
+         accessible per a l'admin real (nav-card amagada per defecte). -->
+    <div id="participant-panel-puntuacio-repte" class="hidden">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="showParticipantMain()" data-i18n="embedded_back">← Tornar</button>
+        <h2 style="font-family:var(--font-display);font-weight:700;font-size:24px;letter-spacing:2px;" data-i18n="nav_puntuacio">Puntuació Repte</h2>
+      </div>
+      <div class="card">
+        <div class="card-subtitle voting-instructions" style="margin-bottom:16px;" data-i18n="puntuacio_screen_subtitle">Puntua cada foto de l'1 al 10. Eina de prova, no pots votar la teva pròpia foto.</div>
+        <div id="puntuacio-voting-grid" class="puntuacio-grid">
+          <div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🗳️</div><p data-i18n="no_photos_to_vote">No hi ha fotos per votar.</p></div>
+        </div>
+        <div style="margin-top:20px;text-align:center;">
+          <button type="button" class="btn btn-primary" onclick="saveVotsPuntuacio()" id="btn-save-puntuacio-votes" data-i18n="save_votes_btn">Enviar Vots</button>
         </div>
       </div>
     </div>
