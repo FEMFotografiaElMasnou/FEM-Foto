@@ -145,10 +145,12 @@ Supabase (RLS "activada" però amb polítiques permissives a totes les taules, i
   esborren el compte d'Auth juntament amb la fila de `users`. Abans, tot compte nou (registre
   o alta d'admin) quedava sense poder votar ni pujar fotos, i tota baixa deixava l'adreça
   bloquejada per sempre.
-- **Pendent**: Pas 4b (Auth passa a decidir l'accés i la sessió es manté oberta fins a "Sortir"),
-  4c (recuperació de contrasenya per correu i accés per enllaç màgic, amb el correu del club ja
-  configurat i provat) i 4d (retirada del sistema antic). Mètode d'accés previst: contrasenya
-  **i** enllaç màgic, a triar per l'usuari.
+- **Pas 4b (27/07)** — Supabase Auth ja és qui decideix l'accés, i la sessió es manté oberta fins
+  que es prem "Sortir" (abans, tancar la pestanya obligava a tornar a entrar). El canvi d'email
+  d'un soci des del panell de Socis també actualitza el seu compte d'Auth.
+- **Pendent**: 4c (recuperació de contrasenya per correu i accés per enllaç màgic, amb el correu
+  del club ja configurat i provat) i 4d (retirada del sistema antic). Mètode d'accés previst:
+  contrasenya **i** enllaç màgic, a triar per l'usuari.
 
 El bloc (2), navegació, segueix sense començar.
 

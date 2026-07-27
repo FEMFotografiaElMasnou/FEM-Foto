@@ -724,7 +724,10 @@ filosofia que la Fase 3):
    tenia res a desar. Amb una càrrega neta de pàgina (cas real: cada usuari al
    seu navegador) funciona correctament. Per provar aquest automatisme cal
    recarregar la pàgina entre usuaris, no només fer logout/login.
-   **Pas 4b — FET i VERIFICAT a Test (27/07/2026). NO aplicat encara a Normal.**
+   **Pas 4b — FET i VERIFICAT (27/07/2026).** Migració aplicada a Test i després
+   a Normal (verificat a Normal que la funció existeix amb la signatura correcta
+   i que `anon` no la pot cridar: `permission denied`). Codi de client
+   commitejat (`25a270d`) i confirmat desplegat a `fem-foto.vercel.app`.
    Supabase Auth passa a ser qui decideix l'accés; `fem_login()` queda degradat a
    xarxa de seguretat. Canvis a `js/screens/login.js`, `js/core/config.js`,
    `js/features/socis.js` i `js/core/i18n.js`, més una migració petita
