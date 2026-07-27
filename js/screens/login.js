@@ -184,6 +184,21 @@ export async function handleLogin() {
   };
   state.currentUser = user;
   saveSession(user);
+
+  // Pas 3a de la migració a Supabase Auth (ANALISI_Login_Navegacio.md §1.4):
+  // establim també una sessió real d'Auth EN PARAL·LEL al login existent, que
+  // segueix sent l'únic que decideix si l'accés és vàlid (fem_login, més amunt).
+  // Purament additiu: si falla (p.ex. l'usuari encara no té compte a auth.users,
+  // o la contrasenya d'Auth ha quedat desincronitzada per un reset fet només a
+  // public.users), no bloqueja ni altera el login d'avui — només ho registrem
+  // per poder-ho diagnosticar durant les proves a Test.
+  try {
+    const { error: authError } = await sb.auth.signInWithPassword({ email: result.email, password });
+    if (authError) console.warn('[Pas 3a] signInWithPassword no ha pogut establir sessió real:', authError.message);
+  } catch (e) {
+    console.warn('[Pas 3a] signInWithPassword ha fallat inesperadament:', e);
+  }
+
   if (user.role === 'admin') {
     showAdminScreen();
   } else {

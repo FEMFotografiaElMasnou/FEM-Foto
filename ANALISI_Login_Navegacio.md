@@ -263,6 +263,170 @@ filosofia que la Fase 3):
    retruc l'enduriment d'escriptures que havíem deixat pendent** — amb
    sessions reals, RLS ja pot distingir peticions legítimes d'alienes, cosa
    que amb el sistema actual era impossible.
+
+   **Auditoria feta (27/07/2026), abans d'escriure cap SQL — dues troballes
+   que obliguen a repensar l'ordre d'aquest pas:**
+
+   **(a) Test i Normal ja NO tenen el mateix conjunt de polítiques.**
+   Consulta directa a `pg_policies` (no assumit de memòria) als dos
+   projectes: Normal té un grup addicional de polítiques
+   (`users_write`/`users_edit`/`users_remove`, `votes_write`,
+   `objectives_write`/`obj_edit`/`obj_remove`, `photos_write`/`photos_edit`/
+   `photos_remove`, `settings_write`/`settings_edit` a `app_settings`)
+   restringides a `auth.role() = 'anon'`, que Test no té. Però com que
+   Postgres combina totes les polítiques permissives amb OR, i les
+   polítiques originals `"Permetre X" (USING/WITH CHECK true)` segueixen
+   actives en paral·lel a totes dues, **aquest intent previ d'enduriment no
+   bloqueja res avui** — calen eliminar-les TOTES (no només afegir-hi de
+   noves al costat) quan es reescrigui, a tots dos projectes per igual.
+
+   **(b) Bloquejant: l'app no estableix mai una sessió real de Supabase
+   Auth avui.** Confirmat per grep exhaustiu de `js/` (agent Explore,
+   27/07/2026): el client `sb` es crea sempre amb la clau `anon`
+   (`js/core/config.js:31-34`), compartida per tothom; el "login" passa per
+   l'RPC propi `fem_login()` (ja fet al §1.3), i la sessió es guarda només
+   a `sessionStorage` com `{id, name, role}` (`login.js:18-29`). **Mai es
+   crida `supabase.auth.signInWithPassword()` ni cap altra funció d'Auth** —
+   per tant `auth.uid()` és sempre `NULL` en qualsevol petició d'avui,
+   malgrat que `auth.users`/`auth_user_id` ja estiguin poblats (Pas 1-2).
+   **Conseqüència**: aplicar polítiques `auth.uid() = ...` ara, fins i tot
+   només a Test, bloquejaria absolutament totes les escriptures de l'app
+   (pujar fotos, votar, gestionar socis...) — no és "més estricte", és
+   "tothom queda fora", perquè cap petició porta mai una identitat que
+   Postgres pugui verificar. **Pas 3 no es pot aplicar de manera útil sense,
+   com a mínim, la part de Pas 4 que estableix la sessió real
+   (`signInWithPassword()`/`onAuthStateChange()`)** — decisió de seqüenciació
+   pendent amb Enric: fusionar Pas 3+4 en un sol cicle (dissenyar ara,
+   aplicar quan el client ja generi sessions reals), o fer primer un
+   "Pas 3a" mínim que només connecti la sessió i validar `auth.uid()` a
+   Test abans d'escriure les polítiques definitives.
+
+   **Mapeig complet d'operacions d'escriptura per taula, fet per preparar
+   el disseny de polítiques** (agent Explore, grep de tot `js/`,
+   27/07/2026) — patrons detectats, útils quan es reprengui aquest pas:
+   - **Escriptures sobre dades pròpies, qualsevol usuari loguejat**:
+     `photo_submissions` (insert/update/delete filtrats per
+     `user_id=currentUser.id`), `votes` (upsert amb `user_id=currentUser.id`,
+     encara que la foto sigui d'un altre), `seguiment_votacio` (upsert/update
+     amb `user_id=currentUser.id`), `users.delete` (baixa pròpia),
+     `users.update` de contrasenya pròpia (`saveNewPassword`).
+   - **Escriptures reservades a `role='admin'`**: tot `objectives`, tot
+     `app_settings`, tot `app_texts`, i a `users`/`photo_submissions`/`votes`
+     quan és sobre files de tercers (gestió de socis des del panell Socis,
+     publicar/eliminar fotos alienes des de Galeria admin).
+   - **Rol `expert`**: no té cap camí d'escriptura propi — vota exactament
+     igual que un `participant` (`votacio.js`); només es distingeix en
+     lectura (filtratge de rànquing). Simplifica el disseny: no cal cap cas
+     especial per `expert` a les polítiques d'escriptura.
+   - **Escriptures SENSE cap login previ, a decidir explícitament**:
+     `initializeDB()` (alta de l'admin per defecte + settings inicials,
+     només quan `users` és buida) i `handleRegister()` (auto-registre
+     lliure de nous participants) — cap dels dos passa per `fem_login`.
+     S'hauran de repensar juntament amb el disseny del nou flux de
+     registre de Pas 4 (via `supabase.auth.signUp()`?).
+   - **Atenció particular a `SELECT`**: `loadAllData()`
+     (`js/core/data.js:72-102`) fa `SELECT *` sense filtre per usuari de
+     `users`, `objectives`, `photo_submissions`, `votes`, `app_settings`,
+     `seguiment_votacio` — el filtratge "és meu"/"no revelat encara" es fa
+     només al client. Les noves polítiques de `SELECT` **han de seguir
+     obertes a qualsevol usuari loguejat** (no restringides per
+     `auth_user_id`), o es trenca el mosaic de vot, el rànquing i la taula
+     de socis.
+   - Codi mort detectat de pas (irrellevant per al disseny, no tocar ara):
+     `saveUsers()` i les crides a `votes` dins `saveVotes()`
+     (`js/core/data.js`) no s'invoquen enlloc.
+
+   **Encara sense aplicar cap canvi de SQL per aquest pas** — aturat aquí
+   a l'espera de la decisió de seqüenciació amb Enric.
+
+   **Criteris fixats per Enric (27/07/2026) per triar la seqüència**, en
+   lloc d'escollir ell mateix entre opcions tècniques que no se sent
+   capacitat per valorar: (1) maximitzar que l'app no quedi mai inoperativa,
+   (2) cada canvi ha de ser contrastable que funciona i tenir marxa enrere
+   si no, (3) els usuaris actuals han de seguir podent entrar exactament
+   igual que ara, (4) qualsevol canvi de gestió d'usuaris/contrasenyes ha de
+   ser transparent per als usuaris. Vegeu [[feedback_collaboration_style]]
+   — norma general per a decisions de seqüenciació futures, no només per a
+   aquest pas.
+
+   **Pla revisat (27/07/2026) aplicant aquests criteris — Pas 3 i Pas 4 es
+   fusionen en un sol cicle, esglaonat en 3a/3b/3c:**
+
+   - **Pas 3a — sessions reals d'Auth en paral·lel, sense tocar cap
+     política (additiu, risc pràcticament zero).** A `login.js`, un cop
+     `fem_login()` confirma `status:'ok'` (mateix camí d'avui, intacte), fer
+     també `supabase.auth.signInWithPassword({email, password})` amb les
+     mateixes credencials que l'usuari ja ha escrit al mateix formulari de
+     sempre. Si aquesta crida falla per qualsevol motiu, l'app continua
+     exactament com avui (no bloqueja el login) — és pur afegit, no
+     substitueix res encara. Zero canvi visible per l'usuari. Provar
+     primer a Test (confirmar via `get_logs`/una consulta de prova que
+     `auth.uid()` ja resol l'UUID correcte per usuaris reals), després
+     desplegar el mateix a Normal i confirmar amb un login real que tot
+     segueix igual — en aquest punt cap RLS ha canviat, així que no hi ha
+     risc real de trencar res.
+   - **Pas 3b — escriure i provar les polítiques RLS noves, només a
+     Test.** Migració SQL: DROP de totes les polítiques permissives
+     detectades (incloent les "mig fetes" ja presents a Normal que no fan
+     cap efecte real, vegeu (a) més amunt) + CREATE de les noves basades en
+     `auth.uid()`/`auth_user_id`/rol, seguint el mapeig d'operacions
+     d'aquesta secció. Es guarda alhora un script de rollback (recrear les
+     polítiques d'avui) llest per aplicar en segons. Aplicar NOMÉS a Test i
+     provar-ho exhaustivament: cada operació d'escriptura mapada (pujar
+     foto, votar, Puntuar Repte, enviar votació definitiva, panell Socis
+     sencer, Galeria admin, calendari, textos i la seva rèplica a l'altre
+     projecte) amb un participant real i un admin real de Test — i
+     confirmar explícitament amb una crida `curl` directa amb la clau
+     `anon` (sense signIn) que ara SÍ es bloqueja, com a prova positiva que
+     el forat es tanca. Si res es trenca: rollback immediat, diagnosticar,
+     re-provar. No es passa a Normal fins que tot funcioni igual que abans
+     des del punt de vista de l'usuari.
+   - **Pas 3c — desplegar a Normal amb finestra de verificació.** Només
+     després que 3b hagi passat totes les proves. Aplicar la mateixa
+     migració (amb el rollback ja provat) a Normal, fer un mini "smoke
+     test" immediat en producció (login real, mosaic de vot, votar, panell
+     de Socis com a admin), i mantenir el rollback a mà uns dies per si
+     surt algun cas no cobert pels tests.
+   - **Pas 4 (resta) — un cop 3a-3c validats**: substituir del tot
+     `fem_login()`/`sessionStorage` manual per l'SDK d'Auth complet
+     (`onAuthStateChange`), afegir "Has oblidat la contrasenya?" i accés
+     per enllaç màgic. **Nou punt detectat avui, a resoldre en aquest
+     pas**: els fluxos d'admin que toquen `users.password` directament
+     (reset de contrasenya d'un soci, editar-la des del panell Socis) no
+     podran seguir escrivint-hi directament un cop RLS de `users` es tanqui
+     de veritat — caldrà una funció `SECURITY DEFINER` pròpia (mateix
+     patró que `fem_login`) perquè aquests fluxos d'admin no quedin
+     trencats. Es dissenya en detall quan s'hi arribi.
+   - **Pas 5** — retirar (amagar, no eliminar) el sistema vell, mateix
+     criteri "amagar no eliminar" ja aplicat a Fase 3.
+
+   **Pas 3a — FET i VERIFICAT a Test (27/07/2026).** A `handleLogin()`
+   (`js/screens/login.js`), just després que `fem_login()` confirmi
+   `status:'ok'` (aquest camí no es toca), s'afegeix una crida a
+   `sb.auth.signInWithPassword({ email: result.email, password })` dins
+   `try/catch` — purament additiva: si falla, només es registra un avís a
+   consola (`console.warn('[Pas 3a] ...')`) i el login continua exactament
+   com avui. S'usa `result.email` (el retornat per `fem_login`, sempre un
+   email vàlid) en lloc del valor cru del camp "Usuari/Email", ja que
+   aquest camp accepta indistintament email o nom complet.
+
+   Provat en viu servint l'app en local (`npx serve`) contra Test, amb
+   l'usuari sintètic `test.annapuig@fem-foto.test` (contrasenya coneguda,
+   ja migrat a `auth.users` al Pas 2): login correcte → cap error/avís a
+   consola → confirmat als logs d'Auth de Test (`get_logs`) una petició
+   `POST /token` (`grant_type=password`, `status:200`,
+   `referer:http://localhost:5510/`, `actor_username:test.annapuig@fem-foto.test`)
+   exactament coincident amb la prova — la sessió real d'Auth s'estableix
+   correctament. Contrasenya incorrecta: el missatge d'error
+   ("Usuari/email o contrasenya incorrectes") i el comportament es
+   mantenen idèntics a abans, sense cap error nou a consola (el codi nou
+   ni s'executa en aquest camí, ja que només corre després de
+   `status:'ok'`). Cap política RLS tocada — encara totes obertes.
+
+   **Estat**: Pas 3a verificat a Test. Pendent: desplegar el mateix canvi
+   a Normal (necessita `git commit`/`push`, autorització explícita
+   d'Enric) i confirmar-hi igual, abans de passar a Pas 3b (disseny i
+   prova de les polítiques RLS noves, només a Test).
 4. **Client — login/registre/sessió** — substituir `handleLogin`/
    `handleRegister`/`sessionStorage` (`login.js`) per
    `supabase.auth.signInWithPassword()` / `signUp()` /
