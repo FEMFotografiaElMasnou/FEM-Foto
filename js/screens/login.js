@@ -267,14 +267,34 @@ export async function saveNewPassword() {
   }
   if (!_pendingPasswordUser) return;
 
-  const { error } = await sb.from('users')
-    .update({ password: p1 })
-    .eq('id', _pendingPasswordUser.id);
+  // Pas 3b (ANALISI_Login_Navegacio.md §1.4, decisió D3): un cop la RLS de
+  // `users` només permet UPDATE a admins autenticats, aquest usuari (encara
+  // sense sessió real d'Auth en aquest punt, ja que la seva contrasenya vella
+  // és buida) no pot fer l'UPDATE directe. fem_set_new_password() és una via
+  // SECURITY DEFINER que només accepta l'escriptura mentre la contrasenya
+  // actual sigui buida (mateix invariant que 'reset_required' a fem_login).
+  const { data: ok, error } = await sb.rpc('fem_set_new_password', {
+    p_user_id: _pendingPasswordUser.id,
+    p_new_password: p1,
+  });
 
-  if (error) {
+  if (error || !ok) {
     errEl.textContent = t('generic_error');
     errEl.style.display = 'block';
     return;
+  }
+
+  // Pas 3a: aquest camí (reset forçat) no passa per handleLogin(), així que
+  // cal establir la sessió real d'Auth aquí també, ara amb la contrasenya
+  // NOVA que l'usuari acaba de triar (l'antiga era buida a auth.users també).
+  // Additiu/best-effort igual que a handleLogin: si falla, no bloqueja.
+  try {
+    const { error: authError } = await sb.auth.signInWithPassword({
+      email: _pendingPasswordUser.email, password: p1,
+    });
+    if (authError) console.warn('[Pas 3a] signInWithPassword (post-reset) no ha pogut establir sessió real:', authError.message);
+  } catch (e) {
+    console.warn('[Pas 3a] signInWithPassword (post-reset) ha fallat inesperadament:', e);
   }
 
   // Update local state and proceed with login

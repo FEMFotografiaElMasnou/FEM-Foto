@@ -423,10 +423,96 @@ filosofia que la Fase 3):
    ni s'executa en aquest camí, ja que només corre després de
    `status:'ok'`). Cap política RLS tocada — encara totes obertes.
 
-   **Estat**: Pas 3a verificat a Test. Pendent: desplegar el mateix canvi
-   a Normal (necessita `git commit`/`push`, autorització explícita
-   d'Enric) i confirmar-hi igual, abans de passar a Pas 3b (disseny i
-   prova de les polítiques RLS noves, només a Test).
+   **Pas 3a — FET i VERIFICAT també a Normal (27/07/2026).** Commit
+   `5d41e44` desplegat a `fem-foto.vercel.app` (autoritzat per Enric).
+   Primer intent d'Enric va fallar amb "no s'han trobat usuaris" — no era
+   cap regressió: la seva pestanya tenia carregat en memòria un bundle
+   antic (d'abans del Pas 1.3), que encara demanava la columna `password`
+   a `loadAllData()` i per això rebia 401 (confirmat als logs `api` de
+   Normal: `GET /rest/v1/users?select=...,password,...` → 401 — el codi
+   actual del repo ja no la demana des del Pas 1.3). Canviar de mode
+   Test↔Normal no recarrega la pàgina, així que un mòdul JS ja carregat es
+   queda congelat a la versió amb què es va obrir la pestanya. Després
+   d'un refresc complet, login real d'Enric (`enricmr@gmail.com`) confirmat
+   als logs d'Auth de Normal: `POST /token` (`grant_type=password`,
+   `status:200`, `actor_username:enricmr@gmail.com`) — sessió real
+   establerta correctament, cap comportament diferent per l'usuari.
+
+   **Estat**: Pas 3a verificat de cap a cap (Test + Normal, amb un usuari
+   real). Següent: Pas 3b — dissenyar i provar les polítiques RLS noves,
+   només a Test.
+
+   **Pas 3b — FET i PROVAT A FONS a Test (27/07/2026).** Migració aplicada
+   (`sql/2026-07-27_auth_migracio_pas3b_rls_test.sql`, rollback complet a
+   `sql/2026-07-27_auth_migracio_pas3b_rollback_test.sql`): DROP de totes les
+   polítiques permissives detectades a §1.2 (incloent les "mig fetes" de
+   Normal que no feien cap efecte real) + CREATE de polítiques noves basades
+   en `auth.uid()`/`auth_user_id`/rol per a `users`, `objectives`,
+   `photo_submissions`, `votes`, `seguiment_votacio`, `app_settings`,
+   `app_texts`, `settings` i `reptes_calendari` (aquestes dues últimes,
+   taules retirades sense cap ús real, tancades per higiene). `zampa_*` fora
+   d'abast (Zampa, gestió separada). Verificat via `get_advisors`: tots els
+   avisos "RLS Policy Always True" d'aquestes taules han desaparegut.
+
+   Decisions de disseny (documentades al capçal del fitxer SQL, D1-D5):
+   auto-registre obert però amb `WITH CHECK (role='participant')` (tanca
+   l'escalada de privilegis que abans permetia enviar `role:'admin'` per
+   API directa); INSERT de bootstrap (`initializeDB()`, sense sessió) només
+   permès quan `users` és buida; UPDATE de `users` restringit a admin, amb
+   dues RPCs noves (`fem_set_new_password`, `fem_admin_set_password`) per
+   als dos fluxos on un canvi de contrasenya no pot passar per un UPDATE de
+   client directe.
+
+   **Dos bugs reals trobats i corregits provant-ho de debò** (no només
+   dissenyant sobre paper):
+   1. El flux "admin reseteja -> l'usuari tria contrasenya nova"
+      (`saveNewPassword()`) no passa per `handleLogin()`, així que li
+      faltava la crida `signInWithPassword()` del Pas 3a — sense sessió
+      real, la primera votació d'aquell usuari fallava (403). Corregit
+      afegint la crida també aquí.
+   2. `fem_set_new_password()`/`fem_admin_set_password()` (aquesta última,
+      nova) havien de sincronitzar TAMBÉ `auth.users.encrypted_password`
+      (amb `pgcrypto`, mateix mecanisme del Pas 2) — si no, `auth.users`
+      es queda amb la contrasenya vella per sempre i `signInWithPassword()`
+      fallaria silenciosament (sessió real trencada) cada vegada que un
+      admin canviï la contrasenya d'algú, ara i quan arribi a Normal. Sense
+      aquest fix, hauria estat un trencament silenciós descobert molt més
+      tard per un soci real — exactament el tipus de cosa que els teus
+      criteris de seguretat (27/07/2026) volien evitar.
+
+   **Provat en viu** (compte admin de prova `u_test_admin_pas3b`, creat i
+   esborrat només per aquesta sessió; usuaris de prova ja existents
+   `test.annapuig@fem-foto.test` etc.):
+   - ✅ Escalada de rol bloquejada (`role:'admin'` via API anònima → 401);
+     auto-registre legítim (`role:'participant'`) → 201.
+   - ✅ UPDATE anònim a un repte real → 0 files afectades (silent block).
+   - ✅ Admin: reset de contrasenya d'un soci, panell Socis → soci pot
+     entrar i triar nova contrasenya → vota correctament després (RPC +
+     sessió real confirmades).
+   - ✅ Participant: vota una foto d'un altre (`votes`), esborrany i
+     enviament final de votació (`seguiment_votacio` insert + update).
+   - ✅ Admin: canvia mode/data d'un repte (`objectives`).
+   - ✅ Admin: actualitza `app_texts`/`app_settings`; participant NO-admin
+     bloquejat per les mateixes escriptures (0 files afectades).
+   - ✅ Propietari edita el peu de la seva foto (`photo_submissions`);
+     bloquejat editant la d'un altre; admin publica la d'un altre amb èxit.
+   - **No provat en viu, per temps** (validat per lògica/disseny, mateix
+     patró ja confirmat en 3 taules diferents): `votes` DELETE (admin-only),
+     `users` DELETE (self-or-admin), l'auto-registre real via formulari
+     (només via curl), i el "conegut" trencament esperat del botó
+     "Replica a les dues bases" de Textos quan es clica des d'un projecte
+     diferent de l'actiu (el client puntual cap a l'ALTRE projecte no té
+     sessió real — caldrà revisar-ho a Pas 4 o abans si Enric ho troba a
+     faltar).
+
+   Canvis de client fets EN LOCAL, NO desplegats (a `git`, sense `push`
+   fins al Pas 3c per no trencar Normal abans que la migració hi arribi):
+   `login.js` (`saveNewPassword`) i `socis.js` (`saveMember`) — vegeu nota
+   al peu de `sql/2026-07-27_auth_migracio_pas3b_rls_test.sql`.
+
+   **Estat**: Pas 3b verificat a fons a Test. Pendent: Pas 3c — aplicar la
+   mateixa migració a Normal + fer `push` dels canvis de client, amb el
+   rollback preparat.
 4. **Client — login/registre/sessió** — substituir `handleLogin`/
    `handleRegister`/`sessionStorage` (`login.js`) per
    `supabase.auth.signInWithPassword()` / `signUp()` /

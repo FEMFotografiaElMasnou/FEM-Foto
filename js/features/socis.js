@@ -172,11 +172,23 @@ export async function saveMember() {
   if (id) {
     // Edit existing member — single row update
     const fields = { display_name: name, email, role };
-    if (password) fields.password = password;
     const { error } = await sb.from('users').update(fields).eq('id', id);
     if (error) {
       showToast(error.code === '23505' ? t('email_exists') : '❌ Error', 'error');
       return;
+    }
+    // Pas 3b (ANALISI_Login_Navegacio.md §1.4): la contrasenya, si es canvia,
+    // va per una RPC a part (fem_admin_set_password) perquè també sincronitzi
+    // auth.users — un UPDATE directe des del client deixaria l'usuari afectat
+    // sense poder establir mai més una sessió real d'Auth (Pas 3a).
+    if (password) {
+      const { data: ok, error: pwErr } = await sb.rpc('fem_admin_set_password', {
+        p_user_id: id, p_new_password: password,
+      });
+      if (pwErr || !ok) {
+        showToast('❌ Error canviant la contrasenya', 'error');
+        return;
+      }
     }
     // Update local state
     const u = state.users.find(u => u.id === id);
