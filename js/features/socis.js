@@ -194,18 +194,27 @@ export async function saveMember() {
     const u = state.users.find(u => u.id === id);
     if (u) { u.name = name; u.email = email; u.username = email; u.role = role; if (password) u.password = password; }
   } else {
-    // New member — single row insert
+    // New member — Pas 4a (ANALISI_Login_Navegacio.md §1.4): l'alta ja no és un
+    // INSERT directe. fem_admin_create_member() crea la fila de public.users I
+    // el compte d'auth.users dins la mateixa transacció; sense la segona, el
+    // soci nou no podria establir sessió real d'Auth i la RLS del Pas 3b li
+    // bloquejaria qualsevol escriptura (votar, pujar foto).
+    // No es fa amb supabase.auth.signUp() a propòsit: signUp() substituiria la
+    // sessió de l'admin per la del compte acabat de crear.
     if (!password) { showToast(t('pass_required'), 'error'); return; }
-    const newId = 'u_' + Date.now();
-    const { error } = await sb.from('users').insert([{
-      id: newId, display_name: name, email, role, password,
-      created_at: new Date().toISOString(),
-    }]);
-    if (error) {
-      showToast(error.code === '23505' ? t('email_exists') : '❌ Error', 'error');
+    const { data: rows, error } = await sb.rpc('fem_admin_create_member', {
+      p_name: name, p_email: email, p_password: password, p_role: role,
+    });
+    const created = (rows && rows[0]) || { status: 'invalid' };
+    if (error || created.status !== 'ok') {
+      if (error) console.error('fem_admin_create_member error', error);
+      showToast(created.status === 'email_exists' ? t('email_exists') : '❌ Error', 'error');
       return;
     }
-    state.users.push({ id: newId, name, email, username: email, password, role, created_at: new Date().toISOString() });
+    state.users.push({
+      id: created.id, name: created.display_name, email: created.email,
+      username: created.email, role: created.role, created_at: created.created_at,
+    });
   }
 
   closeModal('modal-member');
@@ -218,8 +227,16 @@ export async function deleteMember(id) {
   const user = state.users.find(u => u.id === id);
   const userName = user ? user.name : id;
   confirmAction(t('delete_member'), t('confirm_delete_member').replace('{name}', userName), async () => {
-    // CASCADE on FK will auto-delete photos and votes
-    await sb.from('users').delete().eq('id', id);
+    // Pas 4a: mateixa RPC que la baixa pròpia (handleUnsubscribe) — esborra la
+    // fila de public.users I el compte d'auth.users, per no deixar-lo orfe i
+    // bloquejar aquella adreça per sempre. Fotos i vots segueixen caient per
+    // CASCADE des de public.users.
+    const { data: ok, error } = await sb.rpc('fem_delete_account', { p_user_id: id });
+    if (error || !ok) {
+      console.error('fem_delete_account error', error);
+      showToast('❌ Error', 'error');
+      return;
+    }
     await loadAllData();
     renderMembersTable();
     renderAdminGallery();

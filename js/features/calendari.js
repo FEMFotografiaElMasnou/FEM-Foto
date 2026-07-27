@@ -127,7 +127,18 @@ export function applyPhaseModes(objectiveId) {
     renderRanking('p-ranking-current-list', 'p-ranking-general-list');
   }
 
-  if (changed) {
+  // Persistir només si qui té l'app oberta és un admin (2026-07-27). Des del
+  // Pas 3b/3c de la migració a Supabase Auth, `objectives` i `app_settings`
+  // només accepten escriptures d'admin: un soci normal rebia un 403 a cada
+  // canvi de fase detectat aquí ("saveObjectives error"/"saveSettings error" a
+  // la consola), una escriptura que fallava en silenci.
+  //
+  // El RECÀLCUL en memòria de més amunt segueix fent-se per a TOTHOM, i això
+  // és el que importa: és el que fa que cada soci vegi l'estat correcte d'AVUI
+  // sense dependre que un admin hagi obert l'app abans (fix del 2026-07-18,
+  // intacte). L'única cosa que canvia és qui el desa a la BD — i, a més de
+  // l'admin, ja ho fa el cron diari de Supabase (fem_apply_calendar()).
+  if (changed && state.currentUser && state.currentUser.role === 'admin') {
     saveObjectives();                     // fire-and-forget: persisteix en segon pla (objectives)
     if (isCurrentGlobal) saveSettings();  // ídem (app_settings — mirall/compat)
   }

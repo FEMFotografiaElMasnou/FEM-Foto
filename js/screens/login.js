@@ -72,26 +72,22 @@ export async function initializeDB() {
   btn.innerHTML = '<span class="loader"></span> ' + t('init_db_loader');
   btn.disabled  = true;
 
-  const now = new Date().toISOString();
+  // Pas 4a (ANALISI_Login_Navegacio.md §1.4): l'admin per defecte i les tres
+  // files d'app_settings es creen amb una sola RPC (fem_bootstrap_admin), que
+  // només accepta executar-se mentre `users` està buida. Dos motius:
+  //   · el compte ha d'existir TAMBÉ a auth.users, o el primer admin no podria
+  //     establir mai sessió real d'Auth (i, per RLS, no podria escriure res);
+  //   · l'ordre antic (crear l'admin i tot seguit inserir app_settings des del
+  //     client) ja no funcionaria: la política app_settings_insert_bootstrap
+  //     del Pas 3b exigeix que `users` estigui buida, i just abans hem deixat
+  //     de complir-ho. Dins l'RPC, les dues coses passen a la mateixa crida.
+  const { data: ok, error } = await sb.rpc('fem_bootstrap_admin', {
+    p_name:     'Administrador',
+    p_email:    'admin@femrank.cat',
+    p_password: 'admin123',
+  });
 
-  // Insert default admin
-  const { error } = await sb.from('users').upsert([{
-    id:           'u_admin_1',
-    display_name: 'Administrador',
-    email:        'admin@femrank.cat',
-    role:         'admin',
-    password:     'admin123',
-    created_at:   now,
-  }], { onConflict: 'id' });
-
-  // Init settings
-  await sb.from('app_settings').upsert([
-    { id: 'cfg_uploads',  key: 'uploads_enabled', value: 'true',  updated_at: now, updated_by: 'system' },
-    { id: 'cfg_voting',   key: 'voting_enabled',  value: 'false', updated_at: now, updated_by: 'system' },
-    { id: 'cfg_revealed', key: 'names_revealed',   value: 'false', updated_at: now, updated_by: 'system' },
-  ], { onConflict: 'id' });
-
-  if (!error) {
+  if (!error && ok) {
     await loadAllData();
     document.getElementById('setup-banner').style.display = 'none';
     document.getElementById('login-user').value = 'admin@femrank.cat';
@@ -357,52 +353,56 @@ export async function handleRegister() {
   btn.disabled  = true;
   showLoader(t('creating_account'));
 
-  const newUser = {
-    id:         'u_' + Date.now(),
-    name,
-    email,
-    username:   email,
-    password:   pass,
-    role:       'participant',
-    created_at: new Date().toISOString(),
-  };
+  // Pas 4a (ANALISI_Login_Navegacio.md §1.4): l'alta ja no és un INSERT directe
+  // a public.users. fem_register_account() crea, dins la mateixa transacció, la
+  // fila de public.users I el compte d'auth.users — fins ara només es creava la
+  // primera, i el soci nou quedava sense poder establir sessió real d'Auth (per
+  // tant, sense poder votar ni pujar fotos des del Pas 3b/3c). El rol el fixa el
+  // servidor a 'participant': no és un paràmetre, així que ningú pot crear-se un
+  // admin cridant l'RPC directament per API.
+  const { data: rows, error } = await sb.rpc('fem_register_account', {
+    p_name:     name,
+    p_email:    email,
+    p_password: pass,
+  });
 
-  // Insert — Supabase UNIQUE constraint on email handles duplicates
-  const { error } = await sb.from('users').insert([{
-    id:           newUser.id,
-    display_name: newUser.name,
-    email:        newUser.email,
-    role:         newUser.role,
-    password:     newUser.password,
-    created_at:   newUser.created_at,
-  }]);
+  const result = (rows && rows[0]) || { status: 'invalid' };
 
-  if (error && error.code === '23505') {
-    // Duplicate email
+  if (error || result.status !== 'ok') {
     hideLoader();
     errEl.style.display = 'block';
-    errEl.textContent   = t('register_email_exists');
+    errEl.textContent   = result.status === 'email_exists'
+      ? t('register_email_exists')
+      : t('register_error');
+    if (error) console.error('fem_register_account error', error);
     btn.innerHTML = t('create_account_btn'); btn.disabled = false; return;
   }
 
-  if (!error) {
-    await loadAllData();
-    const savedUser = state.users.find(u => u.email.toLowerCase() === newUser.email.toLowerCase());
-    state.currentUser = savedUser || newUser;
-    saveSession(state.currentUser);
-    document.getElementById('reg-name').value  = '';
-    document.getElementById('reg-email').value = '';
-    document.getElementById('reg-pass').value  = '';
-    document.getElementById('reg-pass2').value = '';
-    hideLoader();
-    showToast(t('account_created') + ', ' + name + ' 🎉', 'success');
-    showParticipantScreen();
-  } else {
-    errEl.style.display = 'block';
-    errEl.textContent   = t('register_error');
+  // Sessió real d'Auth per al compte acabat de crear (mateix patró que
+  // handleLogin, Pas 3a). Sense això el soci nou entraria a l'app però qualsevol
+  // escriptura seva (votar, pujar foto) la bloquejaria la RLS.
+  try {
+    const { error: authError } = await sb.auth.signInWithPassword({ email: result.email, password: pass });
+    if (authError) console.warn('[Pas 4a] signInWithPassword (registre) no ha pogut establir sessió real:', authError.message);
+  } catch (e) {
+    console.warn('[Pas 4a] signInWithPassword (registre) ha fallat inesperadament:', e);
   }
 
+  await loadAllData();
+  const savedUser = state.users.find(u => u.email.toLowerCase() === result.email.toLowerCase());
+  state.currentUser = savedUser || {
+    id: result.id, name: result.display_name, email: result.email,
+    username: result.email, role: result.role,
+  };
+  saveSession(state.currentUser);
+  document.getElementById('reg-name').value  = '';
+  document.getElementById('reg-email').value = '';
+  document.getElementById('reg-pass').value  = '';
+  document.getElementById('reg-pass2').value = '';
   hideLoader();
+  showToast(t('account_created') + ', ' + name + ' 🎉', 'success');
+  showParticipantScreen();
+
   btn.innerHTML = t('create_account_btn'); btn.disabled = false;
 }
 
@@ -418,8 +418,21 @@ export async function handleUnsubscribe() {
   if (!state.currentUser) return;
   const uid = state.currentUser.id;
 
-  // CASCADE on FK will auto-delete photos and votes
-  await sb.from('users').delete().eq('id', uid);
+  // Pas 4a: la baixa passa per fem_delete_account(), que esborra la fila de
+  // public.users I el compte d'auth.users alhora. Abans només s'esborrava la
+  // primera, i el compte d'Auth quedava orfe: l'adreça quedava ocupada per
+  // sempre i aquella persona no s'hauria pogut tornar a donar d'alta mai.
+  // Les fotos i vots segueixen caient per CASCADE des de public.users.
+  const { data: ok, error } = await sb.rpc('fem_delete_account', { p_user_id: uid });
+  if (error || !ok) {
+    console.error('fem_delete_account error', error);
+    showToast(t('generic_error'), 'error');
+    return;
+  }
+
+  // Tanca també la sessió d'Auth del compte acabat d'esborrar (el JWT seguiria
+  // viu al navegador fins que caduqués, apuntant a un usuari que ja no existeix).
+  try { await sb.auth.signOut(); } catch (_) {}
 
   showToast(t('account_deleted'), 'info');
   await new Promise(r => setTimeout(r, 1500));

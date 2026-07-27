@@ -510,9 +510,28 @@ filosofia que la Fase 3):
    `login.js` (`saveNewPassword`) i `socis.js` (`saveMember`) — vegeu nota
    al peu de `sql/2026-07-27_auth_migracio_pas3b_rls_test.sql`.
 
-   **Estat**: Pas 3b verificat a fons a Test. Pendent: Pas 3c — aplicar la
-   mateixa migració a Normal + fer `push` dels canvis de client, amb el
-   rollback preparat.
+   **Pas 3c — FET i VERIFICAT a Normal (27/07/2026).** Mateixa migració
+   aplicada a Normal (`sql/2026-07-27_auth_migracio_pas3c_rls_normal.sql`,
+   adaptada als noms reals de les polítiques de Normal — diferents dels de
+   Test, vegeu punt 3(a); rollback complet a
+   `sql/2026-07-27_auth_migracio_pas3c_rollback_normal.sql`). Verificat amb
+   `get_advisors`: mateix resultat net que a Test. Autoverificat abans de
+   tocar res de client, amb un compte admin de prova creat i esborrat només
+   per aquesta comprovació (`u_test_admin_pas3c`, mai tocat cap compte
+   real): escriptura anònima bloquejada (INSERT `role:'admin'` → 401; UPDATE
+   d'un repte real → 0 files), i escriptura admin correcta sobre un repte
+   real (canvi i reversió immediata d'`upload_mode`, confirmat i desfet per
+   SQL). Commit `c44f859` (`login.js`, `socis.js`, migracions i rollbacks)
+   fet `push` a `origin/main` i confirmat desplegat a
+   `fem-foto.vercel.app`.
+
+   **Estat**: Pas 3a-3c complets i verificats de cap a cap als dos
+   projectes (Test i Normal), incloent la prova real final d'Enric —
+   confirmat als logs d'Auth de Normal (`POST /token`, `grant_type=password`,
+   `status:200`, `actor_username:enricmr@gmail.com`, 27/07/2026 10:26 UTC).
+   Segueix pendent: Pas 4 (client complet — `onAuthStateChange`, oblidat
+   contrasenya, magic link, i el flux de registre/alta que encara no crea
+   compte a `auth.users`) — sense programar, a l'espera d'Enric.
 4. **Client — login/registre/sessió** — substituir `handleLogin`/
    `handleRegister`/`sessionStorage` (`login.js`) per
    `supabase.auth.signInWithPassword()` / `signUp()` /
@@ -521,6 +540,190 @@ filosofia que la Fase 3):
    Afegir "Has oblidat la contrasenya?" (`resetPasswordForEmail` + nova
    pantalla "crea nova contrasenya" a partir de l'enllaç rebut) i el botó de
    magic link, tots dos visibles a la pantalla d'accés.
+
+   **Decisions d'Enric (27/07/2026), preses abans de començar:**
+   - **Sessió persistent**: qui entra es queda dins fins que prem "Sortir"
+     (avui, tancar la pestanya tanca la sessió). Menys fricció, coherent amb
+     el perfil d'usuari del club. Efecte secundari acceptat: en un ordinador
+     compartit, el segon usuari haurà de prémer "Sortir" abans d'entrar.
+   - **L'auto-registre no canvia**: segueix sent obert i immediat, sense
+     confirmació per correu ni aprovació d'admin. El Pas 4 només arregla el
+     que està trencat, no afegeix passos al flux d'alta.
+
+   **Ordre del Pas 4** (fixat aplicant els criteris de seqüenciació d'Enric):
+   4a altes/baixes → 4b Auth decideix l'accés → 4c reset per correu i enllaç
+   màgic → 4d retirada del sistema vell. L'ordre no és arbitrari: mentre
+   `fem_login()` segueixi decidint l'accés, qualsevol contrasenya canviada des
+   d'Auth (reset per correu) deixaria l'usuari fora, i **l'enllaç màgic
+   directament no pot funcionar**, perquè no hi ha cap contrasenya per passar a
+   `fem_login()`. Per tant 4b ha d'anar abans de 4c.
+
+   **Pas 4a — FET i VERIFICAT a Test (27/07/2026).**
+   `sql/2026-07-27_auth_migracio_pas4a_altes_baixes.sql` (rollback a
+   `sql/2026-07-27_auth_migracio_pas4a_rollback.sql`). Purament additiu: crea
+   quatre funcions, no toca cap política RLS ni cap dada.
+
+   **El forat era més ampli del que teníem anotat** — no eren dos camins sinó
+   cinc, i incloïa també les baixes:
+   - `handleRegister()` (auto-registre) i `saveMember()` ("Nou Soci" d'admin)
+     inserien només a `public.users`: el compte nou podia entrar però **cap
+     escriptura seva funcionava** (votar, pujar foto → bloquejat per la RLS del
+     Pas 3b/3c, perquè mai podia establir sessió real d'Auth).
+   - `initializeDB()` creava el primer admin igual de coix; i, a més, el seu
+     ordre ja no funcionava gens: inseria l'admin i tot seguit `app_settings`,
+     però la política `app_settings_insert_bootstrap` exigeix que `users`
+     estigui buida — cosa que la línia anterior acabava de deixar de complir.
+   - `handleUnsubscribe()` (baixa pròpia) i `deleteMember()` (baixa feta per
+     l'admin) esborraven la fila de `public.users` i **deixaven el compte
+     d'`auth.users` orfe**: aquella adreça quedava ocupada per sempre i la
+     persona no s'hauria pogut tornar a donar d'alta mai més.
+
+   Verificat abans de començar que el forat encara no havia afectat ningú
+   real: 0 files amb `auth_user_id IS NULL` i 0 comptes orfes, als dos
+   projectes (ningú s'ha registrat des del Pas 2 — l'última alta a Normal és
+   del 23/07).
+
+   **Solució**: quatre RPC `SECURITY DEFINER` (mateix patró que `fem_login` /
+   `fem_admin_set_password`, i la mateixa tècnica de creació de comptes ja
+   validada al Pas 2) — `fem_register_account`, `fem_admin_create_member`,
+   `fem_delete_account` i `fem_bootstrap_admin` — més un helper intern
+   `fem_create_account_row` **no cridable per `anon` ni `authenticated`**
+   (verificat amb `has_function_privilege`). Cada alta crea les dues files
+   (`public.users` + `auth.users`/`auth.identities`) dins la MATEIXA
+   transacció, i cada baixa n'esborra les dues.
+
+   **Per què RPC i no `supabase.auth.signUp()` des del client**: `signUp()`
+   substituiria la sessió activa de l'admin per la del soci que acaba de crear,
+   i obligaria a confirmació per correu (que Enric ha decidit no introduir).
+   Un sol camí serveix per als dos formularis.
+
+   **Error real trobat provant-ho** (no dissenyant sobre paper): la primera
+   versió inseria a `public.users` abans que existís la fila d'`auth.users`, i
+   la clau forana del Pas 1 es comprova immediatament → `23503`. Ordre
+   corregit: primer `auth.users`, després `public.users`.
+
+   **Provat de cap a cap a Test**, primer per API directa (`curl` amb la clau
+   `anon`, per verificar els guards) i després **per la interfície real de
+   l'app** (servida en local amb `npx serve`, mai `file://`):
+   - ✅ `anon` intentant crear un admin (`fem_admin_create_member`) → `forbidden`.
+   - ✅ Contrasenya massa curta → `invalid`; email repetit (i amb majúscules)
+     → `email_exists`; rol inventat (`superadmin`) → `invalid`.
+   - ✅ Auto-registre pel formulari real → compte creat, **sessió real d'Auth
+     establerta** (comprovat el token a `localStorage`), i **vot escrit
+     correctament a la BD des de la pantalla de votació** — exactament el que
+     abans quedava bloquejat.
+   - ✅ El mateix compte intentant votar suplantant un altre usuari → 403.
+   - ✅ "Nou Soci" des del panell d'admin (modal real) → les dues files creades.
+   - ✅ Baixa des del panell d'admin i baixa pròpia del soci (modals reals) →
+     les dues files esborrades, vots caiguts per CASCADE.
+   - ✅ Després d'una baixa, **es pot tornar a registrar amb el mateix email**
+     (abans hauria xocat amb l'orfe d'`auth.users`).
+   - ✅ `anon` intentant esborrar un compte aliè → `false`.
+   Tots els comptes de prova creats (i un admin de prova temporal) esborrats en
+   acabar: Test torna a 50 usuaris / 50 comptes d'Auth, 0 sense parella.
+
+   **Abast deliberadament limitat**: no s'ha tocat cap política RLS. Un cop el
+   client només crea/esborra comptes via aquestes RPC, les polítiques
+   `users_insert_self_register` / `users_insert_admin` / `users_insert_bootstrap`
+   / `users_delete_admin_or_self` es podrien eliminar — tancaria l'últim camí
+   d'escriptura anònima que queda a `public.users`. **No es fa encara perquè la
+   taula és compartida amb Zampa** i cal comprovar abans si Zampa dona altes pel
+   seu compte (vegeu la nota de traspàs al final d'aquesta secció). Apuntat com
+   a feina de Pas 4d.
+
+   **Troballa col·lateral, PREEXISTENT (del Pas 3b/3c, no del 4a) — CORREGIDA
+   el 27/07/2026 a petició d'Enric, dins el mateix cicle**: l'automatisme de
+   calendari (`applyPhaseModes()`, `js/features/calendari.js`) cridava
+   `saveObjectives()`/`saveSettings()` des del client de **qualsevol** usuari,
+   no només d'un admin — una crida deliberada des de `showParticipantScreen()`
+   i de l'auto-refresh (fix del 2026-07-18, perquè cada soci vegi l'estat
+   correcte d'AVUI sense dependre que un admin hagi obert l'app abans). Com que
+   des del Pas 3b/3c `objectives` i `app_settings` són admin-only, un soci
+   normal rebia un 403 (`saveObjectives error`/`saveSettings error` a consola)
+   cada cop que l'automatisme detectava un canvi de fase: una escriptura que
+   fallava en silenci per als 41 socis de Normal.
+
+   Impacte real baix (cada client recalcula l'estat localment a partir de les
+   dates, i el cron diari `fem_apply_calendar()` també el persisteix), però era
+   soroll d'error constant. **Correcció**: la persistència només s'intenta si
+   `state.currentUser.role === 'admin'`; el recàlcul en memòria segueix
+   fent-se per a tothom, intacte.
+
+   Verificat en viu a Test provocant un desajust deliberat a la BD
+   (`voting_enabled` posat a `true` a un repte el calendari del qual diu que la
+   votació encara no ha començat): amb un soci de prova, **cap error de consola**
+   (comprovat amb marcadors explícits abans/després del login, per no confondre
+   missatges antics), estat recalculat correctament en memòria
+   (`voting_enabled: false`) i BD intacta; amb un admin de prova, l'escriptura
+   sí es fa (`saveObjectives()` retorna `true` i la BD queda actualitzada).
+   Estat original del repte restaurat i comptes de prova esborrats en acabar.
+
+   **Pas 4a aplicat també a NORMAL (27/07/2026)** — i, verificant-lo allà, s'hi
+   va detectar i corregir immediatament **un forat de seguretat real que hi
+   havia introduït jo mateix** amb aquesta mateixa migració:
+
+   `fem_delete_account()` comprovava l'autorització amb
+   `IF NOT (fem_is_admin() OR v_is_self)`, on
+   `v_is_self := (auth_user_id IS NOT NULL AND auth_user_id = auth.uid())`.
+   Per a un cridant **anònim**, `auth.uid()` és NULL, així que
+   `auth_user_id = auth.uid()` no val `false` sinó **NULL**; llavors
+   `NOT (false OR NULL)` també val NULL, i plpgsql tracta un `IF NULL` com a
+   fals → el `RETURN false` no s'executava. Resultat: **qualsevol persona amb
+   la clau `anon` (pública) podia esborrar el compte de qualsevol soci**, amb
+   les seves fotos i vots per CASCADE. Confirmat empíricament a Normal (la
+   crida va retornar `true` i va esborrar el compte objectiu).
+
+   **Cap dada real afectada**: el compte esborrat era el temporal creat just
+   abans per fer la verificació; comprovat immediatament que Normal seguia amb
+   41 usuaris / 41 comptes d'Auth i cap orfe.
+
+   **Per què no ho havia enxampat a Test**: la prova que ho donava per tancat
+   feia servir un **id d'usuari inexistent**, així que la funció sortia pel
+   `RETURN false` de "no trobat" sense arribar mai a avaluar l'autorització.
+   La prova semblava verda i no verificava res. **Lliçó**: una prova negativa
+   d'autorització ha de fer-se sempre sobre una fila que existeixi de debò.
+
+   **Correcció** (aplicada a Normal primer, per ser producció, i tot seguit a
+   Test): la comparació d'identitat només es fa si hi ha un cridant autenticat
+   (`auth.uid() IS NOT NULL`), amb `coalesce(..., false)`, i a més es
+   **revoca l'EXECUTE de la funció a `anon`** — defensa doble, ja que les dues
+   baixes de l'app sempre es fan des d'una sessió iniciada. Re-verificat als
+   dos projectes amb un compte temporal **existent**:
+   - ✅ `anon` → `permission denied for function fem_delete_account`, i el
+     compte segueix existint després de l'intent.
+   - ✅ Un altre usuari autenticat intentant esborrar un compte aliè → `false`.
+   - ✅ El propi titular donant-se de baixa → `true`.
+   Comptes temporals esborrats: Normal 41/41 i Test 50/50, sense orfes.
+
+   Revisades les altres funcions noves pel mateix patró: `fem_is_admin()`
+   retorna un `EXISTS`, que mai és NULL, així que
+   `fem_admin_create_member`/`fem_bootstrap_admin` (i les RPC de contrasenya del
+   Pas 3b) no tenen aquest problema.
+
+   **Comprovació addicional demanada per Enric: els modes forçats pel
+   desplegable (`obert`/`tancat`, independents del calendari) han de seguir
+   manant.** La primera prova s'havia fet només sobre un repte en mode
+   `calendari`. Repetida sobre un repte amb `voting_mode='obert'` i les dates de
+   votació encara per començar (11/09), amb la BD desincronitzada
+   (`voting_enabled=false`):
+   - ✅ Soci: veu la votació **oberta** (el mode forçat guanya sobre el
+     calendari, com sempre), cap error de consola, BD intacta.
+   - ✅ Admin (càrrega neta de pàgina): persisteix l'estat forçat correcte.
+   - ✅ Desplegable real (`setPhaseMode`, canvi de votació a `tancat`):
+     funciona igual que abans — mode i estat desats, i la revelació de noms en
+     tancar la votació també.
+   La lògica de precedència (`obert` → sempre obert, `tancat` → sempre tancat,
+   `calendari` → dates) no s'ha tocat: el canvi només afecta **qui desa**, no
+   què es calcula.
+
+   **Nota metodològica** (error propi, útil per a proves futures): en un primer
+   intent semblava que l'admin no desava. No era el codi: en canviar de soci a
+   admin **a la mateixa pestanya**, `state.objectives` conservava el recàlcul
+   que ja havia fet el soci en memòria (`logout()` no reinicia l'estat, a
+   diferència de `switchDbMode()`), així que l'admin no detectava cap canvi i no
+   tenia res a desar. Amb una càrrega neta de pàgina (cas real: cada usuari al
+   seu navegador) funciona correctament. Per provar aquest automatisme cal
+   recarregar la pàgina entre usuaris, no només fer logout/login.
 5. **Configurar SMTP extern i plantilles de correu** — requisit dur, no
    opcional (§1.4 més amunt: el servei integrat no envia a adreces que no
    siguin de l'equip del projecte, no és un tema de volum). **Decidit

@@ -130,8 +130,27 @@ l'app, independents d'aquesta unificació: (1) el sistema de login/autenticació
 d'usuaris, i (2) la navegació (comportament en refrescar i en prémer "enrere"). Anàlisi
 completa a `ANALISI_Login_Navegacio.md` — inclou dades reals dels advisors de seguretat de
 Supabase (RLS "activada" però amb polítiques permissives a totes les taules, incloent
-`users.password` en clar llegible per qualsevol via l'API pública). Encara en fase de
-decisió, cap codi tocat.
+`users.password` en clar llegible per qualsevol via l'API pública).
+
+**Estat del bloc (1) autenticació, a 27/07/2026 — en marxa, decidit migrar a Supabase Auth:**
+
+- **Fase 1.3 (26/07)** — tancada l'exposició de contrasenyes: la verificació es fa al servidor
+  (`fem_login()`) i el client ja no pot llegir la columna `password`.
+- **Pas 1 i 2 (26/07)** — columna pont `users.auth_user_id` i creació dels comptes reals a
+  `auth.users` preservant les contrasenyes actuals (Test 50/50, Normal 41/41). Cap soci ha
+  hagut de fer res.
+- **Pas 3a/3b/3c (27/07)** — sessions reals de Supabase Auth i polítiques RLS basades en
+  `auth.uid()` als dos projectes: les escriptures obertes a internet queden tancades.
+- **Pas 4a (27/07)** — altes i baixes de socis passen per funcions de servidor que creen i
+  esborren el compte d'Auth juntament amb la fila de `users`. Abans, tot compte nou (registre
+  o alta d'admin) quedava sense poder votar ni pujar fotos, i tota baixa deixava l'adreça
+  bloquejada per sempre.
+- **Pendent**: Pas 4b (Auth passa a decidir l'accés i la sessió es manté oberta fins a "Sortir"),
+  4c (recuperació de contrasenya per correu i accés per enllaç màgic, amb el correu del club ja
+  configurat i provat) i 4d (retirada del sistema antic). Mètode d'accés previst: contrasenya
+  **i** enllaç màgic, a triar per l'usuari.
+
+El bloc (2), navegació, segueix sense començar.
 
 **Documents de treball relacionats (dins del repo FEM-Foto):**
 
@@ -140,5 +159,6 @@ decisió, cap codi tocat.
 - `ANALISI_Login_Navegacio.md` — anàlisi del sistema de login/autenticació i de la navegació de l'app (treball transversal, fora de fases).
 - `sql/2026-07-24_fase3_valoracio_pas1.sql` — migració SQL del Pas 1, ja aplicada a Test i Normal.
 - `sql/2026-07-25_fase3_valoracio_pas1b_decimals.sql` — migració SQL del Pas 1b (correcció de precisió), ja aplicada a Test i Normal.
+- `sql/2026-07-26_*` i `sql/2026-07-27_*` — migracions de la migració a Supabase Auth (Fase 1.3 i Passos 1, 2, 3b/3c i 4a), totes aplicades a Test i Normal, cadascuna amb el seu script de marxa enrere.
 
 **Proper pas immediat:** amb el Pas 4 tancat, queda per decidir, sense calendaritzar encara: el moment i mecanisme exacte del tall descrit més amunt (quan es considera "finalitzada" la integració per amagar els nav-cards antics i mostrar els nous a tothom — «Resultat Repte» i la seva cortina de 3 criteris no es redissenyen, es deixen intactes i ocultes), i el moment del tall per als reptes amb votació oberta.
