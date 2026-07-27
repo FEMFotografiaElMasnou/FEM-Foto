@@ -22,6 +22,22 @@ export const SUPABASE_CONFIGS = {
   },
 };
 
+// Pas 4c: els enllaços que s'envien per correu (recuperar contrasenya, enllaç
+// màgic) tornen a l'app amb `?db=normal|test`. El testimoni que porten només el
+// pot validar el client del MATEIX projecte que l'ha emès, i el mode actiu viu a
+// localStorage: sense això, demanar un enllaç des del mode Test i obrir-lo amb
+// l'app en mode Normal (o al revés) donaria un error incomprensible. Ha
+// d'executar-se abans de crear el client, per això és aquí dalt.
+function _modeFromUrl() {
+  try {
+    const p = new URLSearchParams(window.location.search).get('db');
+    if (p === 'test' || p === 'normal') return p;
+  } catch (_) {}
+  return null;
+}
+const _urlDbMode = _modeFromUrl();
+if (_urlDbMode) localStorage.setItem('femvotacions_dbmode', _urlDbMode);
+
 // Estat del mode actiu — persisteix en localStorage (per no perdre-ho en recàrrega)
 export let _dbMode = localStorage.getItem('femvotacions_dbmode') === 'test' ? 'test' : 'normal';
 

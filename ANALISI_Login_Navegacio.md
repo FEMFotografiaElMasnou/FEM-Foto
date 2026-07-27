@@ -802,6 +802,195 @@ filosofia que la Fase 3):
    d'accés directe, així que cridant la funció a mà les dades encara no hi eren.
    Al camí real sí que es carreguen abans.
 
+   **Pas 4c — FET i VERIFICAT als dos projectes (27/07/2026)**, incloent-hi la
+   prova amb un correu real de cap a cap. Pendent només el desplegament del codi
+   de client (commit + push).
+   Migració: `sql/2026-07-27_auth_migracio_pas4c_reset_contrasenya.sql`
+   (rollback a `sql/2026-07-27_auth_migracio_pas4c_rollback.sql`). Purament
+   additiva: una funció nova, cap política RLS ni cap dada tocada.
+
+   **El forat que calia tancar, i que no era evident**: `resetPasswordForEmail`
+   (i `updateUser({password})`) només canvien `auth.users.encrypted_password`. A
+   `public.users.password` hi quedaria la contrasenya ANTIGA en clar, i el camí
+   de reserva del Pas 4b (`fem_login()`) l'acceptaria perfectament: qui sabés la
+   contrasenya vella seguiria entrant a l'app després del reset (sense poder
+   escriure, per la RLS del Pas 3b/3c, però veient totes les dades). **Un reset
+   que no revoca la contrasenya anterior no és un reset.** És el mateix patró de
+   desincronització ja resolt al Pas 3b (contrasenyes) i al Pas 4b (email), amb
+   un tercer cas que hi faltava: el propi usuari canviant-se la contrasenya des
+   d'una sessió de recuperació.
+
+   **Solució**: RPC `SECURITY DEFINER` `fem_set_own_password(p_new_password)`,
+   que escriu les dues taules dins la mateixa transacció. No rep cap id
+   d'usuari: la identitat surt EXCLUSIVAMENT d'`auth.uid()` (la sessió que ha
+   creat l'enllaç del correu), així que ningú pot canviar la contrasenya d'un
+   tercer. Lliçó del Pas 4a aplicada des del primer minut: comprovació
+   explícita `IF v_uid IS NULL THEN RETURN false` (no una comparació que amb
+   NULL donaria NULL i es colaria), més `REVOKE EXECUTE ... FROM anon` com a
+   segona barrera. Verificat a Test: `anon` → `permission denied`.
+
+   **Canvis de client**: `js/screens/login.js` (enllaç "Has oblidat la
+   contrasenya?", botó d'enllaç màgic, modal d'accés per correu, detecció de la
+   tornada de l'enllaç i mode recuperació del modal de nova contrasenya),
+   `index.html`, `css/login.css`, `js/core/i18n.js` (ca+es) i `js/core/config.js`.
+
+   **Tres detalls tècnics que no són obvis i que ja estan resolts:**
+   - **El SDK esborra el fragment de la URL de manera asíncrona.** Els enllaços
+     tornen amb `#access_token=...&type=recovery`, i supabase-js el processa i
+     el neteja en arrencar. Si això passa abans que `init()` hagi enganxat
+     `onAuthStateChange`, l'esdeveniment `PASSWORD_RECOVERY` es perd i l'usuari
+     entra a l'app sense que ningú li demani la contrasenya nova. Es llegeix el
+     fragment sincrònicament en carregar el mòdul (sempre arriba primer) i el
+     listener es manté com a segona xarxa; un guard evita obrir el modal dues
+     vegades. Verificat que el SDK carregat (2.110.8) fa servir `flowType:
+     'implicit'` i `detectSessionInUrl: true`, que és el que fa vàlid aquest
+     mecanisme.
+   - **Els enllaços porten `?db=normal|test`.** El testimoni només el pot
+     validar el client del MATEIX projecte que l'ha emès, i el mode actiu viu a
+     `localStorage`: sense això, demanar un enllaç en mode Test i obrir-lo amb
+     l'app en mode Normal donaria un error incomprensible. Es llegeix a
+     `config.js` abans de crear el client.
+   - **Enllaç caducat o ja fet servir**: Supabase no crea sessió i torna l'error
+     a la mateixa URL. Es detecta i es mostra un avís, en lloc de deixar
+     l'usuari mirant la pantalla d'accés sense entendre per què no ha entrat.
+
+   **Decisions de producte**: l'enllaç màgic va com a botó secundari sota la
+   contrasenya, no com a opció principal (qui ja té el seu costum no ha de notar
+   cap canvi); `shouldCreateUser:false`, perquè un enllaç màgic no pugui crear
+   mai un compte d'Auth sense fila a `public.users`; i si l'email o el nom no
+   consten a `state.users` es diu clarament ("No consta cap compte amb aquestes
+   dades") en lloc d'un "correu enviat" que no arribaria mai — per a aquest
+   públic és molt més útil, i no revela res que la taula d'usuaris no exposi ja.
+
+   **Provat a Test (27/07/2026)**, servint en local (mai `file://`), amb un
+   compte d'usar i llençar creat i esborrat per a la prova:
+   - ✅ `anon` cridant `fem_set_own_password` → `permission denied`.
+   - ✅ Els dos modals, amb els textos correctes i el canvi entre ells.
+   - ✅ Email/nom inexistent → avís clar, sense enviar cap correu.
+   - ✅ Tornada de l'enllaç de recuperació (simulada amb el fragment exacte que
+     emet GoTrue, amb testimonis reals del projecte): l'app **no entra a l'app**
+     i obre el modal de contrasenya nova.
+   - ✅ Després de desar: `public.users.password` I `auth.users.encrypted_password`
+     tots dos actualitzats (comprovació bcrypt de round-trip).
+   - ✅ **La contrasenya VELLA queda revocada pels dos camins**: `fem_login` →
+     `invalid`, i Auth → `invalid_credentials`. Aquest és el punt crític.
+   - ✅ La sessió sobreviu al canvi i **pot escriure**: vot escrit a la BD des de
+     la pantalla real de votació.
+   - ✅ `?db=normal|test` canvia efectivament de projecte en carregar.
+   Test restaurat: 50 usuaris / 50 comptes d'Auth, 0 sense parella, 0 orfes.
+
+   **Nota metodològica (falsa alarma, val la pena recordar-la)**: la primera
+   prova de la tornada de l'enllaç semblava fallar — el modal no s'obria. No era
+   el codi: navegar d'una URL a la mateixa URL canviant només el `#` és una
+   navegació dins el mateix document, i el navegador **no recarrega la pàgina**,
+   així que l'app no es reinicialitzava mai. Amb una càrrega completa (el cas
+   real: s'arriba des del client de correu) funciona a la primera.
+
+   **Prova amb correu REAL, de cap a cap (27/07/2026, projecte Test)**, un cop
+   Enric va configurar el tauler. Compte d'usar i llençar amb l'àlies
+   `enricmr+femtest@gmail.com` (arriba a la seva safata però no és cap compte
+   real), creat i esborrat per a la prova:
+   - ✅ Correu demanat des del formulari real de l'app escrivint el **nom**
+     ("TEST Correu 4c"), no l'adreça — queda provat que la resolució nom→email
+     també funciona en aquest flux, no només al login.
+   - ✅ Registres d'Auth: `POST /recover`, `status:200`,
+     `user_recovery_requested`, 16:41:55 UTC, `referer:
+     http://localhost:3000/?db=test`.
+   - ✅ Correu rebut per Enric, amb la plantilla en català.
+   - ✅ Enllaç clicat → l'app s'obre en mode Test, **no entra**, demana la
+     contrasenya nova; posada, entra correctament.
+   - ✅ Verificació posterior a la BD **sense necessitat de saber la contrasenya
+     que va triar**: `crypt(public.users.password, auth.users.encrypted_password)
+     = auth.users.encrypted_password` → cert, és a dir les dues taules escriuen
+     el mateix secret. I la vella ja no consta enlloc.
+   - ✅ Contrasenya VELLA revocada pels dos camins: `fem_login` → `invalid`,
+     Auth → `invalid_credentials`.
+
+   **L'enllaç màgic es va provar a part, també amb correu real** — no s'havia de
+   donar per bo el Pas 4c havent verificat només la meitat. Segon compte d'usar i
+   llençar amb el mateix àlies: correu demanat des de l'app, rebut, i en clicar
+   l'enllaç **entra directament a l'app sense demanar cap contrasenya**
+   (comportament deliberadament diferent del de recuperació: el `type=magiclink`
+   de la URL no dispara el modal, que només reacciona a `type=recovery`).
+   Confirmat també a la BD: `auth.users.last_sign_in_at` actualitzat al moment
+   del clic.
+   Test restaurat: 50 usuaris / 50 comptes d'Auth, 0 sense parella, 0 orfes, cap
+   resta dels comptes de prova.
+
+   **Aplicat a NORMAL (27/07/2026)**: mateixa migració, verificada allà amb
+   `has_function_privilege` (`anon` → false, `authenticated` → true) i amb la
+   crida real per API com a `anon` → `permission denied`. La configuració del
+   tauler (Site URL, Redirect URLs, plantilles, caducitat) Enric la va fer als
+   dos entorns alhora.
+
+   **Caducitat de l'enllaç: 3600 s, no 86400.** La recomanació inicial de posar-hi
+   24 h es va rectificar en veure que l'analitzador de seguretat de Supabase avisa
+   sempre que passi d'una hora. Dos motius per fer-li cas: el cas real són minuts
+   (s'intenta entrar, es falla, es demana l'enllaç i s'obre el correu tot seguit),
+   i si caduca el cost és baix i autoservei (l'avís ja programat diu que se'n
+   demani un de nou); en canvi l'avís del panell es quedaria encès per sempre i
+   taparia troballes futures. Verificat amb `get_advisors` que ha desaparegut dels
+   dos projectes.
+
+   **Deixat expressament com està**: la *Leaked Password Protection*
+   (comprovació contra HaveIBeenPwned) segueix desactivada. Rebutjaria
+   contrasenyes febles en el registre i en cada reset, i amb la mitjana d'edat
+   del club (~65 anys) és fricció que no compensa en aquesta app.
+
+   **Configuració del tauler de Supabase feta per Enric (27/07/2026)** als dos
+   projectes:
+   - Authentication → URL Configuration → *Site URL*:
+     `https://fem-foto.vercel.app`
+   - Authentication → URL Configuration → *Redirect URLs*: afegir-hi
+     `https://fem-foto.vercel.app/**` i `http://localhost:3000/**` (aquesta
+     última per poder provar-ho en local abans de desplegar; es pot treure
+     després).
+   - Authentication → Providers → Email → *Email OTP Expiration*: **3600 s**
+     (vegeu més amunt per què no 86400).
+   - Authentication → Emails → Templates: enganxar les plantilles en català de
+     més avall (**Reset Password** i **Magic Link**).
+
+   **Plantilles de correu en català** (variable `{{ .ConfirmationURL }}` = enllaç
+   generat per Supabase):
+
+   *Reset Password* — assumpte:
+   `Recupera la teva contrasenya — FEM Fotografia El Masnou`
+
+   ```html
+   <div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#1a1a1a;max-width:520px;">
+     <h2 style="font-size:22px;margin:0 0 16px;">Recupera la teva contrasenya</h2>
+     <p>Hola,</p>
+     <p>Has demanat crear una contrasenya nova per entrar a l'app de FEM Fotografia El Masnou. Prem el botó i te la deixarem canviar:</p>
+     <p style="margin:28px 0;">
+       <a href="{{ .ConfirmationURL }}" style="background:#1877f2;color:#ffffff;text-decoration:none;font-size:17px;font-weight:bold;padding:14px 28px;border-radius:8px;display:inline-block;">Crear una contrasenya nova</a>
+     </p>
+     <p>Si el botó no funciona, copia aquesta adreça al navegador:<br>
+       <a href="{{ .ConfirmationURL }}">{{ .ConfirmationURL }}</a>
+     </p>
+     <p style="color:#666;">Si no has demanat res, pots ignorar aquest correu: la teva contrasenya no canviarà.</p>
+     <p style="color:#666;">FEM Fotografia El Masnou</p>
+   </div>
+   ```
+
+   *Magic Link* — assumpte:
+   `El teu enllaç per entrar — FEM Fotografia El Masnou`
+
+   ```html
+   <div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#1a1a1a;max-width:520px;">
+     <h2 style="font-size:22px;margin:0 0 16px;">Entra a l'app</h2>
+     <p>Hola,</p>
+     <p>Prem el botó per entrar a l'app de FEM Fotografia El Masnou. No et cal recordar cap contrasenya:</p>
+     <p style="margin:28px 0;">
+       <a href="{{ .ConfirmationURL }}" style="background:#1877f2;color:#ffffff;text-decoration:none;font-size:17px;font-weight:bold;padding:14px 28px;border-radius:8px;display:inline-block;">Entrar a l'app</a>
+     </p>
+     <p>Si el botó no funciona, copia aquesta adreça al navegador:<br>
+       <a href="{{ .ConfirmationURL }}">{{ .ConfirmationURL }}</a>
+     </p>
+     <p style="color:#666;">Si no has demanat aquest correu, pots ignorar-lo.</p>
+     <p style="color:#666;">FEM Fotografia El Masnou</p>
+   </div>
+   ```
+
 5. **Configurar SMTP extern i plantilles de correu** — requisit dur, no
    opcional (§1.4 més amunt: el servei integrat no envia a adreces que no
    siguin de l'equip del projecte, no és un tema de volum). **Decidit

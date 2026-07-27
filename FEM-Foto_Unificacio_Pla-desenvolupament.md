@@ -148,9 +148,13 @@ Supabase (RLS "activada" però amb polítiques permissives a totes les taules, i
 - **Pas 4b (27/07)** — Supabase Auth ja és qui decideix l'accés, i la sessió es manté oberta fins
   que es prem "Sortir" (abans, tancar la pestanya obligava a tornar a entrar). El canvi d'email
   d'un soci des del panell de Socis també actualitza el seu compte d'Auth.
-- **Pendent**: 4c (recuperació de contrasenya per correu i accés per enllaç màgic, amb el correu
-  del club ja configurat i provat) i 4d (retirada del sistema antic). Mètode d'accés previst:
-  contrasenya **i** enllaç màgic, a triar per l'usuari.
+- **Pas 4c (27/07)** — a la pantalla d'accés hi ha "Has oblidat la contrasenya?" i "Entrar amb un
+  enllaç per correu". Qui no pot entrar ja no depèn de l'administrador: rep un correu del domini
+  del club i se'n surt sol. Provat de cap a cap amb un correu real. Detall important perquè no
+  quedés una porta oberta: en canviar la contrasenya des del correu, **la contrasenya antiga
+  queda revocada de debò** (s'escriuen alhora les dues taules on viu, no només la de Supabase
+  Auth). Mètode d'accés: contrasenya **i** enllaç màgic, a triar per l'usuari.
+- **Pendent**: 4d (retirada del sistema antic).
 
 El bloc (2), navegació, segueix sense començar.
 

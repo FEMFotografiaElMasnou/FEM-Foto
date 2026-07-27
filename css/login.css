@@ -141,6 +141,42 @@
   box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
 
+/* ── ACCÉS PER CORREU (Pas 4c: contrasenya oblidada + enllaç màgic) ── */
+/* Mida de lletra deliberadament NO petita: aquests dos controls són,
+   precisament, els que fa servir qui té problemes per entrar. */
+.login-link-btn {
+  background: none;
+  border: none;
+  padding: 6px 4px;
+  color: var(--accent2);
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.login-link-btn:hover { color: var(--accent); }
+
+/* Separador "o bé" amb una línia a banda i banda */
+.login-sep {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 6px 0 14px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.login-sep::before,
+.login-sep::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--surface3);
+}
+
 /* Login responsivo (≤640px) */
 @media (max-width: 640px) {
   .logo-image { max-width: 260px; }

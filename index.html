@@ -86,6 +86,16 @@
           <input type="password" id="login-pass" placeholder="••••••••">
         </div>
         <button type="button" class="btn btn-primary" onclick="handleLogin()" id="login-btn" style="width:100%;" data-i18n="enter_btn">Entrar</button>
+
+        <!-- Pas 4c (ANALISI_Login_Navegacio.md §1.4): dues sortides per a qui no
+             pot entrar. L'enllaç màgic es deixa com a botó secundari sota la
+             contrasenya, no com a opció principal: qui ja té el seu costum no
+             ha de notar cap canvi. -->
+        <div style="text-align:center;margin-top:12px;">
+          <button type="button" class="login-link-btn" onclick="openAccessHelp('reset')" data-i18n="forgot_pwd_link">Has oblidat la contrasenya?</button>
+        </div>
+        <div class="login-sep"><span data-i18n="login_or">o bé</span></div>
+        <button type="button" class="btn btn-secondary" onclick="openAccessHelp('magic')" style="width:100%;" data-i18n="magic_link_btn">Entrar amb un enllaç per correu</button>
       </div>
 
       <!-- REGISTER FORM -->
@@ -832,10 +842,15 @@
 </div>
 
 <!-- Forced new-password modal (after admin reset) -->
+<!-- Pas 4c: el mateix modal serveix per als dos camins que acaben triant una
+     contrasenya nova — el reset fet per un admin i la recuperació per correu.
+     El títol i el missatge canvien intercanviant l'atribut data-i18n des de
+     openNewPasswordModal() (login.js), no el text: applyTranslations() repinta
+     tots els [data-i18n] i esborraria qualsevol text escrit a mà. -->
 <div class="modal-overlay" id="modal-new-password">
   <div class="modal">
-    <h2 data-i18n="new_pwd_modal_title">Crea una nova contrasenya</h2>
-    <p data-i18n="new_pwd_modal_msg" style="color:var(--text-muted);font-size:15px;line-height:1.6;margin-bottom:16px;">
+    <h2 id="new-pwd-title" data-i18n="new_pwd_modal_title">Crea una nova contrasenya</h2>
+    <p id="new-pwd-msg" data-i18n="new_pwd_modal_msg" style="color:var(--text-muted);font-size:15px;line-height:1.6;margin-bottom:16px;">
       L'administrador ha resetejat la teva contrasenya. Introdueix-ne una de nova per continuar.
     </p>
     <div class="form-group">
@@ -849,6 +864,27 @@
     <div id="new-pwd-error" class="error-msg" style="display:none;margin-bottom:8px;"></div>
     <div class="modal-actions">
       <button type="button" class="btn btn-primary" onclick="saveNewPassword()" data-i18n="new_pwd_save">Desar i entrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Pas 4c: accés per correu — "he oblidat la contrasenya" i enllaç màgic.
+     Un sol modal per als dos casos (mateix camp, mateix botó): l'únic que
+     canvia és el text i què s'envia. -->
+<div class="modal-overlay" id="modal-access-help">
+  <div class="modal">
+    <h2 id="access-help-title" data-i18n="reset_modal_title">Recuperar la contrasenya</h2>
+    <p id="access-help-msg" data-i18n="reset_modal_msg" style="color:var(--text-muted);font-size:15px;line-height:1.6;margin-bottom:16px;">
+      Escriu el teu email o el teu nom i t'enviarem un correu per crear una contrasenya nova.
+    </p>
+    <div class="form-group">
+      <label data-i18n="username_label">Usuari / Email</label>
+      <input type="text" id="access-help-input" data-i18n-placeholder="login_user_placeholder" placeholder="El teu email o nom d'usuari" autocomplete="off">
+    </div>
+    <div id="access-help-error" class="error-msg" style="display:none;margin-bottom:8px;"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('modal-access-help')" data-i18n="cancel_btn">Cancel·lar</button>
+      <button type="button" class="btn btn-primary" id="access-help-send" onclick="sendAccessHelp()" data-i18n="access_help_send">Envia'm el correu</button>
     </div>
   </div>
 </div>
