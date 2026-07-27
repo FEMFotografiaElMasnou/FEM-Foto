@@ -10,11 +10,18 @@ import { loadAllData, loadAppTexts } from '../core/data.js';
 import { showScreen, showAdminScreen, showParticipantScreen, stopAutoRefresh } from '../core/router.js';
 
 // ═══════════════════════════════════
-// PERSISTÈNCIA DE SESSIÓ (sessionStorage)
+// PERSISTÈNCIA DE SESSIÓ
 // ═══════════════════════════════════
-// Manté la sessió mentre la pestanya estigui oberta; s'esborra en tancar-la o en
-// fer logout. Evita haver de tornar a fer login en recarregar (F5). NO es desa
-// mai la contrasenya: només id, name i role (dades no sensibles).
+// Pas 4b (ANALISI_Login_Navegacio.md §1.4): la sessió REAL és ara la de Supabase
+// Auth, que el propi SDK desa a localStorage amb una clau per projecte (Normal i
+// Test no es trepitgen). Per decisió d'Enric (27/07/2026) la sessió és
+// PERSISTENT: qui entra hi segueix fins que prem "Sortir" — abans, tancar la
+// pestanya tancava la sessió.
+//
+// El sessionStorage antic es manté NOMÉS com a xarxa de seguretat per al camí
+// de reserva (fem_login sense sessió d'Auth, vegeu handleLogin): així, si per
+// algun motiu Auth no pogués establir sessió, el comportament no empitjora
+// respecte d'abans. Mai s'hi desa la contrasenya: només id, name i role.
 const SESSION_KEY = 'fem_user';
 function saveSession(user) {
   try {
@@ -26,6 +33,35 @@ function readSession() {
 }
 function clearSession() {
   try { sessionStorage.removeItem(SESSION_KEY); } catch (_) {}
+}
+
+// Perfil complet de `state.users` a partir de l'email de la sessió d'Auth.
+// Es fa per email i no per l'UUID d'Auth perquè el client no té permís de
+// lectura sobre `users.auth_user_id` (Fase 1.3: només es concedeix SELECT de
+// les columnes no sensibles) — i l'email és únic a la taula igualment.
+function _profileByEmail(email) {
+  if (!email) return null;
+  const target = String(email).toLowerCase().trim();
+  return state.users.find(u => String(u.email || '').toLowerCase().trim() === target) || null;
+}
+
+// Sessió d'Auth vàlida en aquest navegador per al projecte actiu, si n'hi ha.
+async function _authSessionEmail() {
+  try {
+    const { data } = await sb.auth.getSession();
+    return (data && data.session && data.session.user && data.session.user.email) || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+// Entra a l'app amb un usuari ja resolt (comú a tots els camins d'accés).
+function _enterApp(user) {
+  state.currentUser = user;
+  saveSession(user);
+  applyTranslations();
+  if (user.role === 'admin') showAdminScreen();
+  else showParticipantScreen();
 }
 
 // ═══════════════════════════════════
@@ -48,23 +84,86 @@ export async function init() {
     document.getElementById('setup-banner').style.display = 'block';
   }
 
-  // Restaurar sessió guardada (evita re-login en recarregar la pàgina)
+  _listenAuthChanges();
+
+  // Pas 4b: la sessió de Supabase Auth mana. Si n'hi ha una de vàlida en aquest
+  // navegador, s'entra directament sense demanar res (sessió persistent). El
+  // perfil (nom, rol) es torna a llegir SEMPRE de state.users, mai del que
+  // hi hagués desat: si l'admin ha canviat el rol, es reflecteix a l'instant.
+  const authEmail = await _authSessionEmail();
+  if (authEmail) {
+    const fullUser = _profileByEmail(authEmail);
+    if (fullUser) {
+      _enterApp(fullUser);
+      return; // no mostrem la pantalla de login
+    }
+    // Sessió d'Auth d'algú que ja no té fila a public.users (baixa feta des
+    // d'un altre dispositiu): es tanca perquè no quedi una identitat morta.
+    await signOutSilently();
+    clearSession();
+  }
+
+  // Xarxa de seguretat: sessió antiga de sessionStorage (només hi arriba qui ha
+  // entrat pel camí de reserva de handleLogin, sense sessió real d'Auth).
   const saved = readSession();
   if (saved && saved.id) {
-    // Busquem l'usuari complet a state.users (carregat de Supabase) en lloc de
-    // confiar cegament en el desat: si l'admin li ha canviat el rol, es reflecteix.
     const fullUser = state.users.find(u => u.id === saved.id);
     if (fullUser) {
-      state.currentUser = fullUser;
-      applyTranslations();
-      if (fullUser.role === 'admin') showAdminScreen();
-      else showParticipantScreen();
-      return; // no mostrem la pantalla de login
+      _enterApp(fullUser);
+      return;
     }
     clearSession(); // sessió invàlida (l'usuari ja no existeix)
   }
 
   applyTranslations();
+}
+
+// ═══════════════════════════════════
+// CANVIS D'ESTAT DE LA SESSIÓ D'AUTH
+// ═══════════════════════════════════
+// Pas 4b. Ens interessa un cas concret: que la sessió caduqui o es tanqui
+// (token de refresc invalidat, logout fet en una altra pestanya). Sense això
+// l'app es quedaria oberta amb una identitat morta i totes les escriptures
+// fallarien en silenci per RLS. La resta d'esdeveniments (SIGNED_IN,
+// TOKEN_REFRESHED, INITIAL_SESSION) no requereixen fer res: el SDK ja manté
+// el token al dia tot sol.
+//
+// _selfSignOut evita el bucle amb el nostre propi logout(), que ja porta
+// l'usuari a la pantalla d'accés pel seu compte.
+let _selfSignOut = false;
+
+// Tanca la sessió sense que el listener de sota ho interpreti com una caiguda
+// externa. `client` permet actuar sobre un client concret (config.js el fa
+// servir en canviar de base de dades, quan `sb` ja apunta a l'altre projecte).
+export async function signOutSilently(client) {
+  const target = client || sb;
+  if (!target || !target.auth) return;
+  try {
+    _selfSignOut = true;
+    await target.auth.signOut();
+  } catch (e) {
+    console.warn('[Pas 4b] signOut ha fallat:', e);
+  } finally {
+    _selfSignOut = false;
+  }
+}
+
+// El client es recrea en canviar de base de dades (switchDbMode), així que el
+// listener s'ha de tornar a enganxar al client nou — d'aquí la comparació amb
+// el client al qual ja el tenim enganxat, en lloc d'un simple booleà.
+let _authListenerClient = null;
+export function _listenAuthChanges() {
+  if (!sb || !sb.auth || _authListenerClient === sb) return;
+  _authListenerClient = sb;
+  sb.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_OUT' && !_selfSignOut && state.currentUser) {
+      console.warn('[Pas 4b] Sessió d\'Auth tancada externament; es torna a la pantalla d\'accés.');
+      _resetToLoginScreen();
+      showToast(t('session_expired'), 'error');
+    }
+    // Pas 4c hi enganxarà aquí l'esdeveniment PASSWORD_RECOVERY (enllaç de
+    // "he oblidat la contrasenya") per obrir la pantalla de nova contrasenya.
+  });
 }
 
 export async function initializeDB() {
@@ -141,11 +240,43 @@ export async function handleLogin() {
     return;
   }
 
-  // Verificació al servidor (fem_login, funció SECURITY DEFINER a Supabase,
-  // sql/2026-07-26_login_seguretat_fem_login.sql): el client ja no compara
-  // la contrasenya en memòria ni necessita llegir-la — tanca l'exposició
-  // detectada a ANALISI_Login_Navegacio.md §1.2 (qualsevol podia llegir-la
-  // en clar via l'API pública).
+  // ── Pas 4b: Supabase Auth és qui decideix l'accés ──────────────────────────
+  // El camp "Usuari / Email" accepta indistintament l'email o el nom complet,
+  // però signInWithPassword() només entén emails. Si no és un email, resolem
+  // el nom contra state.users (lectura ja permesa, sense la contrasenya).
+  let email = username.includes('@') ? username.toLowerCase() : null;
+  if (!email) {
+    const byName = state.users.find(
+      u => String(u.name || '').toLowerCase().trim() === username.toLowerCase()
+    );
+    if (byName) email = String(byName.email || '').toLowerCase();
+  }
+
+  if (email) {
+    const { error: authError } = await sb.auth.signInWithPassword({ email, password });
+    if (!authError) {
+      const profile = _profileByEmail(email);
+      if (profile) {
+        _enterApp(profile);
+        return;
+      }
+      // Compte d'Auth sense fila a public.users: estat inconsistent, no el
+      // deixem entrar a mitges (l'app necessita el perfil per saber-ne el rol).
+      await signOutSilently();
+      console.error('[Pas 4b] Sessió d\'Auth vàlida però sense perfil a public.users:', email);
+      errEl.style.display = 'block';
+      errEl.textContent   = t('generic_error');
+      return;
+    }
+  }
+
+  // ── Camí de reserva: fem_login() ──────────────────────────────────────────
+  // Cobreix dos casos legítims: (a) la contrasenya reiniciada per un admin
+  // (a public.users queda buida, així que Auth no la pot validar mai) — el
+  // 'reset_required' de sota obre el modal de nova contrasenya; i (b) qualsevol
+  // compte que, per un desajust, encara no tingui parella a auth.users. Si
+  // s'hi entra per aquí NO hi ha sessió real d'Auth, i per tant les
+  // escriptures fallaran: per això es deixa constància a la consola.
   const { data: rows, error: rpcError } = await sb.rpc('fem_login', {
     p_identity: username,
     p_password: password,
@@ -174,52 +305,39 @@ export async function handleLogin() {
     return;
   }
 
-  const user = {
+  // Hi hem arribat sense sessió real d'Auth: l'usuari entra, però qualsevol
+  // escriptura seva serà rebutjada per la RLS (Pas 3b/3c). És un cas que no
+  // hauria de passar amb la BD ben sincronitzada; el deixem funcionar per no
+  // tancar-li la porta, i el registrem per poder-ho diagnosticar.
+  console.warn('[Pas 4b] Accés pel camí de reserva (fem_login): aquest compte no té sessió real d\'Auth i no podrà escriure. Email:', result.email);
+
+  _enterApp({
     id: result.id, name: result.display_name, email: result.email,
     username: result.email, role: result.role,
-  };
-  state.currentUser = user;
-  saveSession(user);
-
-  // Pas 3a de la migració a Supabase Auth (ANALISI_Login_Navegacio.md §1.4):
-  // establim també una sessió real d'Auth EN PARAL·LEL al login existent, que
-  // segueix sent l'únic que decideix si l'accés és vàlid (fem_login, més amunt).
-  // Purament additiu: si falla (p.ex. l'usuari encara no té compte a auth.users,
-  // o la contrasenya d'Auth ha quedat desincronitzada per un reset fet només a
-  // public.users), no bloqueja ni altera el login d'avui — només ho registrem
-  // per poder-ho diagnosticar durant les proves a Test.
-  try {
-    const { error: authError } = await sb.auth.signInWithPassword({ email: result.email, password });
-    if (authError) console.warn('[Pas 3a] signInWithPassword no ha pogut establir sessió real:', authError.message);
-  } catch (e) {
-    console.warn('[Pas 3a] signInWithPassword ha fallat inesperadament:', e);
-  }
-
-  if (user.role === 'admin') {
-    showAdminScreen();
-  } else {
-    showParticipantScreen();
-  }
+  });
 }
 
-// Entra directament com l'usuari amb aquest email (sense demanar contrasenya).
-// L'usem en canviar a mode TEST: qui prem el botó ja és un admin autenticat, així
-// que reentrem amb el mateix email a la BD de proves sense re-login. Retorna
-// true si ha trobat l'usuari i ha entrat; false si no existeix en aquesta BD.
-export function enterAsEmail(email) {
+// Entra amb la sessió d'Auth que JA existeixi en aquest navegador per al
+// projecte actiu, si correspon a l'email indicat. L'usem en canviar a mode
+// TEST: la primera vegada caldrà fer login (abans s'hi entrava sense
+// contrasenya, cosa que no pot generar cap sessió real d'Auth i deixava el
+// mode Test sense poder escriure); a partir d'aleshores, com que la sessió és
+// persistent, el canvi torna a ser immediat. Retorna true si ha pogut entrar.
+export async function enterWithExistingAuthSession(email) {
   if (!email) return false;
   const target = String(email).toLowerCase().trim();
-  const u = state.users.find(x => String(x.email || '').toLowerCase().trim() === target);
+  const authEmail = await _authSessionEmail();
+  if (!authEmail || authEmail.toLowerCase().trim() !== target) return false;
+  const u = _profileByEmail(target);
   if (!u) return false;
-  state.currentUser = u;
-  saveSession(u);
-  applyTranslations();
-  if (u.role === 'admin') showAdminScreen();
-  else showParticipantScreen();
+  _enterApp(u);
   return true;
 }
 
-export function logout() {
+// Torna a la pantalla d'accés SENSE tocar la sessió d'Auth. Ús intern: el canvi
+// de base de dades (config.js) ja gestiona les sessions pel seu compte, i aquí
+// només cal reiniciar la interfície.
+export function _resetToLoginScreen() {
   stopAutoRefresh();
   state.currentUser = null;
   clearSession();
@@ -230,6 +348,15 @@ export function logout() {
   // Show/hide TEST mode banner on login screen
   const testBanner = document.getElementById('login-test-banner');
   if (testBanner) testBanner.style.display = _dbMode === 'test' ? 'block' : 'none';
+}
+
+export async function logout() {
+  // Pas 4b: tancar la sessió de debò. Abans només s'esborrava el sessionStorage
+  // i la sessió d'Auth seguia viva al navegador — amb sessió persistent, això
+  // hauria deixat entrar automàticament el mateix usuari a la recàrrega
+  // següent, tot i haver premut "Sortir".
+  await signOutSilently();
+  _resetToLoginScreen();
 }
 
 // ═══════════════════════════════════
@@ -294,16 +421,10 @@ export async function saveNewPassword() {
   }
 
   // Update local state and proceed with login
-  state.currentUser = _pendingPasswordUser;
-  saveSession(_pendingPasswordUser);
   closeModal('modal-new-password');
-
-  if (_pendingPasswordUser.role === 'admin') {
-    showAdminScreen();
-  } else {
-    showParticipantScreen();
-  }
+  const u = _pendingPasswordUser;
   _pendingPasswordUser = null;
+  _enterApp(u);
 }
 
 // ═══════════════════════════════════
@@ -389,19 +510,16 @@ export async function handleRegister() {
   }
 
   await loadAllData();
-  const savedUser = state.users.find(u => u.email.toLowerCase() === result.email.toLowerCase());
-  state.currentUser = savedUser || {
-    id: result.id, name: result.display_name, email: result.email,
-    username: result.email, role: result.role,
-  };
-  saveSession(state.currentUser);
   document.getElementById('reg-name').value  = '';
   document.getElementById('reg-email').value = '';
   document.getElementById('reg-pass').value  = '';
   document.getElementById('reg-pass2').value = '';
   hideLoader();
   showToast(t('account_created') + ', ' + name + ' 🎉', 'success');
-  showParticipantScreen();
+  _enterApp(_profileByEmail(result.email) || {
+    id: result.id, name: result.display_name, email: result.email,
+    username: result.email, role: result.role,
+  });
 
   btn.innerHTML = t('create_account_btn'); btn.disabled = false;
 }
@@ -430,13 +548,12 @@ export async function handleUnsubscribe() {
     return;
   }
 
-  // Tanca també la sessió d'Auth del compte acabat d'esborrar (el JWT seguiria
-  // viu al navegador fins que caduqués, apuntant a un usuari que ja no existeix).
-  try { await sb.auth.signOut(); } catch (_) {}
-
   showToast(t('account_deleted'), 'info');
   await new Promise(r => setTimeout(r, 1500));
-  logout();
+  // logout() ja tanca la sessió d'Auth del compte acabat d'esborrar (Pas 4b):
+  // el JWT seguiria viu al navegador fins a caducar, apuntant a un usuari que
+  // ja no existeix.
+  await logout();
 }
 
 // Exponer en window las funciones usadas desde onclick del HTML

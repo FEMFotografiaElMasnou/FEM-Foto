@@ -724,6 +724,81 @@ filosofia que la Fase 3):
    tenia res a desar. Amb una càrrega neta de pàgina (cas real: cada usuari al
    seu navegador) funciona correctament. Per provar aquest automatisme cal
    recarregar la pàgina entre usuaris, no només fer logout/login.
+   **Pas 4b — FET i VERIFICAT a Test (27/07/2026). NO aplicat encara a Normal.**
+   Supabase Auth passa a ser qui decideix l'accés; `fem_login()` queda degradat a
+   xarxa de seguretat. Canvis a `js/screens/login.js`, `js/core/config.js`,
+   `js/features/socis.js` i `js/core/i18n.js`, més una migració petita
+   (`sql/2026-07-27_auth_migracio_pas4b_sync_email.sql`).
+
+   **Com decideix l'accés ara** (`handleLogin`): el camp "Usuari / Email" accepta
+   email o nom complet, però `signInWithPassword()` només entén emails — si el
+   que s'escriu no és un email, es resol el nom contra `state.users` (lectura ja
+   permesa, sense contrasenya) per obtenir-lo. Si Auth valida, el perfil (nom,
+   rol) es llegeix de `state.users` i s'entra. Si Auth NO valida, es cau al
+   camí de reserva `fem_login()`, que cobreix dos casos legítims: (a) contrasenya
+   reiniciada per un admin (a `public.users` queda buida, així que Auth no la pot
+   validar mai) → obre el modal de nova contrasenya, com sempre; i (b) qualsevol
+   compte que per un desajust no tingui parella a `auth.users` → entra, però
+   sense sessió real, i queda constància a la consola perquè es pugui
+   diagnosticar. Cap usuari es queda fora en cap dels dos casos.
+
+   **Sessió persistent** (decisió d'Enric): la sessió real és la de Supabase
+   Auth, que el SDK desa a `localStorage` amb una clau per projecte (Normal i
+   Test no es trepitgen). En arrencar, `init()` mira si hi ha sessió d'Auth
+   vàlida i entra directament. El `sessionStorage` antic es manté només com a
+   xarxa de seguretat del camí de reserva, perquè el comportament no empitjori
+   mai respecte d'abans.
+
+   **"Sortir" ara tanca la sessió de debò** — abans `logout()` només esborrava el
+   `sessionStorage` i la sessió d'Auth seguia viva al navegador; amb sessió
+   persistent això hauria tornat a entrar sol a la recàrrega següent.
+
+   **Sessió caiguda des de fora**: `onAuthStateChange` escolta `SIGNED_OUT`
+   (token de refresc invalidat, logout des d'una altra pestanya) i torna a la
+   pantalla d'accés amb un avís, en lloc de deixar l'app oberta amb una identitat
+   morta i totes les escriptures fallant en silenci. Els nostres propis
+   `signOut()` passen per `signOutSilently()` perquè no disparin aquest avís.
+
+   **Canvi Normal↔Test**: abans s'hi entrava sense contrasenya (`enterAsEmail`),
+   cosa que no pot generar cap sessió real d'Auth i, des del Pas 3b/3c, deixava
+   el mode Test sense poder escriure res. Regla nova: **entrar a NORMAL sempre
+   demana login** (es tanca qualsevol sessió que hi hagués, com fins ara), i la
+   sessió de TEST es conserva, de manera que la primera vegada cal fer login a
+   Test i a partir d'aleshores el canvi torna a ser immediat.
+
+   **Desajust d'email tancat** (`sql/..._pas4b_sync_email.sql`): el panell de
+   Socis canviava l'email amb un UPDATE directe a `public.users`, sense tocar
+   `auth.users`. Ara que la identitat es resol per email, això hauria deixat
+   aquell soci sense poder iniciar sessió real amb l'adreça nova. Nova RPC
+   `fem_admin_set_email()` (`SECURITY DEFINER`, admin-only, `REVOKE` a `anon`)
+   que escriu a `public.users`, `auth.users` i `auth.identities` alhora — mateix
+   patró que ja calia per a les contrasenyes al Pas 3b.
+
+   **Provat en viu a Test** (servint en local, amb dos comptes de prova creats i
+   esborrats en acabar):
+   - ✅ Login pel **nom complet** (no email) → resolt i amb sessió real d'Auth.
+   - ✅ Recàrrega de pàgina → segueix dins; i **també amb el `sessionStorage`
+     esborrat** (equivalent a tancar i reobrir la pestanya), que és la prova que
+     qui restaura la sessió és Auth i no el mecanisme antic.
+   - ✅ "Sortir" → token esborrat del navegador i, en recarregar, pantalla
+     d'accés.
+   - ✅ Contrasenya incorrecta → mateix missatge d'error de sempre, sense sessió.
+   - ✅ Contrasenya reiniciada per l'admin → modal de nova contrasenya i, en
+     acabar, sessió real establerta.
+   - ✅ Admin canvia l'email d'un soci → les tres taules sincronitzades, i el
+     soci entra amb l'adreça nova, amb `auth.uid()` resolent la seva identitat i
+     **un vot escrit correctament**.
+   - ✅ Sessió tancada des de fora → l'app torna a la pantalla d'accés.
+   - ✅ Test→Normal → demana login i conserva la sessió de Test; accés directe a
+     Test reaprofitant-la, verificat.
+   Test restaurat: 50 usuaris / 50 comptes d'Auth, sense orfes.
+
+   **Nota metodològica**: una primera prova de l'accés directe a Test va donar
+   fals negatiu. No era el codi: en canviar de mode sense estar loguejat,
+   `switchDbMode()` buida `state.users` i només les recarrega dins la branca
+   d'accés directe, així que cridant la funció a mà les dades encara no hi eren.
+   Al camí real sí que es carreguen abans.
+
 5. **Configurar SMTP extern i plantilles de correu** — requisit dur, no
    opcional (§1.4 més amunt: el servei integrat no envia a adreces que no
    siguin de l'equip del projecte, no és un tema de volum). **Decidit

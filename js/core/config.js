@@ -7,7 +7,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { state } from './state.js';
 import { showToast } from '../ui/toast.js';
-import { logout, enterAsEmail } from '../screens/login.js';
+import { enterWithExistingAuthSession, _resetToLoginScreen, _listenAuthChanges, signOutSilently } from '../screens/login.js';
 import { loadAllData, loadAppTexts } from './data.js';
 import { t, applyTranslations } from './i18n.js';
 
@@ -66,6 +66,17 @@ export async function switchDbMode(newMode) {
   // Recrea el client apuntant a la nova BD
   sb = _createSupabaseClient(_dbMode);
 
+  // Pas 4b: cada projecte té la seva pròpia sessió d'Auth a localStorage, i no
+  // es trepitgen. Regla aplicada: **entrar a NORMAL (producció) sempre demana
+  // login** — es tanca qualsevol sessió que hi hagués, com fins ara — mentre
+  // que la sessió de TEST es conserva, perquè canviar d'entorn segueixi sent
+  // àgil un cop s'hi ha entrat una primera vegada.
+  if (newMode === 'normal') {
+    await signOutSilently();
+  }
+  // El listener de canvis de sessió estava enganxat al client anterior.
+  _listenAuthChanges();
+
   // Torna a carregar els textos des de l'entorn nou (Normal i Test poden tenir
   // valors diferents a app_texts si s'han editat per separat) i repinta.
   try { await loadAppTexts(); applyTranslations(); } catch (_) {}
@@ -84,23 +95,32 @@ export async function switchDbMode(newMode) {
   // Actualitza el botó i el segell visualment
   _updateDbModeButton();
 
-  // AUTO-LOGIN només en anar a TEST (entorn de proves): si el mateix email existeix
-  // a la BD de test, hi entrem directe sense demanar contrasenya. Tornar a NORMAL
-  // (producció) sempre demana login per seguretat.
+  // ACCÉS DIRECTE només en anar a TEST (entorn de proves), i només si en aquest
+  // navegador JA hi ha una sessió d'Auth vàlida per al projecte de proves amb
+  // el mateix email. Tornar a NORMAL (producció) sempre demana login.
+  //
+  // Pas 4b: abans s'entrava a Test només comprovant que l'email existís a la
+  // seva taula d'usuaris, sense contrasenya. Això no pot generar cap sessió
+  // real d'Auth, i des del Pas 3b/3c deixava el mode Test sense poder escriure
+  // res (votar, gestionar socis...). Ara, la primera vegada cal fer login a
+  // Test; com que la sessió és persistent, a partir d'aleshores el canvi torna
+  // a ser immediat.
   if (newMode === 'test' && prevEmail) {
     try {
       await loadAllData();
-      if (enterAsEmail(prevEmail)) {
+      if (await enterWithExistingAuthSession(prevEmail)) {
         showToast(t('db_mode_changed').replace('{mode}', '🔴 ' + t('db_mode_test')), 'error');
         return;
       }
     } catch (e) {
-      console.error('Auto-login a Test ha fallat, es demana login:', e);
+      console.error('Accés directe a Test no possible, es demana login:', e);
     }
   }
 
-  // Fallback (no s'ha trobat l'usuari a test) o tornada a Normal → login
-  logout();
+  // Sense sessió vàlida al projecte nou (o tornada a Normal) → pantalla d'accés.
+  // No es fa logout() perquè la sessió del projecte que deixàvem ja s'ha tancat
+  // més amunt, i la del projecte nou (si n'hi ha) no s'ha de tocar.
+  _resetToLoginScreen();
 
   const modeLabel = _dbMode === 'test' ? ('🔴 ' + t('db_mode_test')) : ('🟢 ' + t('db_mode_normal'));
   showToast(t('db_mode_changed').replace('{mode}', modeLabel), _dbMode === 'test' ? 'error' : 'success');

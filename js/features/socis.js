@@ -171,11 +171,29 @@ export async function saveMember() {
 
   if (id) {
     // Edit existing member — single row update
-    const fields = { display_name: name, email, role };
-    const { error } = await sb.from('users').update(fields).eq('id', id);
+    const prev = state.users.find(u => u.id === id);
+    const emailChanged = !prev || String(prev.email || '').toLowerCase() !== email.toLowerCase();
+
+    const { error } = await sb.from('users').update({ display_name: name, role }).eq('id', id);
     if (error) {
-      showToast(error.code === '23505' ? t('email_exists') : '❌ Error', 'error');
+      showToast('❌ Error', 'error');
       return;
+    }
+
+    // Pas 4b (ANALISI_Login_Navegacio.md §1.4): l'email va per una RPC a part
+    // (fem_admin_set_email) perquè també el canviï a auth.users. Ara que
+    // l'accés el decideix Supabase Auth i la identitat es resol per email, un
+    // UPDATE només a public.users deixaria aquest soci sense poder iniciar
+    // sessió real amb la seva adreça nova — i, per RLS, sense poder escriure.
+    if (emailChanged) {
+      const { data: okEmail, error: emailErr } = await sb.rpc('fem_admin_set_email', {
+        p_user_id: id, p_new_email: email,
+      });
+      if (emailErr || !okEmail) {
+        if (emailErr) console.error('fem_admin_set_email error', emailErr);
+        showToast(t('email_exists'), 'error');
+        return;
+      }
     }
     // Pas 3b (ANALISI_Login_Navegacio.md §1.4): la contrasenya, si es canvia,
     // va per una RPC a part (fem_admin_set_password) perquè també sincronitzi
