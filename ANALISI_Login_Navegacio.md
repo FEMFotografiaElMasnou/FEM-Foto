@@ -1,16 +1,90 @@
-# FEM-Foto — Anàlisi: sistema de login/autenticació i navegació de l'app
+# FEM-Foto — Autenticació i navegació
 
-> Document d'anàlisi previ a qualsevol modificació (mateix format que
-> `ANALISI_Fase3_Puntuacio.md`). Objectiu: mapejar l'estat real del codi i la
-> BD en aquests dos aspectes transversals de tota l'app, detectar riscos
-> concrets i deixar decisions obertes per triar amb Enric abans d'escriure
-> cap línia de codi. **Cap fitxer de codi s'ha tocat per fer aquest document.**
-> Les dades de seguretat (§1.2) provenen dels advisors reals de Supabase
-> (MCP `get_advisors`) consultats el 2026-07-26 sobre els dos projectes
-> (Normal `ogqqcgbgcqowvywaolln` i Test `xxydxdsiunfwzkcffdai`), no de
-> suposicions sobre el codi.
+> **Com es llegeix aquest document.** Té tres nivells, i probablement només
+> necessites el primer:
+>
+> - **§A Estat actual** — què és veritat avui. Una pantalla.
+> - **§B Decisions vives** — el que no s'ha de tornar a discutir, i per què.
+> - **§0-§4, la resta** — el **registre cronològic** de com s'hi ha arribat:
+>   anàlisi inicial, opcions valorades, cada pas amb les seves proves i els
+>   errors trobats pel camí. Valuós mentre un pas està en marxa; consulta
+>   puntual un cop tancat. **No cal llegir-lo per treballar al projecte.**
 
-## 0. Per què ara
+---
+
+## §A Estat actual (27/07/2026)
+
+### Autenticació — migració a Supabase Auth
+
+| Pas | Estat |
+|---|---|
+| Fase 1.3 · `fem_login()` i revocació de `SELECT` sobre `users.password` | ✅ |
+| Pas 1 · columna pont `users.auth_user_id` | ✅ |
+| Pas 2 · comptes creats a `auth.users` (Normal 41/41, Test 50/50) | ✅ |
+| Pas 3a/3b/3c · sessions reals i RLS basada en `auth.uid()` | ✅ |
+| Pas 4a · altes i baixes creen/esborren les dues files | ✅ |
+| Pas 4b · Auth decideix l'accés; sessió persistent | ✅ |
+| Pas 4c · recuperació per correu i enllaç màgic | ✅ |
+| **Pas 4d · retirada del sistema antic** | ⬜ **Pendent**, bloquejat |
+
+Tot el que està ✅ està aplicat als **dos** projectes, verificat i desplegat.
+
+**Com funciona l'accés avui**: `handleLogin()` valida amb
+`supabase.auth.signInWithPassword()`. El camp accepta email **o** nom complet (el nom es
+resol contra `state.users`, perquè Auth només entén emails). `fem_login()` queda com a camí
+de reserva per a dos casos legítims: contrasenya reiniciada per un admin (buida a
+`public.users`, Auth no la pot validar mai) i comptes sense parella a `auth.users`. La sessió
+és persistent: dura fins que es prem "Sortir".
+
+**Què bloqueja el Pas 4d**: cal comprovar **Zampa** abans de buidar `users.password` i
+d'eliminar les polítiques `users_insert_*`/`users_delete_*`. Zampa comparteix la taula `users`
+i podria estar comparant la contrasenya en clar des del seu client, o donant altes pel seu
+compte. Hi ha una nota de traspàs autònoma escrita al final de §1.4 — **llegir-la sencera
+abans de tocar res de Zampa**, no re-derivar el context.
+
+### Navegació
+
+⬜ **Sense començar.** Verificat per `grep` a tot `js/` i `index.html`: cap ús de
+`pushState`, `replaceState`, `hash` ni `popstate`. Les pantalles (`router.js`) i els
+subpanells (`participant.js`) són pur `classList`. Conseqüència: refrescar torna sempre a la
+pantalla d'inici, i el botó enrere surt de l'app en lloc de moure's per dins.
+
+No és destructiu (els vots es desen al clic), però és de les coses que més desconcerten
+l'usuari. Proposta a §2.3: routing per `hash` amb `popstate` cridant les funcions
+`showXxx()` que ja existeixen, incremental (participant primer).
+
+---
+
+## §B Decisions vives
+
+**Tota dada d'identitat que visqui a `public.users` i a `auth.users` alhora s'ha d'escriure a
+totes dues dins la mateixa transacció.** Nascuda de tres incidents seguits (contrasenya
+reiniciada per admin, canvi d'email, reset per correu): les tres vegades, escriure'n només una
+deixava el soci fora o —pitjor— deixava la contrasenya antiga vàlida. Si mai s'afegeix un
+tercer camp compartit, mateix patró.
+
+**Les contrasenyes existents es preserven; mai un reset massiu forçat.** Pel perfil d'usuari
+del club (~65 anys de mitjana), la fricció d'obligar tothom a canviar pesa més que el guany.
+
+**L'auto-registre és obert i immediat**: sense confirmació per correu ni aprovació d'admin.
+
+**Els comptes es creen per RPC, no amb `supabase.auth.signUp()`**: `signUp()` substituiria la
+sessió de l'admin per la del soci acabat de crear i forçaria confirmació per correu.
+
+**Mètode d'accés: contrasenya i enllaç màgic**, a triar per l'usuari. L'enllaç màgic és un
+botó secundari, no l'opció principal — qui ja té el seu costum no ha de notar cap canvi.
+
+**Les funcions noves porten doble barrera**: comprovació interna *i* `REVOKE EXECUTE ... FROM
+anon`. I la comprovació d'identitat s'escriu sempre com a `IF auth.uid() IS NULL THEN RETURN
+false`, mai com una comparació — amb `NULL`, una comparació dona `NULL`, que plpgsql tracta
+com a fals dins un `IF` i es salta el `RETURN` de denegació. Això va obrir un forat real el
+27/07/2026 (§Pas 4a).
+
+**Configuració del tauler de Supabase i inventari de funcions**: a `docs/REFERENCIA_BD.md`.
+
+---
+
+## 0. Per què es va obrir aquest tema
 
 Aprofitant que la integració Reptes+Resultats (Fase 2) i el canvi de sistema
 de puntuació (Fase 3) ja estan tancats, Enric vol abordar dos aspectes

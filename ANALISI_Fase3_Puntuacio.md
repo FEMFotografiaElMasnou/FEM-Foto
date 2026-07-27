@@ -1,8 +1,72 @@
-# FEM-Foto — Anàlisi Fase 3: nou sistema de puntuació (3 criteris 0-5 → 1 concepte "Valoració" 0-10)
+# FEM-Foto — Fase 3: nou sistema de puntuació (3 criteris 0-5 → 1 concepte 0-10)
 
-> Document d'anàlisi previ a qualsevol modificació. Objectiu: mapejar tots els punts del
-> codi/BD afectats i llistar les decisions obertes que cal tancar amb Pablo/Enric abans
-> d'escriure una sola línia. **Cap fitxer de codi s'ha tocat per fer aquest document.**
+> **Com es llegeix aquest document.** Té tres nivells, i probablement només necessites el
+> primer:
+>
+> - **§A Estat actual** — què és veritat avui. Una pantalla.
+> - **§B Decisions vives** — el que no s'ha de tornar a discutir, i per què.
+> - **§0-§6, la resta** — el **registre cronològic**: l'anàlisi inicial, les opcions
+>   valorades i cada pas amb les seves proves, iteracions visuals i bugs trobats pel camí.
+>   **No cal llegir-lo per treballar al projecte.**
+
+---
+
+## §A Estat actual (27/07/2026)
+
+El club va decidir (reunió de socis del 23/07/2026) passar de votar **3 criteris**
+(Creativitat/Temàtica/Composició, 0-5 cadascun) a **1 sol concepte, 0-10**.
+
+| Pas | Estat |
+|---|---|
+| Pas 1 · columna `votes.valoracio` + trigger des dels 3 criteris antics | ✅ |
+| Pas 1b · corregida la pèrdua de decimals (`numeric(4,2)`) | ✅ |
+| Pas 2 · pantalla «Valoració Repte» (resultats, només lectura) | ✅ |
+| Pas 2b · panell de puntuació propi al visor de fotos | ✅ |
+| Pas 3 · pantalla «Taula de Classificació» | ✅ |
+| Pas 4 · pantalla «Puntuar Repte» (captura 0-10) | ✅ |
+| **El tall** · fer visible el sistema nou per a tothom | ⬜ **Pendent, sense data** |
+
+Les tres pantalles noves conviuen amb les antigues i **només les veu l'admin** («Puntuar
+Repte», a més, en mode Test). Inventari i regles de visibilitat: `docs/PANTALLES.md`.
+Llista de comprovació del tall: `docs/TALLS.md`.
+
+**Verificat**: «Taula de Classificació» dona exactament els mateixos punts i posicions que la
+«Classificació General» actual — el resultat matemàticament esperat, perquè l'assignació de
+punts per posició només fa servir la nota per detectar empats, mai la seva magnitud.
+
+**Encara per decidir**: què es fa amb els reptes que tinguin la **votació oberta** el dia del
+tall (§3.3).
+
+---
+
+## §B Decisions vives
+
+**Els 3 criteris antics no s'esborren mai.** `valoracio` es deriva d'ells amb un trigger
+(×10/15); les dades històriques queden intactes i qualsevol pantalla antiga segueix funcionant.
+
+**Conseqüència pràctica que fa mal si s'oblida**: el trigger `fem_sync_valoracio()` recalcula
+`valoracio` a cada escriptura que toqui els 3 criteris. Qui vulgui escriure `valoracio` ha
+d'escriure **també** els tres criteris amb `valoracio/2` cadascun (no `/3`: el factor ×10/15
+del trigger exigeix exactament `/2` per a un round-trip exacte). Si no, el trigger el trepitja
+a 0.
+
+**Cada pantalla afectada es construeix nova, en paral·lel, sense tocar l'original.** Les que el
+canvi de puntuació no afecta (la Galeria) no es dupliquen ni es toquen.
+
+**Al tall, les pantalles antigues no s'esborren**: només queden ocultes, amb el mateix
+mecanisme que avui amaga les noves. És la xarxa de seguretat per si mai calgués tornar enrere.
+«Resultat Repte» i la seva cortina de 3 criteris no es redissenyaran mai: es deixaran
+intactes i ocultes.
+
+**«Puntuar Repte» es gateja diferent de les altres dues** (admin real **o** mode Test, no
+només admin) perquè és una eina de captura que cal poder provar amb usuaris no admin. El
+criteri general: pantalla de només lectura → gate per rol; pantalla que escriu i s'ha de provar
+amb diversos comptes → gate per mode de BD.
+
+**Els estats bloquejats no atenuen mai el valor triat**, només les alternatives. Un "ja has
+votat" que enfosqueix la pròpia resposta és el contrari del que ha de comunicar.
+
+---
 
 ## 0. Resum de l'encàrrec
 

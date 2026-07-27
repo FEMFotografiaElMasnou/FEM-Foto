@@ -1,3 +1,21 @@
+> ## ⛔ DOCUMENT ARXIVAT — NO ÉS REFERÈNCIA VÀLIDA
+>
+> Era el document de regles del projecte fins al **27/07/2026**. Descriu l'app **anterior**
+> (FEM-Reptes / `FEM_app_Modular`), no FEM-Foto, i **conté dades de desplegament errònies per a
+> aquest repositori**: parla del repo `FEM_app_Modular`, del projecte Vercel `fem-app` i del
+> domini `femfotografiaelmasnou.cat` com si fossin els d'aquesta app. **No ho són**: aquest
+> repo és `FEM-Foto`, desplega a `fem-foto.vercel.app`, i el domini del club encara apunta a
+> l'app antiga.
+>
+> Substituït per:
+> - **`CLAUDE.md`** (arrel) — regles, stack, convencions i desplegament, amb els fets corregits
+> - **`docs/REFERENCIA_BD.md`** — l'estat de la base de dades (secció "Estat actual de la BD")
+>
+> Es conserva pel valor històric: el pla multi-repte de la segona meitat explica **per què**
+> `objectives` té els camps que té i com es va arribar als modes `calendari`/`obert`/`tancat`.
+
+---
+
 # FEM VOTACIONS — App de votación fotográfica (versión modular)
 
 App web para el club **FEM Fotografia El Masnou** (~50 socios). Cada temática, los socios

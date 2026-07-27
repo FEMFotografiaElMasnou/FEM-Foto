@@ -75,96 +75,88 @@ Objectiu: una única aplicació que integri tota la funcionalitat de Reptes més
 | 6 | Tall (cutover) | femfotografiaelmasnou.cat es reapunta cap al projecte Vercel de Foto. Moment sensible: franja de baix ús + pla de reversió del DNS. |
 | 7 | Retirada | Un cop Foto porti un temps estable en producció, s'arxiven (no s'esborren de seguida) els repos i desplegaments de Reptes i Resultats. |
 
-## 6. Riscos i punts d'atenció
+## 6. Estat actual (27 de juliol de 2026)
 
-- Doble manteniment temporal: mentre Foto es desenvolupa en paral·lel, qualsevol canvi urgent a producció (Reptes/Resultats) s'haurà de replicar manualment si el codi ja s'ha bifurcat — convé no allargar aquesta fase més del necessari.
-- Dades històriques: resolt (secció 3) — els camps i dades dels 3 criteris no s'eliminen mai; el nou camp valoracio es deriva a partir d'ells sense tocar-los.
-- Tall de domini (Fase 6): moment sensible — fer-ho en una franja de baix ús i tenir clar el pla de reversió del DNS cap a Reptes si calgués.
-- Consistència de claus/entorn: les claus anon de Supabase són públiques per disseny (la seguretat recau en RLS), però cal mantenir els tres projectes (Reptes, Resultats, Foto) apuntant exactament als mateixos projectes Supabase i Cloudinary mentre convisquin.
-- **[Nou, detectat 24/07/2026]** La taula `users` del projecte Supabase es comparteix amb una altra app del club ("Zampa"), amb les seves pròpies taules (zampa_*). Qualsevol operació en cascada sobre users (TRUNCATE, DELETE) esborraria també dades de Zampa — cal revisar-ho sempre abans d'operacions destructives sobre aquesta taula.
-- **[Nou, detectat i resolt 25/07/2026]** Manifestació concreta del risc anterior: José Antonio Sancho Pastor tenia dos comptes a `users` (un per email diferent, cadascun amb activitat real repartida entre Reptes/Foto i Zampa), fent que sortís duplicat a la Classificació General. Fusionat a Normal (`sql/2026-07-25_merge_duplicate_user_sancho.sql`): reassignada la seva foto a l'únic compte amb activitat real i esborrada la fila buida. Es va detectar el mateix patró, encara sense resoldre a petició d'Enric, per a Harald Hausleithner — actualment inofensiu perquè el segon compte només té dades de Zampa.
-- **[Nou, detectat 24/07/2026]** El camp `users.password` es llegeix/escriu en clar des del client (sense hash). Ja identificat per Enric com a canvi pendent, fora de l'abast d'aquesta unificació.
+| Fase | Estat | Detall |
+|---|---|---|
+| 0 · Diagnosi i pla | ✅ Fet | Aquest document |
+| 1 · Bastida | ✅ Fet | Repo `FEM-Foto` i projecte Vercel actius. Desplega a `fem-foto.vercel.app` |
+| 2 · Integració nativa de Resultats | ✅ **Tancada** | Iframe retirat, un únic motor de rànquing. Sense cap dependència de FEM-Resultats |
+| 3 · Nou sistema de puntuació | 🔄 En curs | Passos 1-4 fets. Falta el **tall** (§8) |
+| 4 · Proves internes | ⬜ | |
+| 5 · Validació amb els socis | ⬜ | |
+| 6 · Tall de domini | ⬜ | Llista de comprovació a `docs/TALLS.md` |
+| 7 · Retirada de les apps antigues | ⬜ | |
 
-## 7. Propers passos immediats
+**Fase 2 — per què es dona per tancada del tot (verificat 26/07/2026):** cerca a tot el codi
+(`js/`, `index.html`, `vercel.json`) de `iframe`, `RESULTATS_BASE` i `FEM-Resultats`: cap
+resultat. L'únic rastre és `_reference-resultats/`, una còpia estàtica de consulta que no es
+carrega mai. Si avui s'esborrés el repo de FEM-Resultats, FEM-Foto seguiria funcionant igual.
 
-*Nota (25/07/2026): aquests 5 passos de bastida ja s'han completat (el repo GitHub existeix i el desenvolupament ja avança dins seu, en Fase 2 i 3). Es mantenen a sota com a historial. Per a l'estat real i el proper pas, vegeu la secció 8.*
+**Fase 3 — què hi ha fet:** columna `votes.valoracio` amb trigger des dels 3 criteris antics
+(Pas 1/1b), i les tres pantalles noves del sistema 0-10 convivint amb les antigues: «Valoració
+Repte» (Pas 2/2b), «Taula de Classificació» (Pas 3) i «Puntuar Repte» (Pas 4, l'única que
+escriu vots). Detall tècnic i decisions a `ANALISI_Fase3_Puntuacio.md`; qui veu cada pantalla,
+a `docs/PANTALLES.md`.
 
-A partir d'aquí, t'aniré guiant pas a pas pel xat, un pas a la vegada:
+### Treball transversal — autenticació i navegació
 
-- Pas 1 — Confirmar el nom del repositori/projecte (proposta: FEM-Foto o FEM-Fotografia-El-Masnou) i crear-lo a GitHub, sota l'organització FEMFotografiaElMasnou.
-- Pas 2 — Crear el projecte Vercel nou i connectar-lo al repo, sense domini.
-- Pas 3 — Clonar FEM-Reptes com a punt de partida dins el nou repositori.
-- Pas 4 — Configurar les variables d'entorn (Supabase Normal/Test, Cloudinary) al nou projecte.
-- Pas 5 — Obrir Claude Code sobre el nou repo i començar la Fase 2 (integració nativa de Resultats).
+Fora de la numeració de fases. Anàlisi completa a `ANALISI_Login_Navegacio.md`.
 
-## 8. Estat actual (actualitzat 26 de juliol de 2026)
+| Bloc | Estat |
+|---|---|
+| **Autenticació** — migració a Supabase Auth | 🔄 Passos 1, 2, 3a-3c i 4a-4c fets, verificats als dos entorns i desplegats. Falta **4d** (retirar el sistema antic), bloquejat per una comprovació prèvia a Zampa |
+| **Navegació** — refresc i botó enrere | ⬜ Sense començar. No hi ha cap `pushState`/`hash` a l'app: refrescar torna sempre a l'inici i el botó enrere surt de l'app |
 
-**Fase 1 — Bastida:** repo GitHub FEMFotografiaElMasnou/FEM-Foto creat i connectat (origin/main). Projecte Vercel i variables d'entorn: pendents de confirmar amb Enric (no verificable des de la sessió de Claude Code).
+El que ha canviat per als socis amb la migració d'Auth: la sessió es manté oberta fins que es
+prem "Sortir", i qui no pot entrar se'n surt sol per correu (contrasenya nova o enllaç màgic)
+sense dependre de l'administrador.
 
-**Fase 2 — Integració nativa de Resultats: FETA i validada per Enric, sense cap dependència pendent de FEM-Resultats.** Resultat Repte i Classificació General són pantalles natives (sense iframe), amb selector de vot Tots/Socis/Expert i l'estètica calcada de FEM-Resultats. RESULTATS_BASE i tot el codi de l'iframe retirats.
+## 7. Què queda pendent de decidir
 
-**Confirmat (26/07/2026):** aquesta fase es pot donar per completament tancada, independentment del que passi amb l'app FEM-Resultats. Cerca a tot el codi de Foto (`js/`, `index.html`, `vercel.json`) de `iframe`, `RESULTATS_BASE` i `FEM-Resultats`: **cap resultat**. L'únic rastre que queda al repo és `_reference-resultats/` (còpia estàtica del codi font React d'abans, mantinguda només com a referència de consulta) — no es carrega ni es construeix mai des de Foto, no és una dependència en temps d'execució. És a dir: si avui s'esborrés el repo i el desplegament de FEM-Resultats, "Resultat Repte" i "Classificació General" de Foto continuarien funcionant exactament igual, amb el seu propi motor de càlcul natiu (`ranking.js`).
+**El tall de Fase 3** (§6 de `ANALISI_Fase3_Puntuacio.md`, llista a `docs/TALLS.md`): quan es
+considera "finalitzada" la integració per amagar els accessos antics i mostrar els nous a
+tothom. Lligat a una pregunta encara oberta: què es fa amb els reptes que tinguin la **votació
+oberta** el dia del tall.
 
-Aquesta confirmació és independent del tall encara pendent de la Fase 3 (vegeu més avall i `ANALISI_Fase3_Puntuacio.md` §6) — aquell tall és sobre el canvi de sistema de puntuació (amagar el sistema antic de 3 criteris dins la mateixa Foto), no sobre la integració de Resultats, que ja no té cap fil pendent amb l'app externa.
+**La navegació**: si es fa per a totes les pantalles de cop o primer només les de participant.
 
-**Fase 3 — Nou sistema de puntuació: EN CURS.** Pas 1: columna votes.valoracio (0–10) afegida i sincronitzada amb un trigger a partir dels 3 criteris antics (sense eliminar-los ni tocar-los), coherent amb la proposta original de la secció 3 (vegeu aclariment). Pas 1b (25/07/2026): es va detectar que tant el trigger com el client (data.js) arrodonien/truncaven a enter, perdent els decimals que la normalització 15→10 hauria de conservar (detectat comparant amb un càlcul manual en full de càlcul) — corregit: valoracio ara es guarda com a numeric amb 2 decimals, backfill refet, i el client ja no trunca cap dels 4 camps de vot (creativity/theme/composition/valoracio). Verificat a Test i Normal, valors coincidents amb el càlcul manual. Pas 2 (25/07/2026): construïda «Valoració Repte», pantalla nova en paral·lel a Resultat Repte (que es manté intacta), amb el mateix disseny de targeta però una barra de progrés 0–10 en lloc d'estrelles; accessible només des del compte admin (nova entrada a la pantalla d'inici), per comparar el nou sistema amb l'actual abans de decidir res més. Pas 2b (25/07/2026): el visor de fotos a pantalla completa, obert des de «Valoració Repte», mostrava fins ara la cortina vella de 3 criteris (bug de disseny compartit amb «Resultat Repte»); es va construir un disparador i panell propis i independents per a «Valoració Repte» — icona ⓘ ancorada a la cantonada inferior-esquerra de la pròpia foto (no de la pantalla), i en clicar-hi, una taula compacta amb 3 columnes (Votants/Puntuació/Posició) i 3 files (Total Vots/Vots Socis/Vots Experts). Iterat amb Enric sobre captures reals (tipografia, interlineat, ubicació, estil del disparador). «Resultat Repte» no s'ha tocat. Pas 3 (25/07/2026): confirmada la hipòtesi que l'assignació de punts per posició no depèn del rang de la nota (només detecta empats per igualtat) — es va construir «Taula de Classificació», pantalla nova en paral·lel a Classificació General (que es manté intacta), mateix motor de punts alimentat per valoracio en lloc dels 3 criteris, amagada rere el mateix gate d'admin real que «Valoració Repte». Enric ho ha provat en viu i confirma que dona exactament els mateixos punts i posicions que l'actual Classificació General, el resultat matemàticament esperat. Amb això es tanca el pla per passos de la Fase 3 acordat el 24/07/2026; queden pendents de calendaritzar el nou control de vot 0–10 a la UI de captura i el redisseny de les pantalles de resultat.
+**Criteri ja fixat i que no cal tornar a discutir**: cada pantalla afectada pel canvi de
+puntuació es construeix **nova, en paral·lel**, sense tocar l'original; les que el canvi no
+afecta (la Galeria) no es dupliquen; i al tall les antigues **no s'esborren**, només queden
+ocultes, per si mai calgués tornar enrere.
 
-**Pas 4 (26/07/2026, FET):** construïda «Puntuar Repte» (renombrada de «Puntuació Repte» el mateix dia, per distingir-la de «Valoració Repte» — vegeu `ANALISI_Fase3_Puntuacio.md` §6), nova pantalla de captura amb el control 0–10 definitiu (10 càpsules + desplegable sincronitzat, imatge més gran a 1 col mòbil/2 tauleta-desktop, `caption` de la foto en lloc del número de participant), en paral·lel a la votació real (`votacio.js`, `renderVotingGrid`/`handleStar` intactes). A diferència de «Valoració Repte»/«Taula de Classificació» (només lectura, només admin), aquesta és una eina de captura pensada per provar-se amb diversos usuaris de prova reals — la targeta és visible per a l'admin real o quan la BD activa és Test. Resolta la coexistència amb el trigger `fem_sync_valoracio()`: la nova captura també escriu als 3 camps antics amb `Puntuació/2` cadascun, perquè el trigger recalculi exactament el mateix valor. Provant-ho en directe amb Enric es van trobar i corregir diversos bugs reals preexistents (no relacionats amb aquesta feina però detectats fent-la): el botó de confirmació d'enviar vot deia "Canviar" en lloc d'"Enviar" (`confirmAction()` no netejava mai l'etiqueta), els botons `.btn-primary` anaven a tota l'amplada de pantalla arreu de l'app, el botó "Enviar Vots" de la pantalla nova no reflectia mai l'estat real (`updateVoteButtonsState()` no el gestionava), i tant la Classificació General real com la Taula de Classificació de prova no ordenaven les miniatures de reptes per data (consulta sense `.order()`) — totes corregides. Taula de Classificació ajustada perquè, per a l'admin real, també inclogui reptes actius (no només finalitzats), mateix criteri que «Valoració Repte». Colors revisats amb Enric sobre captures reals: avís "no obert" en vermell, estat "ja enviat" en ambre/daurat (no verd, per no suggerir "endavant"), selecció de càpsula/desplegable en blanc sobre blau sòlid. Detall pendent, acceptat com a menor: el punt de "Cancel·lar" es veu envitricollat per un problema de renderització de la font dels botons (Barlow Condensed), no de les dades — sense pedaç net trobat encara. Vegeu `ANALISI_Fase3_Puntuacio.md`, Pas 4, per al detall tècnic complet.
+## 8. Backlog de petits ajustos
 
-**Estratègia de transició i retirada (aclarida 26/07/2026, detall a `ANALISI_Fase3_Puntuacio.md` §6):**
-el canvi de sistema de puntuació (de 3 criteris 0–5 a 1 concepte "Valoració"/"Puntuació" 0–10)
-s'aplica creant una pantalla nova en paral·lel per a cada pantalla afectada (votació real →
-Puntuar Repte; Resultat Repte → Valoració Repte; Classificació General → Taula de
-Classificació), sense tocar mai l'original. Pantalles no afectades pel sistema de puntuació
-(p. ex. la Galeria) no es toquen ni es dupliquen. Durant tot aquest període de convivència,
-les pantalles noves només són visibles per a l'admin real (i, «Puntuar Repte», també quan la
-BD activa és Test). Quan es doni per finalitzada la integració i el canvi de puntuació, els
-nav-cards d'accés a les pantalles antigues deixaran de mostrar-se i els de les noves passaran
-a ser visibles per a tothom — però les pantalles i nav-cards antics **no s'esborraran del
-codi**, només quedaran ocults, per si mai calgués un retorn (poc probable però no impossible)
-al sistema antic.
+Coses menors, sense data, que no justifiquen una fase pròpia:
 
-**Treball transversal, fora de la numeració de fases (obert 26/07/2026):** aprofitant que
-Fase 2 i Fase 3 estan tancades, Enric vol abordar dos aspectes pendents a nivell de tota
-l'app, independents d'aquesta unificació: (1) el sistema de login/autenticació/gestió
-d'usuaris, i (2) la navegació (comportament en refrescar i en prémer "enrere"). Anàlisi
-completa a `ANALISI_Login_Navegacio.md` — inclou dades reals dels advisors de seguretat de
-Supabase (RLS "activada" però amb polítiques permissives a totes les taules, incloent
-`users.password` en clar llegible per qualsevol via l'API pública).
+- **Galeria**: si qui mira és admin, oferir un botó per descarregar les imatges que hi hagi
+  en pantalla segons els filtres aplicats.
+- **`fem_admin_create_member` i `fem_admin_set_password`**: afegir-hi `REVOKE EXECUTE ... FROM
+  anon`. No hi ha cap forat (totes dues es comproven internament), però trenquen el criteri de
+  doble barrera que sí segueixen les funcions més noves. Vegeu `docs/REFERENCIA_BD.md`.
+- **Neteja de BD, sense pressa**: eliminar les taules mortes `reptes_calendari` i `settings`, i
+  valorar el renombrat `objectives` → `reptes`. ⚠️ El renombrat obliga a reescriure a mà
+  `fem_apply_calendar()` (té els noms de taula escrits com a text) i a tocar 2 línies de
+  l'antiga FEM-Resultats si encara existeix.
+- **Interpunt de "Cancel·lar"**: es veu malament amb la font condensada dels botons (Barlow
+  Condensed). Confirmat que el caràcter és correcte i que és un problema de renderització de la
+  font. Sense pedaç net trobat; acceptat com a menor.
 
-**Estat del bloc (1) autenticació, a 27/07/2026 — en marxa, decidit migrar a Supabase Auth:**
+## 9. Riscos vius
 
-- **Fase 1.3 (26/07)** — tancada l'exposició de contrasenyes: la verificació es fa al servidor
-  (`fem_login()`) i el client ja no pot llegir la columna `password`.
-- **Pas 1 i 2 (26/07)** — columna pont `users.auth_user_id` i creació dels comptes reals a
-  `auth.users` preservant les contrasenyes actuals (Test 50/50, Normal 41/41). Cap soci ha
-  hagut de fer res.
-- **Pas 3a/3b/3c (27/07)** — sessions reals de Supabase Auth i polítiques RLS basades en
-  `auth.uid()` als dos projectes: les escriptures obertes a internet queden tancades.
-- **Pas 4a (27/07)** — altes i baixes de socis passen per funcions de servidor que creen i
-  esborren el compte d'Auth juntament amb la fila de `users`. Abans, tot compte nou (registre
-  o alta d'admin) quedava sense poder votar ni pujar fotos, i tota baixa deixava l'adreça
-  bloquejada per sempre.
-- **Pas 4b (27/07)** — Supabase Auth ja és qui decideix l'accés, i la sessió es manté oberta fins
-  que es prem "Sortir" (abans, tancar la pestanya obligava a tornar a entrar). El canvi d'email
-  d'un soci des del panell de Socis també actualitza el seu compte d'Auth.
-- **Pas 4c (27/07)** — a la pantalla d'accés hi ha "Has oblidat la contrasenya?" i "Entrar amb un
-  enllaç per correu". Qui no pot entrar ja no depèn de l'administrador: rep un correu del domini
-  del club i se'n surt sol. Provat de cap a cap amb un correu real. Detall important perquè no
-  quedés una porta oberta: en canviar la contrasenya des del correu, **la contrasenya antiga
-  queda revocada de debò** (s'escriuen alhora les dues taules on viu, no només la de Supabase
-  Auth). Mètode d'accés: contrasenya **i** enllaç màgic, a triar per l'usuari.
-- **Pendent**: 4d (retirada del sistema antic).
+- **`users` és compartida amb l'app Zampa** del club. Qualsevol operació en cascada sobre
+  aquesta taula hi esborraria dades. Comprovar-ho sempre. Va materialitzar-se un cop (un soci
+  amb dos comptes, sortia duplicat a la Classificació General; resolt el 25/07/2026), i n'hi ha
+  un segon cas conegut i deixat estar a propòsit perquè avui és inofensiu.
+- **Doble manteniment mentre duri la convivència**: qualsevol canvi urgent a l'app antiga s'ha
+  de replicar aquí a mà. Convé no allargar aquesta fase.
+- **Les dues apps escriuen al mateix Supabase de producció** mentre convisquin.
+- **El tall de domini** (Fase 6) és el moment més sensible del projecte: franja de baix ús i
+  pla de reversió del DNS a mà. Vegeu `docs/TALLS.md`.
 
-El bloc (2), navegació, segueix sense començar.
+---
 
-**Documents de treball relacionats (dins del repo FEM-Foto):**
-
-- `HANDOFF_Fase2_Resultats.md` — detall tècnic de la integració nativa de Resultats (Fase 2).
-- `ANALISI_Fase3_Puntuacio.md` — anàlisi d'implicacions del nou sistema de puntuació, pla per passos i decisions preses als Pas 1/1b/2/2b/3/4.
-- `ANALISI_Login_Navegacio.md` — anàlisi del sistema de login/autenticació i de la navegació de l'app (treball transversal, fora de fases).
-- `sql/2026-07-24_fase3_valoracio_pas1.sql` — migració SQL del Pas 1, ja aplicada a Test i Normal.
-- `sql/2026-07-25_fase3_valoracio_pas1b_decimals.sql` — migració SQL del Pas 1b (correcció de precisió), ja aplicada a Test i Normal.
-- `sql/2026-07-26_*` i `sql/2026-07-27_*` — migracions de la migració a Supabase Auth (Fase 1.3 i Passos 1, 2, 3b/3c i 4a), totes aplicades a Test i Normal, cadascuna amb el seu script de marxa enrere.
-
-**Proper pas immediat:** amb el Pas 4 tancat, queda per decidir, sense calendaritzar encara: el moment i mecanisme exacte del tall descrit més amunt (quan es considera "finalitzada" la integració per amagar els nav-cards antics i mostrar els nous a tothom — «Resultat Repte» i la seva cortina de 3 criteris no es redissenyen, es deixen intactes i ocultes), i el moment del tall per als reptes amb votació oberta.
+*Documents relacionats: `CLAUDE.md` (regles i entrada), `ANALISI_Fase3_Puntuacio.md`,
+`ANALISI_Login_Navegacio.md`, `docs/REFERENCIA_BD.md`, `docs/PANTALLES.md`, `docs/TALLS.md`,
+`sql/README.md`. Documents tancats a `docs/arxiu/`.*
