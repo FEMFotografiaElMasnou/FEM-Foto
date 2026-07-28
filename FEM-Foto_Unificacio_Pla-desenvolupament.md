@@ -82,7 +82,7 @@ Objectiu: una única aplicació que integri tota la funcionalitat de Reptes més
 | 0 · Diagnosi i pla | ✅ Fet | Aquest document |
 | 1 · Bastida | ✅ Fet | Repo `FEM-Foto` i projecte Vercel actius. Desplega a `fem-foto.vercel.app` |
 | 2 · Integració nativa de Resultats | ✅ **Tancada** | Iframe retirat, un únic motor de rànquing. Sense cap dependència de FEM-Resultats |
-| 3 · Nou sistema de puntuació | 🔄 En curs | Passos 1-4 i A-D fets. El tall ja és **un clic**, no codi. Falta desplegar A-D i prémer-lo |
+| 3 · Nou sistema de puntuació | 🔄 En curs | Passos 1-4 i A-D fets **i desplegats**. El tall ja és **un clic**, no codi: només falta prémer-lo (Normal segueix en «Antic») |
 | 4 · Proves internes | ⬜ | |
 | 5 · Validació amb els socis | ⬜ | |
 | 6 · Tall de domini | ⬜ | Llista de comprovació a `docs/TALLS.md` |
@@ -121,7 +121,8 @@ sense dependre de l'administrador.
 es prem el commutador. La pregunta que hi havia lligada —què es fa amb els reptes amb la
 votació oberta aquell dia— **ja no bloqueja**: els dos sistemes escriuen les mateixes dades i
 un repte a mig votar surt bé de totes dues maneres. Queda com a preferència fer-ho entre la
-pujada i l'inici de la votació. El que sí que falta és **desplegar** els Passos A-D.
+pujada i l'inici de la votació. Els Passos A-D ja són **desplegats** des del 28/07/2026, així
+que no falta res tècnic: només decidir el dia.
 
 **La navegació**: si es fa per a totes les pantalles de cop o primer només les de participant.
 

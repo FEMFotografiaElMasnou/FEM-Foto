@@ -30,8 +30,10 @@ aparèixer soles si es torna a posar el commutador en «Antic».
       pantalles de comparació; convé repetir-ho just abans del tall.)*
 - [ ] Avisar els socis del canvi de sistema de vot (decisió de la reunió del 23/07/2026): la
       interfície els canviarà de cop, encara que els noms de les pantalles no.
-- [ ] Tenir el codi de la Fase 3 Pas D **desplegat** a `fem-foto.vercel.app`. Sense ell, el
-      commutador existeix però la pantalla d'inici no li fa cas.
+- [x] Tenir el codi de la Fase 3 Pas D **desplegat** a `fem-foto.vercel.app`. Sense ell, el
+      commutador existeix però la pantalla d'inici no li fa cas. **Fet el 28/07/2026** (commit
+      `4641350`; verificat que els cinc mòduls que llegeixen `sistema_puntuacio_nou` —`data.js`,
+      `router.js`, `state.js`, `admin.js`, `participant.js`— ja se serveixen des d'allà).
 
 > **La pregunta que abans bloquejava això ja no bloqueja.** Es preguntava què fer amb els reptes
 > que tinguessin la votació oberta el dia del tall. Amb el commutador, la resposta és que no cal
@@ -91,6 +93,23 @@ antiga.
 - [ ] **Afegir el domini a Site URL i a Redirect URLs de Supabase, als dos projectes.** Sense
       això, els correus de recuperació i els enllaços màgics continuaran portant a
       `fem-foto.vercel.app`. És el punt que de debò pot deixar algú fora.
+
+      ⚠️ **Amb `www`, i les dues formes** (comprovat 28/07/2026). L'àpex
+      `femfotografiaelmasnou.cat` no serveix l'app: fa un **308 cap a
+      `www.femfotografiaelmasnou.cat`**, que és el host real. Com que l'app construeix l'adreça
+      de retorn dels correus amb `window.location.origin` (`_emailRedirectTo()`, `login.js`), al
+      domini viu enviarà **`https://www.femfotografiaelmasnou.cat`**; si l'allowlist només porta
+      la forma sense `www`, Supabase la rebutja i la substitueix per la Site URL, i el soci acaba
+      en un lloc que no és el del seu enllaç. Per tant:
+      - Site URL: `https://www.femfotografiaelmasnou.cat`
+      - Redirect URLs: `https://www.femfotografiaelmasnou.cat/**` **i**
+        `https://femfotografiaelmasnou.cat/**` (i mantenir-hi les de
+        `fem-foto.vercel.app` i `localhost` mentre facin servei)
+
+      El redirect de l'àpex **sí** que preserva camí, query i fragment (verificat amb
+      `?db=normal#access_token=…`), així que un soci que escrigui el domini sense `www` no té cap
+      problema. Qui s'hi enganya és el `curl` sense `-L`, que torna "Redirecting..." en lloc del
+      fitxer: en comprovar desplegaments en aquest domini, demanar el host `www` o passar `-L`.
 - [ ] Decidir què es fa amb el **desplegament antic**: reassignar el domini no el mata. FEM-Reptes
       seguirà viva a la seva URL `.vercel.app` i seguirà escrivint al mateix Supabase de
       producció; qui la tingui a marcadors o a la pantalla d'inici del mòbil hi continuarà
