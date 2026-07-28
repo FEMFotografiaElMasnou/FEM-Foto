@@ -24,6 +24,13 @@ s'ha executat a cada entorn.
 | `2026-07-27_auth_migracio_pas4a_altes_baixes.sql` | ✅ | ✅ | Pas 4a: RPC d'altes i baixes (crea/esborra les dues files) |
 | `2026-07-27_auth_migracio_pas4b_sync_email.sql` | ✅ | ✅ | Pas 4b: `fem_admin_set_email()` |
 | `2026-07-27_auth_migracio_pas4c_reset_contrasenya.sql` | ✅ | ✅ | Pas 4c: `fem_set_own_password()` |
+| `2026-07-27_fase3_commutador.sql` | ✅* | ✅ | Fase 3 Pas A: clau `sistema_puntuacio_nou` a `app_settings` (interruptor antic/nou) |
+
+**\* `2026-07-27_fase3_commutador.sql` a Normal**: la fila no la va crear l'script, la va crear
+la pròpia app el 28/07/2026 en provar el commutador des del panell d'admin (l'`upsert` de
+`saveSistemaPuntuacio()` la insereix si no hi és). Va quedar a `true`; **restaurada a `false`**
+el mateix dia, que és el valor que li toca fins al tall. L'script segueix sent idempotent
+(`on conflict do nothing`), així que executar-lo ara no faria res.
 
 **Pas 3b i 3c són la mateixa migració** aplicada a cada entorn per separat: els noms de les
 polítiques de Normal havien divergit dels de Test (per un enduriment parcial anterior) i calia
@@ -37,6 +44,7 @@ adaptar-los.
 | `2026-07-27_auth_migracio_pas3c_rollback_normal.sql` | Pas 3c (Normal) |
 | `2026-07-27_auth_migracio_pas4a_rollback.sql` | Pas 4a |
 | `2026-07-27_auth_migracio_pas4c_rollback.sql` | Pas 4c |
+| `2026-07-27_fase3_commutador_rollback.sql` | Fase 3 Pas A (esborra la fila; l'app torna al sistema antic per defecte) |
 
 Les migracions del Pas 4b i anteriors són additives (creen funcions o columnes sense tocar
 dades ni polítiques); desfer-les és un `DROP` de la funció, indicat al peu de cada fitxer.

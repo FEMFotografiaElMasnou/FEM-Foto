@@ -113,8 +113,13 @@ export async function init() {
 
   hideLoader();
 
+  // Si la llista d'usuaris arriba buida amb la BD poblada, el que ha passat és
+  // que la càrrega ha fallat. Es deixa constància a la consola i prou: el rètol
+  // de "Primera configuració" que hi havia aquí es va retirar el 28/07/2026
+  // (vegeu index.html), perquè convidava a inicialitzar la base de dades
+  // justament quan el que passava era una avaria.
   if (state.users.length === 0) {
-    document.getElementById('setup-banner').style.display = 'block';
+    console.error('init(): la llista d\'usuaris ha arribat buida. Si la BD no és nova, és un error de càrrega (permisos, RLS o xarxa).');
   }
 
   _listenAuthChanges();
@@ -244,38 +249,14 @@ async function _resolveRecoveryFromSession() {
   if (profile) _startRecoveryFlow(profile);
 }
 
-export async function initializeDB() {
-  const btn = document.getElementById('btn-init');
-  btn.innerHTML = '<span class="loader"></span> ' + t('init_db_loader');
-  btn.disabled  = true;
-
-  // Pas 4a (ANALISI_Login_Navegacio.md §1.4): l'admin per defecte i les tres
-  // files d'app_settings es creen amb una sola RPC (fem_bootstrap_admin), que
-  // només accepta executar-se mentre `users` està buida. Dos motius:
-  //   · el compte ha d'existir TAMBÉ a auth.users, o el primer admin no podria
-  //     establir mai sessió real d'Auth (i, per RLS, no podria escriure res);
-  //   · l'ordre antic (crear l'admin i tot seguit inserir app_settings des del
-  //     client) ja no funcionaria: la política app_settings_insert_bootstrap
-  //     del Pas 3b exigeix que `users` estigui buida, i just abans hem deixat
-  //     de complir-ho. Dins l'RPC, les dues coses passen a la mateixa crida.
-  const { data: ok, error } = await sb.rpc('fem_bootstrap_admin', {
-    p_name:     'Administrador',
-    p_email:    'admin@femrank.cat',
-    p_password: 'admin123',
-  });
-
-  if (!error && ok) {
-    await loadAllData();
-    document.getElementById('setup-banner').style.display = 'none';
-    document.getElementById('login-user').value = 'admin@femrank.cat';
-    document.getElementById('login-pass').value  = 'admin123';
-    showToast(t('db_initialized'), 'success');
-  } else {
-    btn.innerHTML = t('init_db_btn');
-    btn.disabled  = false;
-    showToast(t('sheets_error'), 'error');
-  }
-}
+// initializeDB() RETIRADA (28/07/2026), juntament amb el rètol "Primera
+// configuració" de l'index.html. No era perillosa aquí —cridava
+// fem_bootstrap_admin(), que el servidor només executa si `users` és buida—,
+// però apareixia només quan la càrrega fallava, i un botó d'inicialitzar la
+// base de dades enmig d'una avaria és una temptació que no cal oferir.
+//
+// Muntar un projecte de Supabase nou de zero: cridar `fem_bootstrap_admin()`
+// des de l'editor SQL. La funció es manté a la BD (docs/REFERENCIA_BD.md).
 
 // ═══════════════════════════════════
 // LOGIN
@@ -312,7 +293,6 @@ export async function handleLogin() {
   btn.disabled  = false;
 
   if (state.users.length === 0) {
-    document.getElementById('setup-banner').style.display = 'block';
     errEl.style.display = 'block';
     errEl.textContent   = t('no_users_found');
     return;
@@ -778,7 +758,6 @@ export async function handleUnsubscribe() {
 // Exponer en window las funciones usadas desde onclick del HTML
 window.handleLogin = handleLogin;
 window.logout = logout;
-window.initializeDB = initializeDB;
 window.saveNewPassword = saveNewPassword;
 window.showLoginTab = showLoginTab;
 window.showRegisterTab = showRegisterTab;

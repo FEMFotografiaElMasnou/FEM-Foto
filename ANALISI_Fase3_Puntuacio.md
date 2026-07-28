@@ -11,7 +11,7 @@
 
 ---
 
-## §A Estat actual (27/07/2026)
+## §A Estat actual (28/07/2026)
 
 El club va decidir (reunió de socis del 23/07/2026) passar de votar **3 criteris**
 (Creativitat/Temàtica/Composició, 0-5 cadascun) a **1 sol concepte, 0-10**.
@@ -20,22 +20,28 @@ El club va decidir (reunió de socis del 23/07/2026) passar de votar **3 criteri
 |---|---|
 | Pas 1 · columna `votes.valoracio` + trigger des dels 3 criteris antics | ✅ |
 | Pas 1b · corregida la pèrdua de decimals (`numeric(4,2)`) | ✅ |
-| Pas 2 · pantalla «Valoració Repte» (resultats, només lectura) | ✅ |
+| Pas 2 · pantalla de resultats del sistema nou (només lectura) | ✅ |
 | Pas 2b · panell de puntuació propi al visor de fotos | ✅ |
-| Pas 3 · pantalla «Taula de Classificació» | ✅ |
-| Pas 4 · pantalla «Puntuar Repte» (captura 0-10) | ✅ |
-| **El tall** · fer visible el sistema nou per a tothom | ⬜ **Pendent, sense data** |
+| Pas 3 · pantalla de classificació del sistema nou | ✅ |
+| Pas 4 · pantalla de captura 0-10 | ✅ |
+| Passos A–D · **commutador de sistema** al panell d'admin (§7) | ✅ Fet, **sense desplegar** |
+| **El tall** · posar el commutador en «Nou» a Normal | ⬜ **Pendent, sense data** |
 
-Les tres pantalles noves conviuen amb les antigues i **només les veu l'admin** («Puntuar
-Repte», a més, en mode Test). Inventari i regles de visibilitat: `docs/PANTALLES.md`.
-Llista de comprovació del tall: `docs/TALLS.md`.
+**El tall ja no és un canvi de codi**: és un clic a panell d'admin → *Puntuació*, i tornar
+enrere també (§7). El que falta per poder-lo fer és **desplegar** el codi dels passos A–D.
 
-**Verificat**: «Taula de Classificació» dona exactament els mateixos punts i posicions que la
-«Classificació General» actual — el resultat matemàticament esperat, perquè l'assignació de
-punts per posició només fa servir la nota per detectar empats, mai la seva magnitud.
+Les pantalles del sistema nou **ja no són "d'admin"**: es veuen o no segons el commutador,
+igual per a tothom, i porten els noms de sempre («Resultat Repte», «Classificació General»).
+Inventari i regles de visibilitat: `docs/PANTALLES.md`. Llista de comprovació: `docs/TALLS.md`.
 
-**Encara per decidir**: què es fa amb els reptes que tinguin la **votació oberta** el dia del
-tall (§3.3).
+**Verificat**: la classificació del sistema nou dona exactament els mateixos punts i posicions
+que la «Classificació General» actual — el resultat matemàticament esperat, perquè l'assignació
+de punts per posició només fa servir la nota per detectar empats, mai la seva magnitud.
+
+**Ja no és una decisió pendent** què es fa amb els reptes que tinguin la votació oberta el dia
+del tall (§3.3): amb el commutador, els dos sistemes escriuen les mateixes dades i un repte a
+mig votar surt bé de totes dues maneres. Es prefereix fer el canvi entre la pujada i l'inici de
+la votació, però és una preferència, no un requisit.
 
 ---
 
@@ -58,10 +64,12 @@ mecanisme que avui amaga les noves. És la xarxa de seguretat per si mai calgué
 «Resultat Repte» i la seva cortina de 3 criteris no es redissenyaran mai: es deixaran
 intactes i ocultes.
 
-**«Puntuar Repte» es gateja diferent de les altres dues** (admin real **o** mode Test, no
-només admin) perquè és una eina de captura que cal poder provar amb usuaris no admin. El
-criteri general: pantalla de només lectura → gate per rol; pantalla que escriu i s'ha de provar
-amb diversos comptes → gate per mode de BD.
+~~**«Puntuar Repte» es gateja diferent de les altres dues** (admin real **o** mode Test)~~
+**Superat el 28/07/2026 (Pas D)**: ja no hi ha cap gating per rol ni per mode de BD. La
+visibilitat de totes les pantalles del canvi de puntuació depèn **només del commutador**, igual
+per a tothom. Un admin en mode «veure com a participant» veu exactament el que veu un soci; per
+comparar sistemes s'obren dues finestres. L'únic que continua depenent del **rol real** és el
+distintiu `3×5`/`0-10` de les targetes, que el soci no veu mai.
 
 **Els estats bloquejats no atenuen mai el valor triat**, només les alternatives. Un "ja has
 votat" que enfosqueix la pròpia resposta és el contrari del que ha de comunicar.
@@ -616,6 +624,20 @@ de les apps i el canvi de sistema de puntuació, els nav-cards d'accés a les pa
 antigues (votació de 3 estrelles, Resultat Repte, Classificació General) deixaran de
 mostrar-se, i els de les pantalles noves passaran a ser-hi per a tothom (no només admin/Test).
 
+> **Actualització 28/07/2026 — el tall ja no és un canvi de codi.** El que hi ha escrit aquí
+> descrivia editar `participant.js` i desplegar. Des del Pas D (vegeu §7) qui decideix què es
+> veu és una clau d'`app_settings` (`sistema_puntuacio_nou`) que l'admin commuta des de la
+> pestanya *Puntuació*: efecte immediat per a tothom i marxa enrere amb un altre clic, sense
+> desplegar ni tocar dades. També ha caigut el gating per rol/mode Test: ara no hi ha cap
+> excepció, i un admin en mode «veure com a participant» veu exactament el que veu un soci.
+> Detall a `docs/PANTALLES.md` i llista de comprovació a `docs/TALLS.md`.
+>
+> Efecte de retruc: la pregunta oberta de §3.3 (què fer amb els reptes amb la **votació
+> oberta** el dia del tall) deixa de ser bloquejant. Els dos sistemes escriuen les mateixes
+> dades a `votes`, o sigui que un repte a mig votar dona el mateix resultat en tots dos. El
+> criteri segueix sent fer el canvi entre la pujada i l'inici de la votació, però ara és una
+> preferència, no un requisit.
+
 **Retirada (no esborrat)**: les pantalles antigues i els seus nav-cards **no s'eliminaran del
 codi** en fer el tall — quedaran inaccessibles (nav-card ocult, com ja ho són ara les noves)
 però presents, per si mai calgués revertir al sistema antic. Es considera un escenari poc
@@ -629,3 +651,52 @@ la Fase 7 del pla general.)
 generava confusió real entre totes dues. Renombrada a **"Puntuar Repte"** (ca) / "Puntuar
 Reto" (es) — el verb deixa clar que és on es fa l'acció de puntuar, per contrast amb
 "Valoració Repte" on només es consulta. "Valoració Repte" no canvia de nom.
+
+---
+
+## 7. El commutador de sistema (Passos A–D, 27-28/07/2026)
+
+Proposta d'Enric, per tenir "màxima seguretat de funcionament en qualsevol circumstància": en
+lloc que el tall sigui una edició de codi amb desplegament, que sigui **una opció al panell
+d'admin**. Acordat i fet.
+
+### Decisions preses abans d'escriure codi
+
+| Pregunta | Decisió |
+|---|---|
+| Noms de les pantalles noves | **Es queden els noms bons de sempre** («Resultat Repte», «Classificació General»). El soci no aprèn cap nom nou. Els de treball desapareixen de la interfície |
+| Què veu l'admin | El **mateix que el soci**. El mode «veure com a participant» serveix per posar-se a la seva pell; per comparar sistemes s'obren dues finestres. Un distintiu `3×5`/`0-10` visible només per a l'admin li diu quin està mirant |
+| Àmbit del commutador | **Global, un per base de dades** (`app_settings`). És un canvi de criteri de l'app, no d'un repte concret |
+| Canviar amb votació oberta | **Permès, amb avís**, no bloquejat. Vegeu l'actualització de §6 |
+| Clonar la pujada de foto | **No.** La pujada no depèn del sistema de puntuació (mateix criteri que la Galeria). El mosaic de votació és un de sol i només canvia on porta |
+
+### Els passos
+
+- **Pas A** — `sql/2026-07-27_fase3_commutador.sql` (+ rollback): una fila a `app_settings`,
+  `sistema_puntuacio_nou`, booleana, per defecte `false` (sistema antic). Booleana i no un text
+  `antic`/`nou` perquè `parseSetting()` només entén `'true'`: qualsevol altre valor es llegiria
+  com a `false` sense avisar ningú.
+- **Pas B** — el client la llegeix (`data.js`, `state.js`, `config.js`) i la incorpora a **les
+  dues llistes** de signatura de l'auto-refresc (`router.js`), o un soci amb l'app oberta no
+  veuria el canvi. Escriptura amb funció pròpia, `saveSistemaPuntuacio()`, que toca **només la
+  seva fila**: `saveSettings()` reescriu les 9 claus alhora i entre elles hi ha
+  `general_ranking`, i commutar no ha de poder tocar els punts acumulats ni de retruc.
+- **Pas C** — pestanya *Puntuació* al panell d'admin: estat actual, les dues opcions, avís si
+  hi ha votació oberta, ca i es.
+- **Pas D** — la pantalla d'inici obeeix el commutador: parelles de targetes, mosaic que porta
+  a un sistema o a l'altre, distintiu d'admin, i retirada del gating per rol/mode Test. La
+  pantalla de captura 0-10 rep la mateixa capçalera que la votació de sempre (títol amb el nom
+  del repte i línia d'estat), i se li treu el «Eina de prova» del subtítol.
+
+### Dues coses apreses pel camí
+
+**El `upsert` no es pot convertir en `update`.** Comprovat a Test amb la fila real: un `UPDATE`
+fet sense sessió d'admin **no dona cap error** — la política RLS simplement no li ensenya la
+fila, afecta 0 files i el client se'n va content. És l'`upsert` el que xoca amb el `WITH CHECK`
+del camí d'INSERT i retorna error de debò. Queda avisat al codi.
+
+**`valoracio` d'un vot sol pot tenir decimals.** Cada criteri antic és un enter 0-5, però
+`valoracio` és la conversió de la suma (0-15) a 0-10, o sigui ×2/3, i només cau en un enter
+quan la suma és múltiple de 3. A Normal, **611 de 1.059 vots** tenen `valoracio` amb decimals
+(exemple real: 0/1/1 → 1,33). No afecta les dades; només cal decidir quina càpsula s'encén si
+algú que ja havia votat amb estrelles obre la pantalla de 0-10, i s'arrodoneix a la més propera.

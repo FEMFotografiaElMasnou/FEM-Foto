@@ -82,7 +82,7 @@ Objectiu: una única aplicació que integri tota la funcionalitat de Reptes més
 | 0 · Diagnosi i pla | ✅ Fet | Aquest document |
 | 1 · Bastida | ✅ Fet | Repo `FEM-Foto` i projecte Vercel actius. Desplega a `fem-foto.vercel.app` |
 | 2 · Integració nativa de Resultats | ✅ **Tancada** | Iframe retirat, un únic motor de rànquing. Sense cap dependència de FEM-Resultats |
-| 3 · Nou sistema de puntuació | 🔄 En curs | Passos 1-4 fets. Falta el **tall** (§8) |
+| 3 · Nou sistema de puntuació | 🔄 En curs | Passos 1-4 i A-D fets. El tall ja és **un clic**, no codi. Falta desplegar A-D i prémer-lo |
 | 4 · Proves internes | ⬜ | |
 | 5 · Validació amb els socis | ⬜ | |
 | 6 · Tall de domini | ⬜ | Llista de comprovació a `docs/TALLS.md` |
@@ -94,10 +94,13 @@ resultat. L'únic rastre és `_reference-resultats/`, una còpia estàtica de co
 carrega mai. Si avui s'esborrés el repo de FEM-Resultats, FEM-Foto seguiria funcionant igual.
 
 **Fase 3 — què hi ha fet:** columna `votes.valoracio` amb trigger des dels 3 criteris antics
-(Pas 1/1b), i les tres pantalles noves del sistema 0-10 convivint amb les antigues: «Valoració
-Repte» (Pas 2/2b), «Taula de Classificació» (Pas 3) i «Puntuar Repte» (Pas 4, l'única que
-escriu vots). Detall tècnic i decisions a `ANALISI_Fase3_Puntuacio.md`; qui veu cada pantalla,
-a `docs/PANTALLES.md`.
+(Pas 1/1b), i les tres pantalles noves del sistema 0-10 convivint amb les antigues (Passos
+2/2b, 3 i 4). Des dels **Passos A-D (27-28/07/2026)**, qui decideix quin dels dos jocs de
+pantalles veuen els socis és un **commutador al panell d'admin** (pestanya *Puntuació*), amb
+efecte immediat i marxa enrere d'un clic: el tall ha deixat de ser una edició de codi amb
+desplegament. Les pantalles noves han adoptat els noms de sempre, així que el soci no aprendrà
+cap nom nou. Detall tècnic i decisions a `ANALISI_Fase3_Puntuacio.md` §7; qui veu cada
+pantalla, a `docs/PANTALLES.md`.
 
 ### Treball transversal — autenticació i navegació
 
@@ -114,10 +117,11 @@ sense dependre de l'administrador.
 
 ## 7. Què queda pendent de decidir
 
-**El tall de Fase 3** (§6 de `ANALISI_Fase3_Puntuacio.md`, llista a `docs/TALLS.md`): quan es
-considera "finalitzada" la integració per amagar els accessos antics i mostrar els nous a
-tothom. Lligat a una pregunta encara oberta: què es fa amb els reptes que tinguin la **votació
-oberta** el dia del tall.
+**El tall de Fase 3** (§7 de `ANALISI_Fase3_Puntuacio.md`, llista a `docs/TALLS.md`): **quan**
+es prem el commutador. La pregunta que hi havia lligada —què es fa amb els reptes amb la
+votació oberta aquell dia— **ja no bloqueja**: els dos sistemes escriuen les mateixes dades i
+un repte a mig votar surt bé de totes dues maneres. Queda com a preferència fer-ho entre la
+pujada i l'inici de la votació. El que sí que falta és **desplegar** els Passos A-D.
 
 **La navegació**: si es fa per a totes les pantalles de cop o primer només les de participant.
 
@@ -152,6 +156,17 @@ Coses menors, sense data, que no justifiquen una fase pròpia:
 - **Doble manteniment mentre duri la convivència**: qualsevol canvi urgent a l'app antiga s'ha
   de replicar aquí a mà. Convé no allargar aquesta fase.
 - **Les dues apps escriuen al mateix Supabase de producció** mentre convisquin.
+
+  > ⚠️ **Aquest risc ja s'ha materialitzat (28/07/2026), i va deixar l'app antiga caiguda dos
+  > dies.** L'enduriment d'autenticació fet aquí va trencar FEM-Reptes per partida doble: (a) el
+  > `REVOKE SELECT` sobre `users.password` (26/07) feia fallar la seva càrrega sencera amb
+  > `permission denied for table users` — l'app es quedava sense dades i oferia "Primera
+  > configuració"; i (b) les RLS d'escriptura basades en `auth.uid()` (27/07) haurien impedit
+  > votar i pujar fotos encara que la càrrega s'hagués arreglat, perquè l'app antiga no tenia cap
+  > sessió de Supabase Auth. Resolt portant-hi el login per Auth (mateixes RPC, cap canvi de BD).
+  > **Cap dels dos problemes es va veure fins que un soci ho va reportar.** Mentre FEM-Reptes
+  > visqui, qualsevol canvi d'esquema, de permisos o de RLS s'ha de comprovar **també** contra
+  > ella — el Pas 4d (buidar `users.password`) és el pròxim candidat clar.
 - **El tall de domini** (Fase 6) és el moment més sensible del projecte: franja de baix ús i
   pla de reversió del DNS a mà. Vegeu `docs/TALLS.md`.
 

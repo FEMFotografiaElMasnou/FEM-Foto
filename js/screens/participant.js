@@ -11,7 +11,21 @@ import { setActiveNav, switchTab } from '../core/router.js';
 import { populateGalleryFilters, renderGallery, startGalleryCarousel, stopGalleryCarousel } from '../features/galeria.js';
 import { getActiveCalendar } from '../features/calendari.js';
 import { getVotingProgress } from '../core/data.js';
-import { _dbMode } from '../core/config.js';
+
+// ═══════════════════════════════════
+// SISTEMA DE PUNTUACIÓ ACTIU (Fase 3)
+// ═══════════════════════════════════
+// Font única per decidir quin dels dos jocs de pantalles veu el soci. El
+// valor real viu a app_settings.sistema_puntuacio_nou i el commuta l'admin
+// des de la pestanya "Puntuació" (js/screens/admin.js).
+//
+// Val per a TOTHOM, admin inclòs: quan un admin es posa en mode "veure com a
+// participant" ha de veure exactament el que veu un soci, sense extres
+// (decisió d'Enric, 28/07/2026). Per comparar els dos sistemes s'obren dues
+// finestres, no es barregen les targetes en una.
+function sistemaNou() {
+  return !!state.settings.sistemaPuntuacioNou;
+}
 
 // ═══════════════════════════════════
 // PANELES
@@ -36,6 +50,21 @@ export function showParticipantMain() {
   document.getElementById('participant-panel-main').classList.remove('hidden');
   setActiveNav('bnav-home');
   refreshParticipantDashboard();
+}
+
+// Porta d'entrada única a la votació des del mosaic de la pantalla d'inici
+// (#vote-mosaic-section). El soci prem sempre la mateixa targeta, amb el
+// mateix aspecte; el que canvia és on va a parar segons el sistema actiu.
+//
+// La comprovació de "no hi ha fotos" es fa aquí, un sol cop, perquè valgui
+// per als dos camins (abans només la feia showParticipantVoting).
+export function obrirVotacioRepte() {
+  if (state.publishedPhotos.length === 0) {
+    showToast(t('no_photos_published_toast'), 'info');
+    return;
+  }
+  if (sistemaNou()) showParticipantPuntuacioRepte();
+  else showParticipantVoting();
 }
 
 export function showParticipantVoting() {
@@ -63,9 +92,19 @@ export function showParticipantVoting() {
 // Exportada + a window: applyTranslations() (i18n.js) la crida via
 // window._refreshVotingGrids (votacio.js) en canviar d'idioma, perquè el
 // text (generat amb t()) es repinti igual que la resta de contingut dinàmic.
+// Repinta la capçalera de LES DUES pantalles de votació (l'antiga de 3
+// estrelles i la nova de 0-10). Es criden totes dues sense mirar quina es
+// veu: cadascuna surt sola si els seus elements no hi són, i així la crida
+// sense arguments de votacio.js (canvi d'idioma) segueix valent per a totes
+// dues sense haver de saber quin sistema mana.
 export function renderVotingHeader() {
-  const titleEl  = document.getElementById('voting-screen-title');
-  const statusEl = document.getElementById('voting-status-line');
+  _renderVotingHeaderInto('voting-screen-title', 'voting-status-line');
+  _renderVotingHeaderInto('puntuacio-screen-title', 'puntuacio-status-line');
+}
+
+function _renderVotingHeaderInto(titleId, statusId) {
+  const titleEl  = document.getElementById(titleId);
+  const statusEl = document.getElementById(statusId);
   if (!titleEl) return;
 
   const obj = state.currentObjective;
@@ -99,7 +138,11 @@ export function renderVotingHeader() {
 export function showParticipantPuntuacioRepte() {
   _hideAllParticipantPanels();
   document.getElementById('participant-panel-puntuacio-repte').classList.remove('hidden');
-  setActiveNav('bnav-rank');
+  // 'bnav-vote', no 'bnav-rank' (Pas D): des que aquesta pantalla és la
+  // votació de debò del sistema nou, la pestanya del peu que s'ha d'encendre
+  // és la de votar, la mateixa que encén showParticipantVoting().
+  setActiveNav('bnav-vote');
+  renderVotingHeader();
   renderPuntuacioGrid('puntuacio-voting-grid');
   // Bug corregit 2026-07-26: el botó "Enviar Vots" no es tocava mai des d'aquí
   // (updateVoteButtonsState() només gestionava els altres dos), així que es
@@ -394,28 +437,11 @@ export function refreshParticipantDashboard() {
   // Re-apply all data-i18n translations (nav cards, labels, etc.)
   applyTranslations();
   updateVoteButtonsState();
-  // Aplicar visibilitat de nav-cards (estat repte + forçats admin)
+  // Aplicar visibilitat de nav-cards (estat repte + forçats admin + sistema
+  // de puntuació actiu). Fase 3 Pas D: el gating per rol admin / mode Test
+  // que hi havia aquí s'ha retirat — ara qui decideix quines targetes es
+  // veuen és NOMÉS el commutador, igual per a tothom.
   applyParticipantButtonVisibility();
-
-  // "Valoració Repte" (Fase 3, Pas 2): eina de comparació només per a comptes
-  // amb rol admin. OJO: NO es pot fer servir actingAsAdmin() aquí — l'únic
-  // camí pel qual un admin arriba a veure aquesta pantalla de nav-cards és
-  // posant-se en mode "veure com a participant" (toggleAdminParticipantView,
-  // router.js), i en aquell mode actingAsAdmin() és fals a propòsit (perquè
-  // tota la resta es vegi exactament com ho veu un soci). Cal el rol real.
-  const valoracioCard = document.getElementById('nav-card-valoracio-repte');
-  const taulaClassificacioCard = document.getElementById('nav-card-taula-classificacio');
-  const puntuacioCard = document.getElementById('nav-card-puntuacio');
-  const isRealAdmin = !!(state.currentUser && state.currentUser.role === 'admin');
-  if (valoracioCard) valoracioCard.classList.toggle('hidden', !isRealAdmin);
-  if (taulaClassificacioCard) taulaClassificacioCard.classList.toggle('hidden', !isRealAdmin);
-  // Puntuar Repte (Pas 4): a diferència de les altres dues (només lectura,
-  // només admin), aquesta és una eina de CAPTURA que cal poder provar amb
-  // diversos usuaris de prova reals (no admin). Es mostra també quan la BD
-  // activa és Test — els socis reals mai hi són (no tenen manera de canviar
-  // de BD), així que no queda exposada en producció.
-  const isTestDb = _dbMode === 'test';
-  if (puntuacioCard) puntuacioCard.classList.toggle('hidden', !(isRealAdmin || isTestDb));
 
   // Carrusel de la card galeria: només si la card és visible i som al panell principal
   const galCard    = document.getElementById('nav-card-gallery');
@@ -445,28 +471,72 @@ export function getButtonVisibility() {
   };
 }
 
+// Mostra/amaga una nav-card actuant sobre els DOS mecanismes alhora: la
+// classe .hidden (display:none !important, que és com neixen amagades les
+// targetes noves a l'HTML) i style.display (el que feia servir aquesta
+// funció). Si només se'n toqués un, l'altre guanyaria i la targeta es
+// quedaria enganxada — la classe té !important i sempre s'imposaria.
+function _setCardVisible(id, show) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle('hidden', !show);
+  el.style.display = show ? '' : 'none';
+}
+
 // Aplicar visibilitat sobre les nav-cards del participant
 export function applyParticipantButtonVisibility() {
   if (!state.currentUser || actingAsAdmin()) return;
-  const v = getButtonVisibility();
-  const setDisplay = (id, show) => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = show ? '' : 'none';
-  };
+  const v   = getButtonVisibility();
+  const nou = sistemaNou();
+
   // Votar ja no és una targeta pròpia: la substitueix el mosaic dins la
   // targeta de Repte/La meva foto (vegeu updateUploadSection a fotos.js).
-  setDisplay('nav-card-resultats',     v.showResultats);
-  setDisplay('nav-card-classificacio', v.showClassificacio);
+  // El mosaic és el mateix en els dos sistemes; només canvia on porta
+  // (obrirVotacioRepte).
+  //
+  // Les dues PARELLES de targetes de resultats: es veu l'una o l'altra, mai
+  // totes dues. El force_hide_* corresponent amaga LA PARELLA sencera, no
+  // una de les dues pantalles — és el mateix botó de sempre i ha de seguir
+  // fent el mateix, digui el que digui el commutador.
+  _setCardVisible('nav-card-resultats',           v.showResultats     && !nou);
+  _setCardVisible('nav-card-valoracio-repte',     v.showResultats     &&  nou);
+  _setCardVisible('nav-card-classificacio',       v.showClassificacio && !nou);
+  _setCardVisible('nav-card-taula-classificacio', v.showClassificacio &&  nou);
+
+  // "Puntuar Repte" ja no té targeta pròpia (Pas D): s'hi arriba pel mosaic
+  // de votació, exactament com a la votació de sempre. La targeta es queda a
+  // l'HTML, amagada, per no perdre el punt d'entrada si mai calgués.
+  _setCardVisible('nav-card-puntuacio', false);
+
   // Galeria: visible si hi ha algun repte finalitzat; l'admin (rol real) també
   // la veu si hi ha repte actual, perquè a la galeria veu el repte en curs.
+  // No la toca el commutador: el canvi de puntuació no l'afecta.
   const hasFinished = state.objectives.some(o => o.status === 'finished');
   const isAdminRole = !!(state.currentUser && state.currentUser.role === 'admin');
-  setDisplay('nav-card-gallery', hasFinished || (isAdminRole && !!state.currentObjective));
+  _setCardVisible('nav-card-gallery', hasFinished || (isAdminRole && !!state.currentObjective));
+
+  _updateSistemaBadges(isAdminRole, nou);
+}
+
+// Distintiu [3×5] / [0-10] a les targetes. NOMÉS per a comptes amb rol admin
+// real: com que les dues pantalles de cada parella es diuen igual (i han de
+// dir-se igual, perquè el soci no aprengui noms nous), sense aquesta marca
+// un admin que estigui revisant el funcionament no sap quina està mirant.
+// El soci no la veu mai.
+function _updateSistemaBadges(isAdminRole, nou) {
+  document.querySelectorAll('.nav-card-badge').forEach(el => {
+    el.classList.toggle('hidden', !isAdminRole);
+  });
+  // El mosaic és una sola targeta que serveix els dos sistemes, així que el
+  // seu distintiu no pot ser text fix a l'HTML com el de les altres.
+  const mosaicBadge = document.getElementById('vote-mosaic-badge');
+  if (mosaicBadge) mosaicBadge.textContent = nou ? '0-10' : '3×5';
 }
 
 // Exponer en window las funciones usadas desde onclick del HTML
 window.showParticipantMain = showParticipantMain;
 window.showParticipantVoting = showParticipantVoting;
+window.obrirVotacioRepte = obrirVotacioRepte;
 window.showParticipantRanking = showParticipantRanking;
 window.showParticipantResultats = showParticipantResultats;
 window.onResultatsRepteChange = onResultatsRepteChange;

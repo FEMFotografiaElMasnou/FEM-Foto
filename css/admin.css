@@ -257,3 +257,109 @@
   object-fit: cover;
   display: block;
 }
+
+/* ── PESTANYA PUNTUACIÓ (Fase 3) ──────────────────────────────────
+   Commutador del sistema de vot. Dues opcions grans i excloents; la
+   que mana es marca amb el color d'accent i el segell "✓ Actiu".
+   Mides generoses a propòsit: és un botó que canvia el que veuen 50
+   socis, no ha de ser possible prémer-lo sense adonar-se'n. */
+.puntuacio-estat {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  border-radius: var(--radius-sm);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+}
+.puntuacio-estat-etiqueta {
+  font-size: 15px;
+  color: var(--text-muted);
+}
+.puntuacio-estat-valor {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent2);
+  letter-spacing: .3px;
+}
+
+/* Avís de votació oberta — informa, no bloqueja */
+.puntuacio-avis {
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  border-radius: var(--radius-sm);
+  background: rgba(245, 166, 35, .12);
+  border: 1px solid var(--warning);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.puntuacio-opcions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.puntuacio-opcio {
+  position: relative;
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 20px 18px 18px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 2px solid var(--border);
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color .15s, background .15s, transform .1s;
+}
+.puntuacio-opcio:hover { border-color: var(--border2); background: var(--surface2); }
+.puntuacio-opcio:active { transform: scale(.995); }
+
+.puntuacio-opcio-icona { font-size: 30px; line-height: 1; margin-bottom: 10px; }
+
+.puntuacio-opcio-nom {
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  margin-bottom: 6px;
+}
+
+.puntuacio-opcio-desc {
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* El segell "✓ Actiu" només existeix a l'opció que mana */
+.puntuacio-opcio-marca {
+  display: none;
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+.puntuacio-opcio.is-actiu {
+  border-color: var(--accent);
+  background: var(--surface3);
+  cursor: default;
+}
+.puntuacio-opcio.is-actiu .puntuacio-opcio-marca { display: block; }
+
+.puntuacio-nota {
+  margin-top: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}

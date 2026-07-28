@@ -183,6 +183,12 @@ export function startAutoRefresh() {
         getSetting('force_hide_vote'),
         getSetting('force_hide_resultats'),
         getSetting('force_hide_classificacio'),
+        // Commutador de sistema de puntuació (Fase 3): ha de ser a la
+        // signatura, o un soci amb l'app oberta no veuria el canvi fins que
+        // es mogués alguna altra cosa. IMPORTANT: aquesta llista i la de
+        // _buildSignature() han de tenir els mateixos elements EN EL MATEIX
+        // ORDRE, o cada sondeig detectaria un canvi fals i recarregaria sempre.
+        getSetting('sistema_puntuacio_nou'),
         photosCountRes.count || 0,
         votesCountRes.count || 0,
       ].join('|');
@@ -209,6 +215,9 @@ function _buildSignature() {
     String(state.settings.force_hide_vote),
     String(state.settings.force_hide_resultats),
     String(state.settings.force_hide_classificacio),
+    // Mateix ordre que la llista de startAutoRefresh() — vegeu el comentari
+    // que hi ha allà.
+    String(state.settings.sistemaPuntuacioNou),
     state.photos.length + state.publishedPhotos.length,
     state.votes.length,
   ].join('|');

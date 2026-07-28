@@ -9,9 +9,10 @@
 // ═══════════════════════════════════
 import { state } from '../core/state.js';
 import { t } from '../core/i18n.js';
-import { getActiveAllPhotos } from '../core/data.js';
+import { getActiveAllPhotos, saveSistemaPuntuacio } from '../core/data.js';
 import { updateVoteButtonsState } from '../features/votacio.js';
 import { switchTab } from '../core/router.js';
+import { showToast } from '../ui/toast.js';
 
 // ═══════════════════════════════════
 // ADMIN DASHBOARD
@@ -69,8 +70,65 @@ export function adminNav(tab) {
   // Repinta la llista de textos en entrar-hi, per descartar edicions no
   // desades d'una visita anterior i reflectir l'estat actual del diccionari.
   if (tab === 'texts' && typeof window.renderTextsList === 'function') window.renderTextsList();
+  // Ídem per al commutador: en entrar-hi ha de mostrar l'estat real d'ara,
+  // no el que hi hagués la darrera vegada (pot haver canviat de BD pel mig).
+  if (tab === 'puntuacio') renderPuntuacioTab();
+}
+
+// ═══════════════════════════════════
+// PESTANYA PUNTUACIÓ — commutador de sistema (Fase 3)
+// ═══════════════════════════════════
+// Decideix què veuen els SOCIS: sistema antic (3 criteris 0-5) o nou (1 nota
+// 0-10). El valor viu a app_settings.sistema_puntuacio_nou, un per base de
+// dades. Aquí només es pinta i s'escriu; qui l'obeeix és la pantalla de
+// participant (Pas D).
+export function renderPuntuacioTab() {
+  const nou = !!state.settings.sistemaPuntuacioNou;
+
+  // Quin sistema mana ara mateix
+  const estatEl = document.getElementById('puntuacio-estat-actual');
+  if (estatEl) {
+    estatEl.innerHTML = `
+      <div class="puntuacio-estat-etiqueta">${t('puntuacio_estat_label')}</div>
+      <div class="puntuacio-estat-valor">${nou ? t('puntuacio_opcio_nou') : t('puntuacio_opcio_antic')}</div>`;
+  }
+
+  // Marcar l'opció activa (el CSS fa la resta: marc, color i "✓ Actiu")
+  const opcioAntic = document.getElementById('puntuacio-opcio-antic');
+  const opcioNou   = document.getElementById('puntuacio-opcio-nou');
+  if (opcioAntic) opcioAntic.classList.toggle('is-actiu', !nou);
+  if (opcioNou)   opcioNou.classList.toggle('is-actiu', nou);
+
+  // Avís de votació oberta. No bloqueja res: informa que el canvi enxampa
+  // socis a mitja votació. Els vots ja fets no es perden (tots dos sistemes
+  // s'escriuen alhora a cada vot), però la interfície els canviarà de cop.
+  const avisEl = document.getElementById('puntuacio-avis-votacio');
+  if (avisEl) {
+    const votacioOberta = !!(state.currentObjective && state.settings.voting_enabled);
+    avisEl.classList.toggle('hidden', !votacioOberta);
+    if (votacioOberta) {
+      // .title, no .name: el mapatge de data.js reanomena la columna `name`
+      // de la BD a `title` a l'objecte de state (data.js, objectivesRaw.map).
+      avisEl.innerHTML = `⚠️ ${t('puntuacio_avis_votacio').replace('{repte}', state.currentObjective.title || '')}`;
+    }
+  }
+}
+
+// Canvi de sistema. Si es prem l'opció que ja està activa, no fa res: evita
+// una escriptura inútil a la BD i el toast confús de "canviat" sense canvi.
+export async function triarSistemaPuntuacio(nou) {
+  if (!!state.settings.sistemaPuntuacioNou === !!nou) return;
+
+  const res = await saveSistemaPuntuacio(nou);
+  if (!res.ok) {
+    showToast(res.sensePermis ? t('puntuacio_error_sessio') : t('puntuacio_error'), 'error');
+    return;
+  }
+  renderPuntuacioTab();
+  showToast(nou ? t('puntuacio_canviat_nou') : t('puntuacio_canviat_antic'), 'success');
 }
 
 // Exponer en window: las llamadas desde onclick
 window.refreshAdminDashboard = refreshAdminDashboard;
 window.adminNav = adminNav;
+window.triarSistemaPuntuacio = triarSistemaPuntuacio;

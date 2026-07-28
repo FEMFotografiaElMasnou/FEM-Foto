@@ -53,6 +53,21 @@ de la migració d'Auth).
 > columna encara existeix i el camí de reserva `fem_login()` encara la fa servir. Buidar-la
 > és feina del **Pas 4d**, pendent de comprovar abans si Zampa en depèn.
 
+> 🔥 **Aquesta revocació va tombar l'app antiga durant dos dies (26→28/07/2026).** FEM-Reptes
+> demanava `password` a la seva consulta de `users` i, en no poder-la llegir, li fallava **tota**
+> la càrrega (`permission denied for table users`). Ja està arreglada (ara entra per Supabase
+> Auth, com aquesta app). Es deixa escrit perquè és el precedent que explica la regla de sota.
+>
+> **Regla, mentre FEM-Reptes visqui**: tot canvi de **permisos de columna, esquema o RLS** en
+> aquesta base de dades s'ha de comprovar contra **les dues apps**, no només contra FEM-Foto.
+> Una manera ràpida de saber què fa l'app antiga sense sortir d'aquest repo: el seu codi
+> original és el primer commit de FEM-Foto (`3ddb85a`, "Punt de partida: còpia de FEM-Reptes").
+> Els candidats immediats són el Pas 4d i qualsevol `REVOKE`/`DROP COLUMN` sobre `users`.
+
+> ⚠️ **`auth_user_id` tampoc no és llegible** per `anon`/`authenticated` (mai se li va donar el
+> `GRANT` després del `REVOKE` de tota la taula). Conseqüència pràctica: **`select('*')` sobre
+> `users` falla** per a qualsevol client. Cal enumerar sempre les columnes.
+
 ### Mortes, encara presents
 
 | Taula | Estat |

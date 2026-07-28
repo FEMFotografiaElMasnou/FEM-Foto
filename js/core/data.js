@@ -240,6 +240,12 @@ export async function loadAllData() {
     force_hide_vote:          parseSetting('force_hide_vote', false),
     force_hide_resultats:     parseSetting('force_hide_resultats', false),
     force_hide_classificacio: parseSetting('force_hide_classificacio', false),
+    // Fase 3 — commutador de sistema de puntuació (migració
+    // sql/2026-07-27_fase3_commutador.sql). false = sistema ANTIC (3 criteris
+    // 0-5), true = sistema NOU (1 nota 0-10). El defecte és false a propòsit:
+    // si la fila no hi és, o si algú hi escriu un valor que no sigui 'true',
+    // l'app es queda al sistema antic, que és el segur.
+    sistemaPuntuacioNou:      parseSetting('sistema_puntuacio_nou', false),
   };
   state.generalRanking = parseJSON('general_ranking', {});
 
@@ -364,6 +370,50 @@ export async function saveSettings() {
   const { error } = await sb.from('app_settings').upsert(rows, { onConflict: 'id' });
   if (error) console.error('saveSettings error', error);
   return !error;
+}
+
+// Commutador de sistema de puntuació (Fase 3) — escriu NOMÉS la seva fila.
+//
+// A propòsit no es reutilitza saveSettings(): aquella reescriu les 9 claus
+// alhora, i entre elles hi ha `general_ranking`, que és la Classificació
+// General acumulada. Commutar de sistema de puntuació no ha de poder tocar
+// els punts acumulats ni de retruc, ni encara que sigui reescrivint-los amb
+// el mateix valor. Radi d'acció: una fila.
+//
+// Qui pot escriure-hi: la política RLS `app_settings_write_admin` ho limita a
+// fem_is_admin(). No cal cap comprovació addicional al client (i tampoc no
+// serviria de res: la barrera de debò és la de Supabase).
+//
+// ⚠️ NO canviar aquest `upsert` per un `update`. Comprovat a Test (27/07/2026)
+// amb la fila real: un UPDATE fet sense sessió d'admin no dona cap error —
+// el USING de la política simplement no li ensenya la fila i afecta 0 files,
+// o sigui que el client se'n va content sense haver canviat res. L'upsert, en
+// canvi, xoca amb el WITH CHECK del camí d'INSERT i retorna error de debò,
+// que és l'única manera que aquesta funció pugui informar que ha fallat.
+export async function saveSistemaPuntuacio(nou) {
+  const updatedBy = state.currentUser ? state.currentUser.id : 'system';
+  const row = {
+    id:         'cfg_sistema_puntuacio_nou',
+    key:        'sistema_puntuacio_nou',
+    value:      String(!!nou),
+    updated_at: new Date().toISOString(),
+    updated_by: updatedBy,
+  };
+  const { error } = await sb.from('app_settings').upsert(row, { onConflict: 'id' });
+  if (error) {
+    console.error('saveSistemaPuntuacio error', error.code, error.message);
+    // Es distingeix el rebuig per RLS (42501) de qualsevol altra fallada,
+    // perquè és el cas que passa de veritat i té una solució concreta que
+    // l'admin pot fer tot sol: sortir i tornar a entrar. Va passar el
+    // 28/07/2026 provant-ho a Normal — l'app deixa entrar al panell pel camí
+    // de reserva (fem_login/sessionStorage, Pas 4b), però llavors auth.uid()
+    // és NULL, fem_is_admin() torna false i CAP escriptura protegida per RLS
+    // funciona. El missatge genèric no donava cap pista i calia anar a mirar
+    // els registres d'Auth per entendre-ho.
+    return { ok: false, sensePermis: error.code === '42501' };
+  }
+  state.settings.sistemaPuntuacioNou = !!nou;
+  return { ok: true };
 }
 
 // ── Filtrado por temática activa ─────────────────────────────────

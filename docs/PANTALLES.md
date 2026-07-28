@@ -1,58 +1,63 @@
 # Inventari de pantalles i qui les veu
 
-Durant el canvi de sistema de puntuació conviuen **parelles** de pantalles: l'antiga (3
-criteris 0-5) i la nova (1 concepte 0-10). Cadascuna té la seva regla de visibilitat i és fàcil
-confondre-les — de fet ja va passar amb els noms, i per això «Puntuació Repte» es va renombrar
-«Puntuar Repte».
+Durant el canvi de sistema de puntuació conviuen **parelles** de pantalles: l'antiga (3 criteris
+0-5) i la nova (1 puntuació 0-10). Qui decideix quina es veu és el **commutador** del panell
+d'admin (pestanya *Puntuació*), i val per a tothom.
 
-Estat llegit del codi el **27/07/2026** (`js/screens/participant.js`, `index.html`).
+Estat llegit del codi el **28/07/2026** (`js/screens/participant.js`, `index.html`), després de
+la Fase 3 Pas D.
 
 ---
 
-## Les tres parelles
+## Les parelles
 
-| Sistema antic (3 criteris) | Sistema nou (0-10) | Què fa la nova |
+| Sistema antic (3 criteris) | Sistema nou (0-10) | Nom que veu el soci |
 |---|---|---|
-| Votació real (`js/features/votacio.js`, estrelles) | **Puntuar Repte** | **Captura** de vots: 10 càpsules + desplegable |
-| **Resultat Repte** | **Valoració Repte** | Resultats d'un repte, **només lectura** |
-| **Classificació General** | **Taula de Classificació** | Punts acumulats, **només lectura** |
+| Votació real (`js/features/votacio.js`, estrelles) | Captura 0-10 (`renderPuntuacioGrid`) | — (s'hi entra pel mosaic) |
+| `nav-card-resultats` | `nav-card-valoracio-repte` | **Resultat Repte** |
+| `nav-card-classificacio` | `nav-card-taula-classificacio` | **Classificació General** |
 
-**No confondre «Puntuar Repte» amb «Valoració Repte»**: la primera *escriu* vots, la segona
-només *mostra* resultats. Són coses diferents amb noms que s'assemblen.
+**Les dues pantalles d'una parella es diuen igual, a posta.** El soci no ha d'aprendre cap nom
+nou ni notar res el dia del tall. Els noms de treball («Valoració Repte», «Taula de
+Classificació», «Puntuar Repte») ja no apareixen enlloc de la interfície: viuen només als
+identificadors del codi i en aquesta documentació.
 
-## Visibilitat
+## Com es decideix què es veu
 
-| Pantalla | `nav-card` | Qui la veu |
-|---|---|---|
-| Votar (mosaic) | `vote-mosaic-section` | Tothom, quan la votació és oberta |
-| Galeria | `nav-card-gallery` | Tothom |
-| Resultat Repte | `nav-card-resultats` | Tothom |
-| Classificació General | `nav-card-classificacio` | Tothom |
-| Valoració Repte | `nav-card-valoracio-repte` | **Només rol admin real** |
-| Taula de Classificació | `nav-card-taula-classificacio` | **Només rol admin real** |
-| Puntuar Repte | `nav-card-puntuacio` | **Admin real O bé mode BD = Test** |
+Tot passa per `applyParticipantButtonVisibility()` ([participant.js](../js/screens/participant.js)),
+que llegeix `state.settings.sistemaPuntuacioNou` (reflex d'`app_settings.sistema_puntuacio_nou`).
 
-### Per què «Puntuar Repte» té una regla diferent
+| Targeta | Quan es veu |
+|---|---|
+| Mosaic de votació (`vote-mosaic-section`) | Quan la votació és oberta. **Sempre la mateixa targeta**; només canvia on porta (`obrirVotacioRepte()`) |
+| Galeria (`nav-card-gallery`) | Hi ha algun repte finalitzat (o l'admin amb repte actiu). El commutador no l'afecta |
+| Resultat Repte — antic / nou | Un o l'altre segons el commutador, i tots dos amagats si `force_hide_resultats` |
+| Classificació General — antic / nou | Ídem amb `force_hide_classificacio` |
+| `nav-card-puntuacio` | **Mai.** Retirada al Pas D; s'hi arriba pel mosaic. Es queda a l'HTML per no perdre el punt d'entrada |
 
-Les altres dues noves són taulers de només lectura: n'hi ha prou que les vegi un admin per
-comparar sistemes. «Puntuar Repte» és una eina de **captura** que s'ha de poder exercitar amb
-diversos usuaris de prova **no admin** — si es gatejava només per rol, calia promoure un usuari
-de prova a admin només per arribar-hi. Es mostra també en mode Test, on els socis reals mai
-són (no tenen manera de canviar de base de dades), així que no queda exposada en producció.
+Els `force_hide_*` amaguen **la parella sencera**, no una de les dues pantalles: són els botons
+de sempre i fan el que sempre han fet, digui el que digui el commutador.
 
-### Per què cal el **rol real**, no `actingAsAdmin()`
+## El distintiu `3×5` / `0-10`
 
-L'únic camí pel qual un admin arriba a veure aquesta graella de nav-cards és posant-se en mode
-"veure com a participant", i en aquell mode `actingAsAdmin()` és fals **a propòsit**, perquè
-tota la resta es vegi exactament com ho veu un soci. Cal comprovar
-`state.currentUser.role === 'admin'` directament. Està comentat a
-[participant.js:400](../js/screens/participant.js:400) i és fàcil de trepitjar sense voler.
+Com que les dues pantalles de cada parella es diuen igual, un admin que estigui revisant el
+funcionament no sabria quina mira. Per això les targetes porten un distintiu a la cantonada que
+**només veuen els comptes amb rol admin real** (`.nav-card-badge`, el pinta
+`_updateSistemaBadges()`). El soci no el veu mai.
+
+## El que va canviar al Pas D (28/07/2026)
+
+Fins llavors, les pantalles noves eren visibles **només per a l'admin** (i «Puntuar Repte»
+també en mode Test), com a eines de comparació. Aquell gating **s'ha retirat**: ara no hi ha cap
+excepció per rol ni per base de dades, i un admin en mode «veure com a participant» veu
+exactament el que veu un soci — decisió d'Enric, perquè aquell mode serveix precisament per
+posar-se a la pell del soci. Per comparar els dos sistemes s'obren dues finestres.
+
+Això vol dir que la vella advertència sobre `actingAsAdmin()` ja no aplica al commutador: la
+visibilitat no depèn del rol. Sí que segueix aplicant al distintiu, que necessita el **rol real**
+(`state.currentUser.role === 'admin'`), perquè en mode «veure com a participant»
+`actingAsAdmin()` és fals a posta.
 
 ## Què passarà al tall
 
-Quan es doni per bo el canvi de sistema, els `nav-card` antics deixaran de mostrar-se i els
-nous passaran a ser visibles per a tothom. **Les pantalles antigues no s'esborraran del codi**,
-només quedaran ocultes — el mateix mecanisme que les noves fan servir avui, per si mai calgués
-tornar enrere. Vegeu `docs/TALLS.md`.
-
-Les pantalles que el canvi de puntuació no afecta (la Galeria) no es toquen ni es dupliquen.
+Res de codi: es prem el botó. Vegeu `docs/TALLS.md`, Tall 1.

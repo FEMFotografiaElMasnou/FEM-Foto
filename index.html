@@ -63,12 +63,16 @@
       <div id="login-test-banner" style="display:none;background:rgba(255,59,48,0.1);border:1px solid rgba(255,59,48,0.35);border-radius:8px;padding:8px 12px;margin-bottom:14px;text-align:center;font-size:12px;font-weight:700;color:#ff3b30;letter-spacing:0.06em;">
         <span data-i18n="test_mode_banner">🔴 MODE TEST — Base de dades de proves</span>
       </div>
-      <!-- Setup banner (shown only if DB is empty) -->
-      <div id="setup-banner" style="display:none;background:rgba(232,197,71,0.08);border:1px solid rgba(232,197,71,0.3);border-radius:10px;padding:14px;margin-bottom:18px;">
-        <div style="font-size:13px;color:var(--accent);font-weight:600;margin-bottom:8px;" data-i18n="setup_banner_title">⚙️ Primera configuració</div>
-        <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;" data-i18n="setup_banner_msg">No s'han trobat usuaris a la base de dades. Inicialitza per crear l'administrador per defecte.</div>
-        <button type="button" class="btn btn-primary btn-sm btn-full" onclick="initializeDB()" id="btn-init" data-i18n="init_db_btn">Inicialitzar Base de Dades</button>
-      </div>
+      <!-- El rètol "Primera configuració" amb el botó "Inicialitzar Base de
+           Dades" s'ha RETIRAT (28/07/2026). Només apareixia quan la llista
+           d'usuaris arribava buida, i això, amb la base de dades ja poblada,
+           no vol dir "cal inicialitzar" sinó "alguna cosa ha fallat carregant"
+           — oferir un botó d'inicialització just en aquell moment convidava a
+           prémer-lo precisament quan menys convé. Si algun dia cal muntar un
+           projecte de Supabase nou de zero, el primer admin es crea cridant
+           `fem_bootstrap_admin()` des de l'editor SQL (vegeu
+           docs/REFERENCIA_BD.md); la funció segueix existint i només s'executa
+           si `users` és buida de debò. -->
       <!-- Tab toggle -->
       <div style="display:flex;gap:4px;background:var(--surface2);border-radius:10px;padding:4px;margin-bottom:20px;">
         <button type="button" id="tab-login"    onclick="showLoginTab()"    class="login-tab-btn active-tab" data-i18n="login_tab">Iniciar Sessió</button>
@@ -167,6 +171,12 @@
       </button>
       <button type="button" class="sidebar-item" onclick="adminNav('texts')">
         <span class="sidebar-icon">📝</span><span class="sidebar-label" data-i18n="texts_nav_label">Textos</span>
+      </button>
+      <!-- Puntuació (Fase 3): commutador del sistema de vot. Va al final
+           perquè és una decisió de configuració que es toca molt de tant en
+           tant, no feina del dia a dia. -->
+      <button type="button" class="sidebar-item" onclick="adminNav('puntuacio')">
+        <span class="sidebar-icon">⚖️</span><span class="sidebar-label" data-i18n="puntuacio_nav_label">Puntuació</span>
       </button>
     </aside>
   <div class="main-content">
@@ -354,6 +364,50 @@
         <div id="texts-list" style="display:flex;flex-direction:column;gap:6px;max-height:65vh;overflow-y:auto;border-top:1px solid var(--border);"></div>
       </div>
     </div>
+
+    <!-- TAB: PUNTUACIÓ (Fase 3) — commutador global del sistema de puntuació.
+         Decideix QUÈ VEUEN ELS SOCIS a la pantalla d'inici: el sistema antic
+         (3 criteris 0-5) o el nou (1 nota 0-10). El valor viu a
+         app_settings.sistema_puntuacio_nou (migració
+         sql/2026-07-27_fase3_commutador.sql), un per base de dades: Test i
+         Normal poden estar en sistemes diferents, i és justament el que
+         permet provar-ho sense tocar producció.
+         El pinta renderPuntuacioTab() (js/screens/admin.js). -->
+    <div id="admin-tab-puntuacio" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title" data-i18n="puntuacio_admin_title">Sistema de puntuació</div>
+            <div class="card-subtitle" data-i18n="puntuacio_admin_subtitle">Com voten els socis les fotos dels reptes</div>
+          </div>
+        </div>
+
+        <!-- Estat actual — el JS hi escriu quin sistema mana ara mateix -->
+        <div id="puntuacio-estat-actual" class="puntuacio-estat"></div>
+
+        <!-- Avís de votació oberta — amagat si no hi ha cap repte votant-se.
+             No bloqueja el canvi: informa. -->
+        <div id="puntuacio-avis-votacio" class="puntuacio-avis hidden"></div>
+
+        <!-- Les dues opcions -->
+        <div class="puntuacio-opcions">
+          <button type="button" class="puntuacio-opcio" id="puntuacio-opcio-antic" onclick="triarSistemaPuntuacio(false)">
+            <div class="puntuacio-opcio-icona">⭐</div>
+            <div class="puntuacio-opcio-nom" data-i18n="puntuacio_opcio_antic">Antic · 3 criteris</div>
+            <div class="puntuacio-opcio-desc" data-i18n="puntuacio_opcio_antic_desc">Creativitat, Temàtica i Composició, de 0 a 5 estrelles cadascun. La nota de la foto és la mitjana dels tres.</div>
+            <div class="puntuacio-opcio-marca" data-i18n="puntuacio_actiu_marca">✓ Actiu</div>
+          </button>
+          <button type="button" class="puntuacio-opcio" id="puntuacio-opcio-nou" onclick="triarSistemaPuntuacio(true)">
+            <div class="puntuacio-opcio-icona">🔟</div>
+            <div class="puntuacio-opcio-nom" data-i18n="puntuacio_opcio_nou">Nou · 1 puntuació</div>
+            <div class="puntuacio-opcio-desc" data-i18n="puntuacio_opcio_nou_desc">Una sola puntuació de 0 a 10 per foto, tal com es va acordar a la reunió de socis.</div>
+            <div class="puntuacio-opcio-marca" data-i18n="puntuacio_actiu_marca">✓ Actiu</div>
+          </button>
+        </div>
+
+        <div class="puntuacio-nota" data-i18n="puntuacio_admin_nota">El canvi és immediat per a tots els socis i es pot desfer en qualsevol moment tornant a prémer l'altra opció. Cap vot ja emès s'esborra ni es modifica: els dos sistemes es guarden alhora a cada vot.</div>
+      </div>
+    </div>
   </div>
   </div>
 </div>
@@ -483,8 +537,12 @@
              NOTA: el .nav-sub NO porta data-i18n perquè el text es genera
              dinàmicament (amb la data); si en portés, applyTranslations()
              el sobreescriuria cada refresc amb el text estàtic del diccionari. -->
-        <div class="nav-card photo-gallery-tile hero-gallery-tile vote-mosaic-tile hidden" id="vote-mosaic-section" onclick="showParticipantVoting()">
+        <div class="nav-card photo-gallery-tile hero-gallery-tile vote-mosaic-tile hidden" id="vote-mosaic-section" onclick="obrirVotacioRepte()">
           <div class="vote-mosaic-grid" id="vote-mosaic-grid"></div>
+          <!-- Distintiu del sistema actiu, només visible per a l'admin real.
+               El text el posa el JS (_updateSistemaBadges, participant.js)
+               perquè aquesta targeta serveix els dos sistemes. -->
+          <div class="nav-card-badge hidden" id="vote-mosaic-badge"></div>
           <div class="nav-icon">🗳️</div>
           <div class="nav-title" id="vote-mosaic-title">—</div>
           <div class="nav-sub" id="vote-mosaic-sub">Accedeix a la votació de fotos</div>
@@ -501,37 +559,47 @@
 
       <!-- Accessos ràpids restants — Votar ja no hi és (viu dins la targeta de Repte) -->
       <div class="section-grid">
+        <!-- PARELLES DE TARGETES (Fase 3 Pas D) — de cada parella només se'n
+             veu UNA, la que toqui segons el commutador de sistema de puntuació
+             (app_settings.sistema_puntuacio_nou; ho aplica
+             applyParticipantButtonVisibility() a participant.js).
+             Per això les dues d'una mateixa parella porten EL MATEIX NOM: el
+             soci no ha d'aprendre cap nom nou ni notar res el dia del tall.
+             Qui n'ha de saber la diferència és l'admin, i per això hi ha el
+             distintiu .nav-card-badge, que només ell veu. -->
         <div class="nav-card" id="nav-card-resultats" onclick="showParticipantResultats()">
+          <div class="nav-card-badge hidden">3×5</div>
           <div class="nav-icon">🏅</div>
           <div class="nav-title" data-i18n="nav_resultats">Resultat Repte</div>
           <div class="nav-sub" data-i18n="nav_resultats_sub">Resultats dels reptes finalitzats</div>
         </div>
         <div class="nav-card" id="nav-card-classificacio" onclick="showParticipantClassificacioGeneral()">
+          <div class="nav-card-badge hidden">3×5</div>
           <div class="nav-icon">🏆</div>
           <div class="nav-title" data-i18n="nav_classificacio">Classificació General</div>
           <div class="nav-sub" data-i18n="nav_classificacio_sub">Classificació acumulada</div>
         </div>
-        <!-- Valoració Repte (nom de treball, Fase 3 Pas 2) — eina de comparació
-             del nou sistema de puntuació, només per a l'admin real (vegeu
-             refreshParticipantDashboard, participant.js). Amagada per defecte. -->
+        <!-- Parella de "Resultat Repte" per al sistema 0-10 (era "Valoració
+             Repte", nom de treball de la Fase 3 Pas 2). -->
         <div class="nav-card hidden" id="nav-card-valoracio-repte" onclick="showParticipantValoracioRepte()">
-          <div class="nav-icon">🧮</div>
-          <div class="nav-title" data-i18n="nav_valoracio">Valoració Repte</div>
-          <div class="nav-sub" data-i18n="nav_valoracio_sub">Prova del nou sistema de puntuació (només admin)</div>
+          <div class="nav-card-badge hidden">0-10</div>
+          <div class="nav-icon">🏅</div>
+          <div class="nav-title" data-i18n="nav_resultats">Resultat Repte</div>
+          <div class="nav-sub" data-i18n="nav_resultats_sub">Resultats dels reptes finalitzats</div>
         </div>
-        <!-- Taula de Classificació (nom de treball, Fase 3 Pas 3) — eina de
-             comparació del nou sistema de puntuació per a la Classificació
-             General, només per a l'admin real. Amagada per defecte. -->
+        <!-- Parella de "Classificació General" per al sistema 0-10 (era
+             "Taula de Classificació", nom de treball de la Fase 3 Pas 3). -->
         <div class="nav-card hidden" id="nav-card-taula-classificacio" onclick="showParticipantTaulaClassificacio()">
-          <div class="nav-icon">🧮</div>
-          <div class="nav-title" data-i18n="nav_taula_classificacio">Taula de Classificació</div>
-          <div class="nav-sub" data-i18n="nav_taula_classificacio_sub">Prova del nou sistema de puntuació (només admin)</div>
+          <div class="nav-card-badge hidden">0-10</div>
+          <div class="nav-icon">🏆</div>
+          <div class="nav-title" data-i18n="nav_classificacio">Classificació General</div>
+          <div class="nav-sub" data-i18n="nav_classificacio_sub">Classificació acumulada</div>
         </div>
-        <!-- Puntuar Repte (Fase 3 Pas 4) — captura de prova del nou sistema
-             de puntuació (1 nota 0-10), en paral·lel a la pantalla real de
-             votació (participant-panel-voting), sense tocar-la. Només per a
-             l'admin real (vegeu refreshParticipantDashboard, participant.js).
-             Amagada per defecte. -->
+        <!-- Puntuar Repte — RETIRADA COM A TARGETA (Fase 3 Pas D): ara s'hi
+             arriba pel mosaic de votació (#vote-mosaic-section), igual que a
+             la votació de sempre. Es queda a l'HTML, sempre amagada per
+             applyParticipantButtonVisibility(), per no perdre el punt
+             d'entrada si mai calgués recuperar-lo. -->
         <div class="nav-card hidden" id="nav-card-puntuacio" onclick="showParticipantPuntuacioRepte()">
           <div class="nav-icon">🔟</div>
           <div class="nav-title" data-i18n="nav_puntuacio">Puntuar Repte</div>
@@ -568,17 +636,22 @@
       </div>
     </div>
 
-    <!-- Panel Puntuar Repte (Fase 3 Pas 4) — captura de prova del nou sistema
-         de puntuació (1 nota 0-10), en paral·lel a la pantalla real de
-         votació (participant-panel-voting), sense tocar-la. Només
-         accessible per a l'admin real (nav-card amagada per defecte). -->
+    <!-- Panel Puntuar Repte (Fase 3 Pas 4) — captura del sistema nou (1 nota
+         0-10). Des del Pas D és la pantalla de votació REAL quan el
+         commutador està en "nou": s'hi arriba pel mosaic de la pantalla
+         d'inici, i porta la mateixa capçalera que la votació de sempre
+         (títol dinàmic amb el nom del repte + línia d'estat), omplerta per
+         renderVotingHeader() a participant.js. -->
     <div id="participant-panel-puntuacio-repte" class="hidden">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
         <button type="button" class="btn btn-secondary btn-sm" onclick="showParticipantMain()" data-i18n="embedded_back">← Tornar</button>
-        <h2 style="font-family:var(--font-display);font-weight:700;font-size:24px;letter-spacing:2px;" data-i18n="nav_puntuacio">Puntuar Repte</h2>
+        <!-- Sense data-i18n: el text és dinàmic (hi va el nom del repte) i
+             applyTranslations() el sobreescriuria a cada refresc. -->
+        <h2 id="puntuacio-screen-title" style="font-family:var(--font-display);font-weight:700;font-size:24px;letter-spacing:2px;">Votació de fotos</h2>
       </div>
       <div class="card">
-        <div class="card-subtitle voting-instructions" style="margin-bottom:16px;" data-i18n="puntuacio_screen_subtitle">Puntua cada foto de l'1 al 10. Eina de prova, no pots votar la teva pròpia foto.</div>
+        <div id="puntuacio-status-line" class="voting-status-line"></div>
+        <div class="card-subtitle voting-instructions" style="margin-bottom:16px;" data-i18n="puntuacio_screen_subtitle">Puntua cada foto de l'1 al 10. No pots votar la teva pròpia foto.</div>
         <div id="puntuacio-voting-grid" class="puntuacio-grid">
           <div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🗳️</div><p data-i18n="no_photos_to_vote">No hi ha fotos per votar.</p></div>
         </div>
@@ -678,7 +751,9 @@
         <button type="button" class="btn btn-secondary btn-sm" onclick="showParticipantMain()">
           <span data-i18n="embedded_back">← Tornar</span>
         </button>
-        <h2 style="font-family:var(--font-display);font-weight:700;font-size:24px;letter-spacing:2px;" data-i18n="nav_valoracio">Valoració Repte</h2>
+        <!-- Pas D: mateix títol que la pantalla equivalent del sistema antic
+             — són la mateixa pantalla per al soci, només canvia el sistema. -->
+        <h2 style="font-family:var(--font-display);font-weight:700;font-size:24px;letter-spacing:2px;" data-i18n="nav_resultats">Resultat Repte</h2>
       </div>
       <div class="card">
         <div class="gallery-filters" style="margin-bottom:16px;">
@@ -736,7 +811,8 @@
         <button type="button" class="btn btn-secondary btn-sm" onclick="showParticipantMain()">
           <span data-i18n="embedded_back">← Tornar</span>
         </button>
-        <h2 style="font-family:var(--font-display);font-weight:700;font-size:24px;letter-spacing:2px;" data-i18n="nav_taula_classificacio">Taula de Classificació</h2>
+        <!-- Pas D: mateix títol que la pantalla equivalent del sistema antic. -->
+        <h2 style="font-family:var(--font-display);font-weight:700;font-size:24px;letter-spacing:2px;" data-i18n="nav_classificacio">Classificació General</h2>
       </div>
       <div class="card">
         <div class="gallery-filters" style="margin-bottom:16px;" id="taula-classificacio-vote-filter-group">
