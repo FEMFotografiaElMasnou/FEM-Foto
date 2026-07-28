@@ -64,6 +64,14 @@ de la migració d'Auth).
 > original és el primer commit de FEM-Foto (`3ddb85a`, "Punt de partida: còpia de FEM-Reptes").
 > Els candidats immediats són el Pas 4d i qualsevol `REVOKE`/`DROP COLUMN` sobre `users`.
 
+> ⚠️ **`app_texts` guanya sempre al diccionari del codi.** `mergeTranslations()`
+> (`js/core/i18n.js`) fusiona el `jsonb` de la BD **per sobre** de `TRANSLATIONS`, i la BD porta
+> ~325 claus a `ca` i ~322 a `es`. Conseqüència pràctica, i costa una estona d'entendre-la la
+> primera vegada: **canviar un text a `i18n.js` no té cap efecte si la clau ja és a `app_texts`**.
+> El codi només és la xarxa de seguretat per a les claus que la BD encara no té. Si un text que
+> canvia al codi ha de canviar de debò, cal un `UPDATE` sobre `app_texts` (exemple:
+> `sql/2026-07-28_reset_admin_part2_tancament.sql`, punt 3).
+
 > ⚠️ **`auth_user_id` tampoc no és llegible** per `anon`/`authenticated` (mai se li va donar el
 > `GRANT` després del `REVOKE` de tota la taula). Conseqüència pràctica: **`select('*')` sobre
 > `users` falla** per a qualsevol client. Cal enumerar sempre les columnes.
@@ -93,7 +101,7 @@ l'app**: tot el que el client no pot fer directament (per RLS) hi passa pel mig.
 
 | Funció | Qui la pot cridar | Què fa |
 |---|---|---|
-| `fem_login(identity, password)` | anon, auth | Valida contrasenya al servidor i retorna dades no sensibles. **Camí de reserva** des del Pas 4b |
+| `fem_login(identity, password)` | anon, auth | Valida contrasenya al servidor i retorna dades no sensibles. **Camí de reserva** des del Pas 4b. Una contrasenya buida a la BD retorna `invalid` (abans `reset_required`) |
 | `fem_is_admin()` | anon, auth | `true` si `auth.uid()` és d'un admin. Base de les polítiques RLS |
 | `fem_current_user_id()` | anon, auth | `users.id` de la sessió actual |
 | `fem_register_account(name, email, password)` | anon, auth | Auto-registre. Rol **forçat** a `participant` pel servidor |
@@ -101,7 +109,8 @@ l'app**: tot el que el client no pot fer directament (per RLS) hi passa pel mig.
 | `fem_delete_account(user_id)` | **auth** | Baixa (admin o un mateix). Esborra `public.users` **i** `auth.users` |
 | `fem_bootstrap_admin(name, email, password)` | anon, auth | Primer admin + `app_settings`. Només amb `users` buida |
 | `fem_create_account_row(...)` | **ningú** | Helper intern. Sense privilegis per a anon ni authenticated |
-| `fem_set_new_password(user_id, password)` | anon, auth | Contrasenya nova després d'un reset d'admin. Només si l'actual és buida |
+| `fem_set_new_password(user_id, password)` | **ningú** | Retirada el 28/07/2026 (vegeu sota). Es manté al catàleg sense privilegis, no s'ha esborrat |
+| `fem_admin_reset_password(user_id)` | **auth** | El Reset del panell de Socis. Genera una contrasenya temporal, l'escriu a les dues taules, tanca les sessions obertes del soci i la retorna a l'admin |
 | `fem_admin_set_password(user_id, password)` | anon*, auth | Un admin canvia la contrasenya d'un soci |
 | `fem_set_own_password(password)` | **auth** | L'usuari es canvia la seva. Identitat **només** per `auth.uid()` |
 | `fem_admin_set_email(user_id, email)` | **auth** | Canvi d'email sincronitzat a les tres taules |
@@ -113,9 +122,36 @@ l'app**: tot el que el client no pot fer directament (per RLS) hi passa pel mig.
 **Tota dada d'identitat que visqui a `public.users` i a `auth.users` alhora s'ha d'escriure a
 totes dues dins la mateixa transacció.** Aquesta regla va néixer de tres incidents seguits
 (contrasenya reiniciada per admin al Pas 3b, canvi d'email al Pas 4b, reset per correu al Pas
-4c): les tres vegades, escriure'n només una deixava el soci sense poder entrar o, pitjor,
-deixava la contrasenya antiga vàlida. Si algun dia s'afegeix un tercer camp compartit, ha de
-seguir el mateix patró.
+4c) i el 28/07/2026 en va caçar un **quart** (el Reset del panell de Socis, vegeu sota). Totes
+les vegades, escriure'n només una deixava el soci sense poder entrar o, pitjor, deixava la
+contrasenya antiga vàlida. Si algun dia s'afegeix un tercer camp compartit, ha de seguir el
+mateix patró.
+
+### El Reset de contrasenya de l'admin (canviat el 28/07/2026)
+
+Fins aquell dia, el Reset **buidava** `public.users.password` i el soci en triava una de nova al
+pròxim accés (`fem_login` → `reset_required` → `fem_set_new_password`). Comprovat en viu que
+aquell disseny tenia dos problemes:
+
+1. **No revocava res.** Buidar `public.users` no toca `auth.users`, i des del Pas 4b el login
+   valida primer amb `signInWithPassword()`: el soci seguia entrant amb la contrasenya vella i
+   el modal de contrasenya nova no s'obria mai.
+2. **Qualsevol podia segrestar un compte reiniciat.** Amb la clau anon pública i l'email del
+   soci: `fem_login(email, <qualsevol cosa>)` retornava `reset_required` **i l'id** sense
+   comprovar cap contrasenya, i `fem_set_new_password(id, pw)` estava concedida a `anon` i només
+   comprovava que la guardada fos buida — cap prova d'identitat. La finestra durava des del
+   Reset fins que el soci triava contrasenya.
+
+Ara el Reset crida `fem_admin_reset_password(user_id)`, que genera una **contrasenya temporal**
+(8 caràcters, sense els ambigus O/0/I/l/1, amb `gen_random_bytes`), l'escriu a les dues taules,
+esborra `auth.sessions`/`auth.refresh_tokens` del soci —la sessió és persistent des del Pas 4b,
+sense això un soci amb l'app oberta al mòbil no en sortiria— i la retorna a l'admin, que l'hi fa
+arribar. `fem_set_new_password` queda sense privilegis i `fem_login` ja no retorna
+`reset_required`.
+
+**Conseqüència per al Pas 4d**: buidar `users.password` per a tothom era, amb el disseny antic,
+posar els 41 comptes en estat segrestable de cop. Amb això aplicat ja no ho és — però l'ordre
+segueix important: primer aquest canvi, després el 4d.
 
 ### Inconsistència detectada (27/07/2026, no corregida)
 
@@ -123,9 +159,15 @@ Les marcades amb **\*** (`fem_admin_create_member`, `fem_admin_set_password`,
 `fem_apply_calendar`) segueixen sent executables per `anon`. **No són un forat obert**: les
 dues primeres es comproven internament amb `fem_is_admin()`, que retorna un `EXISTS` i mai
 `NULL`. Però trenquen el criteri de doble barrera que sí que apliquen les funcions més noves
-(`REVOKE EXECUTE ... FROM anon` a més de la comprovació interna). Val la pena alinear-les —
+(`REVOKE EXECUTE ... FROM PUBLIC, anon` a més de la comprovació interna). Val la pena alinear-les —
 és un `REVOKE` de tres línies, sense risc. `fem_apply_calendar()` ja estava apuntada com a
 observació a `ANALISI_Login_Navegacio.md` §1.2.
+
+⚠️ **Que hi digui `FROM PUBLIC, anon` i no només `FROM anon` no és estètica** (comprovat el
+28/07/2026 a Test): tota funció nova neix amb `EXECUTE` concedit a `PUBLIC`, i `anon` hi arriba
+per aquí. Un `REVOKE ... FROM anon` tot sol **no fa res** —`has_function_privilege('anon', ...)`
+segueix dient `true`— igual que el `REVOKE` de columna del 26/07 no feia res mentre hi hagués un
+`GRANT` de taula sencera. Comprovar sempre el resultat, no donar el `REVOKE` per bo.
 
 ---
 

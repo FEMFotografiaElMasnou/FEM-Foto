@@ -108,7 +108,7 @@ Fora de la numeració de fases. Anàlisi completa a `ANALISI_Login_Navegacio.md`
 
 | Bloc | Estat |
 |---|---|
-| **Autenticació** — migració a Supabase Auth | 🔄 Passos 1, 2, 3a-3c i 4a-4c fets, verificats als dos entorns i desplegats. Falta **4d** (retirar el sistema antic), bloquejat per una comprovació prèvia a Zampa |
+| **Autenticació** — migració a Supabase Auth | 🔄 Passos 1, 2, 3a-3c i 4a-4c fets, verificats als dos entorns i desplegats. El **Reset de contrasenya de l'admin** (28/07) està fet i provat **només a Test**, amb el codi de les dues apps pendent de desplegar. Falta **4d** (retirar el sistema antic), bloquejat per una comprovació prèvia a Zampa |
 | **Navegació** — refresc i botó enrere | ⬜ Sense començar. No hi ha cap `pushState`/`hash` a l'app: refrescar torna sempre a l'inici i el botó enrere surt de l'app |
 
 El que ha canviat per als socis amb la migració d'Auth: la sessió es manté oberta fins que es
@@ -137,8 +137,10 @@ Coses menors, sense data, que no justifiquen una fase pròpia:
 - **Galeria**: si qui mira és admin, oferir un botó per descarregar les imatges que hi hagi
   en pantalla segons els filtres aplicats.
 - **`fem_admin_create_member` i `fem_admin_set_password`**: afegir-hi `REVOKE EXECUTE ... FROM
-  anon`. No hi ha cap forat (totes dues es comproven internament), però trenquen el criteri de
-  doble barrera que sí segueixen les funcions més noves. Vegeu `docs/REFERENCIA_BD.md`.
+  **PUBLIC, anon**`. No hi ha cap forat (totes dues es comproven internament), però trenquen el
+  criteri de doble barrera que sí segueixen les funcions més noves. ⚠️ `FROM anon` tot sol **no
+  funciona** —el permís els ve del `GRANT` a `PUBLIC` que rep tota funció nova, comprovat el
+  28/07/2026— i cal verificar-ho amb `has_function_privilege()`. Vegeu `docs/REFERENCIA_BD.md`.
 - **Neteja de BD, sense pressa**: eliminar les taules mortes `reptes_calendari` i `settings`, i
   valorar el renombrat `objectives` → `reptes`. ⚠️ El renombrat obliga a reescriure a mà
   `fem_apply_calendar()` (té els noms de taula escrits com a text) i a tocar 2 línies de

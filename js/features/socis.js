@@ -76,18 +76,61 @@ export function resetMemberPassword(userId) {
   openModal('modal-confirm');
 }
 
+// 28/07/2026 — abans això era `update({ password: '' })` directe sobre `users`.
+// Es va canviar perquè, comprovat en viu, aquell reset no revocava res i obria
+// un forat:
+//   · buidar `public.users.password` no toca `auth.users`, i des del Pas 4b
+//     handleLogin() valida primer amb signInWithPassword() → la contrasenya
+//     VELLA seguia entrant, i el modal de "crea'n una de nova" no s'obria mai;
+//   · i mentre la contrasenya era buida, qualsevol amb la clau anon pública i
+//     l'email del soci podia posar-n'hi una de nova (fem_set_new_password
+//     només comprovava que la guardada fos buida) i entrar-hi.
+// Ara el servidor genera una contrasenya temporal i l'escriu a les DUES taules
+// alhora, tanca les sessions obertes del soci, i l'admin l'hi fa arribar.
+// Vegeu `sql/2026-07-28_reset_admin_contrasenya_temporal.sql`.
 export async function doResetMemberPassword(userId) {
-  // Single UPDATE — only the password field, all other data preserved
-  const { error } = await sb.from('users').update({ password: '' }).eq('id', userId);
-  if (error) {
-    showToast('❌ Error', 'error');
+  const user = state.users.find(u => u.id === userId);
+
+  const { data: tempPassword, error } = await sb.rpc('fem_admin_reset_password', {
+    p_user_id: userId,
+  });
+
+  // La RPC retorna NULL si qui la crida no és admin o si el soci no existeix.
+  if (error || !tempPassword) {
+    if (error) console.error('fem_admin_reset_password error', error);
+    showToast(t('member_reset_error'), 'error');
     return;
   }
-  // Update local state
-  const u = state.users.find(u => u.id === userId);
-  if (u) u.password = '';
+
   renderMembersTable();
-  showToast(t('member_reset_done'), 'success');
+  openTempPasswordModal(user ? user.name : '', tempPassword);
+}
+
+// La contrasenya temporal es mostra un sol cop, en un modal i no en un toast:
+// l'admin l'ha de poder llegir amb calma i copiar-la per enviar-la al soci.
+// No queda enlloc més: `state.users` ja no porta contrasenyes (des del 26/07 el
+// client no pot llegir la columna) i la BD només en guarda la temporal.
+export function openTempPasswordModal(memberName, tempPassword) {
+  document.getElementById('temp-pwd-msg').textContent =
+    t('temp_pwd_msg').replace('{name}', memberName);
+  document.getElementById('temp-pwd-value').textContent = tempPassword;
+  const copyBtn = document.getElementById('temp-pwd-copy');
+  if (copyBtn) copyBtn.textContent = t('temp_pwd_copy');
+  openModal('modal-temp-password');
+}
+
+export async function copyTempPassword() {
+  const value  = document.getElementById('temp-pwd-value').textContent;
+  const btn    = document.getElementById('temp-pwd-copy');
+  try {
+    await navigator.clipboard.writeText(value);
+    if (btn) btn.textContent = t('temp_pwd_copied');
+  } catch (e) {
+    // Sense permís de porta-retalls (o per http) no és cap error greu: la
+    // contrasenya és a la pantalla i es pot seleccionar a mà.
+    console.warn('No s\'ha pogut copiar al porta-retalls:', e);
+    showToast(t('temp_pwd_copy_failed'), 'error');
+  }
 }
 
 // ═══════════════════════════════════
@@ -267,6 +310,7 @@ export async function deleteMember(id) {
 window.toggleRole = toggleRole;
 window.inlineEditName = inlineEditName;
 window.resetMemberPassword = resetMemberPassword;
+window.copyTempPassword = copyTempPassword;
 window.deleteMember = deleteMember;
 window.openMemberModal = openMemberModal;
 window.saveMember = saveMember;

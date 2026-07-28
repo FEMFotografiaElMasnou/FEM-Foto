@@ -25,6 +25,8 @@ s'ha executat a cada entorn.
 | `2026-07-27_auth_migracio_pas4b_sync_email.sql` | ✅ | ✅ | Pas 4b: `fem_admin_set_email()` |
 | `2026-07-27_auth_migracio_pas4c_reset_contrasenya.sql` | ✅ | ✅ | Pas 4c: `fem_set_own_password()` |
 | `2026-07-27_fase3_commutador.sql` | ✅* | ✅ | Fase 3 Pas A: clau `sistema_puntuacio_nou` a `app_settings` (interruptor antic/nou) |
+| `2026-07-28_reset_admin_contrasenya_temporal.sql` | ⬜ | ✅ | Reset de l'admin Part 1: `fem_admin_reset_password()` (contrasenya temporal a les dues taules) |
+| `2026-07-28_reset_admin_part2_tancament.sql` | ⬜ | ✅ | Reset de l'admin Part 2: tanca `fem_set_new_password`, `fem_login` deixa de retornar `reset_required`, text del modal |
 
 **\* `2026-07-27_fase3_commutador.sql` a Normal**: la fila no la va crear l'script, la va crear
 la pròpia app el 28/07/2026 en provar el commutador des del panell d'admin (l'`upsert` de
@@ -36,6 +38,18 @@ el mateix dia, que és el valor que li toca fins al tall. L'script segueix sent 
 polítiques de Normal havien divergit dels de Test (per un enduriment parcial anterior) i calia
 adaptar-los.
 
+**Reset de l'admin (28/07/2026) — per què va en dues parts i quin ordre porten.** La Part 1
+és additiva i es pot aplicar amb el codi antic desplegat. La Part 2 retira la via que el codi
+antic feia servir, i per això va **després** de desplegar el codi nou de **les dues** apps
+(FEM-Foto i FEM-Reptes: comparteixen aquesta base de dades i totes dues tenien el mateix Reset).
+Ordre: Part 1 → desplegar les dues apps → Part 2. A Normal encara no s'ha fet cap de les dues.
+
+⚠️ **Parany comprovat aquí (i ja vist el 26/07 amb els permisos de columna)**: `REVOKE EXECUTE
+... FROM anon` **no fa res** en una funció nova. Tota funció neix amb `EXECUTE` concedit a
+`PUBLIC`, i `anon` hi arriba per aquí (`=X/postgres` a `pg_proc.proacl`). Cal
+`REVOKE ... FROM PUBLIC, anon` i després `GRANT` explícit als rols que la necessiten. Verificar-ho
+sempre amb `has_function_privilege('anon', ...)`, no donar el `REVOKE` per bo.
+
 ## Marxa enrere
 
 | Rollback | Desfà |
@@ -45,6 +59,7 @@ adaptar-los.
 | `2026-07-27_auth_migracio_pas4a_rollback.sql` | Pas 4a |
 | `2026-07-27_auth_migracio_pas4c_rollback.sql` | Pas 4c |
 | `2026-07-27_fase3_commutador_rollback.sql` | Fase 3 Pas A (esborra la fila; l'app torna al sistema antic per defecte) |
+| `2026-07-28_reset_admin_rollback.sql` | Les dues parts del Reset de l'admin. ⚠️ Torna a obrir el forat que tanquen |
 
 Les migracions del Pas 4b i anteriors són additives (creen funcions o columnes sense tocar
 dades ni polítiques); desfer-les és un `DROP` de la funció, indicat al peu de cada fitxer.

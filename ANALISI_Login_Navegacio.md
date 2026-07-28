@@ -25,15 +25,18 @@
 | Pas 4a · altes i baixes creen/esborren les dues files | ✅ |
 | Pas 4b · Auth decideix l'accés; sessió persistent | ✅ |
 | Pas 4c · recuperació per correu i enllaç màgic | ✅ |
+| Reset de l'admin · contrasenya temporal (§1.5) | 🔄 **Test sí, Normal no**; codi sense desplegar |
 | **Pas 4d · retirada del sistema antic** | ⬜ **Pendent**, bloquejat |
 
-Tot el que està ✅ està aplicat als **dos** projectes, verificat i desplegat.
+Tot el que està ✅ està aplicat als **dos** projectes, verificat i desplegat. El Reset (§1.5) és
+l'excepció: aplicat i provat a Test, i **pendent de desplegar el codi de les dues apps abans de
+tocar Normal**.
 
 **Com funciona l'accés avui**: `handleLogin()` valida amb
 `supabase.auth.signInWithPassword()`. El camp accepta email **o** nom complet (el nom es
 resol contra `state.users`, perquè Auth només entén emails). `fem_login()` queda com a camí
-de reserva per a dos casos legítims: contrasenya reiniciada per un admin (buida a
-`public.users`, Auth no la pot validar mai) i comptes sense parella a `auth.users`. La sessió
+de reserva per a **un** cas legítim: comptes sense parella a `auth.users`. (El segon cas que
+cobria —contrasenya reiniciada per un admin— va desaparèixer el 28/07/2026 amb §1.5.) La sessió
 és persistent: dura fins que es prem "Sortir".
 
 **Què bloqueja el Pas 4d**: cal comprovar **Zampa** abans de buidar `users.password` i
@@ -1126,6 +1129,101 @@ centrada en Zampa, sense haver de re-derivar aquest context):
 > mateixos advisors de seguretat — vegeu §1.2) necessiten el mateix
 > tractament (`auth.uid()` en lloc de confiar en el client), ara que ja hi
 > ha sessions reals disponibles per a totes dues apps.
+
+---
+
+## 1.5 El Reset de contrasenya de l'admin (28/07/2026)
+
+Fora de la numeració dels passos: no era una peça planificada de la migració, sinó una
+conseqüència seva que se'ns havia escapat. Va sortir en repassar què quedava al calaix.
+
+### Què es va comprovar, i com
+
+La sospita era només llegida del codi: `doResetMemberPassword()` (`socis.js:81`) feia
+`update({ password: '' })` sobre `public.users` i prou. Es va provar **en viu a Test, amb
+comptes que existien de debò** (un admin i una víctima d'un sol ús, esborrats després), perquè
+una prova d'autorització amb un id inventat ja ens havia donat un verd fals el 27/07:
+
+| Pas | Resultat |
+|---|---|
+| Reset fet com el fa l'app (PATCH `/users` amb la sessió real d'un admin) | `204` |
+| Estat a la BD | `public.users.password` buida, `auth.users.encrypted_password` **intacte** |
+| Login amb la contrasenya **vella**, després del Reset | **`200`, entra amb sessió real** |
+| `fem_login()` amb la vella | `reset_required` — però no s'hi arriba mai |
+
+**El Reset no revocava res.** Des del Pas 4b `handleLogin()` valida primer amb
+`signInWithPassword()` i, si va bé, entra i retorna: el camí que obria el modal de contrasenya
+nova havia quedat inabastable.
+
+### El forat que va sortir provant-ho
+
+Pitjor que el primer. Amb **només la clau anon pública i l'email del soci**, sense cap sessió:
+
+1. `fem_login(email, <qualsevol cosa>)` → `reset_required` **i l'id del soci**, sense comprovar
+   cap contrasenya (per disseny: buida = n'ha de triar una).
+2. `fem_set_new_password(id, pw)` → estava concedida a `anon` i només comprovava que la
+   guardada fos buida. **Cap prova d'identitat en tot el camí.**
+3. Login amb la nova → sessió real com aquell soci.
+
+Executat de veritat: va tornar `true` i es va obtenir la sessió. La finestra només era oberta
+per als comptes amb contrasenya buida —entre el Reset i el moment que el soci en triava una de
+nova— i el dia de la comprovació n'hi havia **0 a Normal (de 41) i 0 a Test (de 50)**.
+
+**Conseqüència d'ordre que això destapa**: el **Pas 4d**, que buida `users.password` per a
+tothom, hauria posat els 41 comptes reals en aquell estat de cop. No es podia fer 4d abans
+d'això.
+
+### El canvi
+
+Es va descartar pedaçar-ho: un "posa contrasenya a partir d'un id, obert a l'anònim" no es pot
+fer segur, perquè en aquell moment el soci no té sessió ni res amb què demostrar qui és. Es
+retira el mecanisme de contrasenya buida sencer.
+
+- **`fem_admin_reset_password(user_id)`** (nova, admin-only): genera una contrasenya temporal de
+  8 caràcters sense ambigus (O/0, I/l/1 — es dicta per telèfon a socis de ~65 anys) amb
+  `gen_random_bytes`, l'escriu a `public.users` **i** `auth.users`, **esborra les sessions
+  obertes del soci** (`auth.sessions`/`auth.refresh_tokens`: la sessió és persistent des del Pas
+  4b, i sense això qui tingués l'app oberta al mòbil no en sortiria) i la retorna a l'admin.
+- **`fem_set_new_password`**: `REVOKE EXECUTE ... FROM PUBLIC, anon, authenticated`. No
+  s'esborra, es queda sense privilegis (mateix criteri d'amagar i no esborrar).
+- **`fem_login`**: una contrasenya buida a la BD retorna `invalid`, no `reset_required`. El
+  `IF ... = ''` s'ha de mantenir explícit: sense ell, la comparació de sota faria que una
+  contrasenya buida encaixés amb un `p_password` buit i tornés `ok` — i FEM-Reptes decideix
+  l'accés amb el resultat d'aquesta funció.
+- **Client** (les dues apps): el Reset mostra la temporal en un modal, un sol cop, amb botó de
+  copiar. A FEM-Foto el modal de "crea una nova contrasenya" queda només per a la recuperació
+  per correu; a FEM-Reptes, que no en té, s'ha retirat del tot.
+
+### Dos paranys trobats pel camí, tots dos ja vistos abans en una altra forma
+
+**1. `REVOKE EXECUTE ... FROM anon` no fa res tot sol.** Tota funció nova neix amb `EXECUTE`
+concedit a `PUBLIC`, i `anon` hi arriba per aquí (`=X/postgres` a `pg_proc.proacl`). Cal
+`FROM PUBLIC, anon`. És exactament el mateix parany que el `REVOKE` de columna del 26/07, que
+tampoc no feia res mentre hi hagués un `GRANT` de taula sencera: **quan el permís ve d'una
+concessió més ampla, revocar el cas particular no la sobreescriu.** Detectat perquè es va
+comprovar amb `has_function_privilege()` en lloc de donar el `REVOKE` per bo. Les migracions del
+Pas 4a-4c ja ho feien bé; la primera versió d'aquesta el va copiar malament.
+
+**2. `app_texts` guanya al diccionari del codi.** Canviar el text del modal de confirmació a
+`js/core/i18n.js` no tenia cap efecte: `mergeTranslations()` fusiona el `jsonb` d'`app_texts`
+**per sobre** de `TRANSLATIONS`, i aquella clau hi era des del 15/07. Es va veure perquè la
+pantalla seguia dient "el soci haurà de crear-ne una de nova" amb el codi nou carregat. El text
+va per `UPDATE` a la BD (Part 2 de la migració).
+
+### Estat i què falta
+
+Aplicat i verificat **a Test**: la contrasenya vella falla pels dos camins, la temporal entra
+pels dos, la sessió oberta del soci queda tallada, i l'atac dels tres passos ja no passa del
+primer. Provat **per la interfície de les dues apps** servides en local, i el soci entra a
+FEM-Reptes amb la temporal i amb sessió real d'Auth. Comptes d'un sol ús esborrats; Test a
+50/50, 0 orfes, 0 contrasenyes buides.
+
+**A Normal no s'ha tocat res.** L'ordre obligatori, perquè la BD és compartida amb l'app que
+els socis fan servir avui:
+
+1. Part 1 a Normal (additiva, no canvia el comportament del codi desplegat).
+2. Desplegar **FEM-Foto i FEM-Reptes** amb el Reset nou.
+3. Part 2 a Normal (retira la via antiga i canvia el text).
 
 ---
 

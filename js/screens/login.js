@@ -236,7 +236,7 @@ function _startRecoveryFlow(user) {
   if (_recoveryModalOpen) return;
   _recoveryModalOpen = true;
   _recoveryPending   = false;
-  openNewPasswordModal(user, { recovery: true });
+  openNewPasswordModal(user);
 }
 
 async function _resolveRecoveryFromSession() {
@@ -323,12 +323,16 @@ export async function handleLogin() {
   }
 
   // ── Camí de reserva: fem_login() ──────────────────────────────────────────
-  // Cobreix dos casos legítims: (a) la contrasenya reiniciada per un admin
-  // (a public.users queda buida, així que Auth no la pot validar mai) — el
-  // 'reset_required' de sota obre el modal de nova contrasenya; i (b) qualsevol
-  // compte que, per un desajust, encara no tingui parella a auth.users. Si
-  // s'hi entra per aquí NO hi ha sessió real d'Auth, i per tant les
-  // escriptures fallaran: per això es deixa constància a la consola.
+  // Queda per un sol cas legítim: un compte que, per un desajust, encara no
+  // tingui parella a auth.users. Si s'hi entra per aquí NO hi ha sessió real
+  // d'Auth, i per tant les escriptures fallaran: per això es deixa constància
+  // a la consola.
+  //
+  // El segon cas que cobria —la contrasenya reiniciada per un admin, buida a
+  // public.users— ja no existeix: des del 28/07/2026 el Reset assigna una
+  // contrasenya temporal real a les dues taules, així que el soci entra per
+  // Auth com qualsevol altre. Una contrasenya buida a la BD ja no és cap porta
+  // ('invalid' a fem_login) — vegeu sql/2026-07-28_reset_admin_part2_tancament.sql.
   const { data: rows, error: rpcError } = await sb.rpc('fem_login', {
     p_identity: username,
     p_password: password,
@@ -342,14 +346,6 @@ export async function handleLogin() {
   }
 
   const result = (rows && rows[0]) || { status: 'invalid' };
-
-  // Contrasenya buida a la BD → admin l'ha reiniciat → força el flux de nova contrasenya.
-  if (result.status === 'reset_required') {
-    openNewPasswordModal({
-      id: result.id, name: result.display_name, email: result.email, role: result.role,
-    });
-    return;
-  }
 
   if (result.status !== 'ok') {
     errEl.style.display = 'block';
@@ -412,33 +408,18 @@ export async function logout() {
 }
 
 // ═══════════════════════════════════
-// FORCED NEW PASSWORD (member, after admin reset)
+// NOVA CONTRASENYA (tornada de l'enllaç de recuperació, Pas 4c)
 // ═══════════════════════════════════
 let _pendingPasswordUser = null;
-// Pas 4c: el mateix modal serveix per als dos camins que acaben triant una
-// contrasenya nova — el reset fet per un admin (sense sessió d'Auth, contrasenya
-// buida a public.users) i la recuperació per correu (amb sessió real ja
-// establerta per l'enllaç). El que canvia és el text i, sobretot, quina RPC es
-// crida per desar.
-let _recoveryMode = false;
 
-export function openNewPasswordModal(user, opts) {
+// 28/07/2026: aquest modal tenia DOS camins (el reset fet per un admin i la
+// recuperació per correu) i es distingien amb un flag, que decidia també quina
+// RPC es cridava per desar. El camí del reset ha desaparegut: ara el Reset
+// assigna una contrasenya temporal real i el soci entra pel login normal, així
+// que aquí només queda la recuperació per correu — que sempre arriba amb una
+// sessió real d'Auth ja establerta per l'enllaç.
+export function openNewPasswordModal(user) {
   _pendingPasswordUser = user;
-  _recoveryMode = !!(opts && opts.recovery);
-
-  // S'intercanvia l'ATRIBUT data-i18n, no el text: applyTranslations() repinta
-  // tots els [data-i18n] (per exemple en canviar d'idioma amb el modal obert) i
-  // esborraria qualsevol text escrit a mà.
-  const titleEl = document.getElementById('new-pwd-title');
-  const msgEl   = document.getElementById('new-pwd-msg');
-  if (titleEl) {
-    titleEl.setAttribute('data-i18n', _recoveryMode ? 'recovery_pwd_title' : 'new_pwd_modal_title');
-    titleEl.textContent = t(titleEl.getAttribute('data-i18n'));
-  }
-  if (msgEl) {
-    msgEl.setAttribute('data-i18n', _recoveryMode ? 'recovery_pwd_msg' : 'new_pwd_modal_msg');
-    msgEl.textContent = t(msgEl.getAttribute('data-i18n'));
-  }
 
   document.getElementById('new-pwd-input').value = '';
   document.getElementById('new-pwd-repeat-input').value = '';
@@ -464,29 +445,14 @@ export async function saveNewPassword() {
   }
   if (!_pendingPasswordUser) return;
 
-  let ok = false, error = null;
-
-  if (_recoveryMode) {
-    // Pas 4c: aquí la sessió real d'Auth JA existeix (l'ha creada l'enllaç del
-    // correu), així que la identitat surt de auth.uid() dins la RPC i no s'hi
-    // passa cap id d'usuari: ningú pot canviar la contrasenya d'un tercer.
-    // fem_set_own_password() escriu public.users I auth.users alhora — si només
-    // es canviés a Auth (que és el que faria updateUser), la contrasenya ANTIGA
-    // seguiria sent vàlida pel camí de reserva fem_login() del Pas 4b, i el
-    // reset no revocaria absolutament res.
-    ({ data: ok, error } = await sb.rpc('fem_set_own_password', { p_new_password: p1 }));
-  } else {
-    // Pas 3b (ANALISI_Login_Navegacio.md §1.4, decisió D3): un cop la RLS de
-    // `users` només permet UPDATE a admins autenticats, aquest usuari (encara
-    // sense sessió real d'Auth en aquest punt, ja que la seva contrasenya vella
-    // és buida) no pot fer l'UPDATE directe. fem_set_new_password() és una via
-    // SECURITY DEFINER que només accepta l'escriptura mentre la contrasenya
-    // actual sigui buida (mateix invariant que 'reset_required' a fem_login).
-    ({ data: ok, error } = await sb.rpc('fem_set_new_password', {
-      p_user_id: _pendingPasswordUser.id,
-      p_new_password: p1,
-    }));
-  }
+  // Pas 4c: aquí la sessió real d'Auth JA existeix (l'ha creada l'enllaç del
+  // correu), així que la identitat surt de auth.uid() dins la RPC i no s'hi
+  // passa cap id d'usuari: ningú pot canviar la contrasenya d'un tercer.
+  // fem_set_own_password() escriu public.users I auth.users alhora — si només
+  // es canviés a Auth (que és el que faria updateUser), la contrasenya ANTIGA
+  // seguiria sent vàlida pel camí de reserva fem_login() del Pas 4b, i el
+  // canvi no revocaria absolutament res.
+  const { data: ok, error } = await sb.rpc('fem_set_own_password', { p_new_password: p1 });
 
   if (error || !ok) {
     if (error) console.error('[Pas 4c] no s\'ha pogut desar la contrasenya nova:', error);
@@ -495,31 +461,13 @@ export async function saveNewPassword() {
     return;
   }
 
-  // Pas 3a: el camí del reset fet per un admin no passa per handleLogin(), així
-  // que cal establir la sessió real d'Auth aquí també, ara amb la contrasenya
-  // NOVA que l'usuari acaba de triar (l'antiga era buida a auth.users també).
-  // Additiu/best-effort igual que a handleLogin: si falla, no bloqueja.
-  // En mode recuperació no cal: la sessió de l'enllaç ja és una sessió completa
-  // i canviar la contrasenya per SQL no la invalida.
-  if (!_recoveryMode) {
-    try {
-      const { error: authError } = await sb.auth.signInWithPassword({
-        email: _pendingPasswordUser.email, password: p1,
-      });
-      if (authError) console.warn('[Pas 3a] signInWithPassword (post-reset) no ha pogut establir sessió real:', authError.message);
-    } catch (e) {
-      console.warn('[Pas 3a] signInWithPassword (post-reset) ha fallat inesperadament:', e);
-    }
-  }
-
-  // Update local state and proceed with login
+  // La sessió de l'enllaç ja és una sessió completa, i canviar la contrasenya
+  // des de la RPC no la invalida: no cal tornar a entrar.
   closeModal('modal-new-password');
-  const u           = _pendingPasswordUser;
-  const wasRecovery = _recoveryMode;
+  const u = _pendingPasswordUser;
   _pendingPasswordUser = null;
-  _recoveryMode        = false;
   _recoveryModalOpen   = false;
-  if (wasRecovery) showToast(t('recovery_pwd_done'), 'success');
+  showToast(t('recovery_pwd_done'), 'success');
   _enterApp(u);
 }
 

@@ -917,17 +917,35 @@
   </div>
 </div>
 
-<!-- Forced new-password modal (after admin reset) -->
-<!-- Pas 4c: el mateix modal serveix per als dos camins que acaben triant una
-     contrasenya nova — el reset fet per un admin i la recuperació per correu.
-     El títol i el missatge canvien intercanviant l'atribut data-i18n des de
-     openNewPasswordModal() (login.js), no el text: applyTranslations() repinta
-     tots els [data-i18n] i esborraria qualsevol text escrit a mà. -->
+<!-- Contrasenya temporal generada pel Reset de l'admin (28/07/2026).
+     Es mostra un sol cop: la genera el servidor (fem_admin_reset_password) i
+     ni el client ni l'admin la poden tornar a consultar després. Mida gran i
+     tipografia monoespaiada perquè es pugui dictar o copiar sense errors. -->
+<div class="modal-overlay" id="modal-temp-password">
+  <div class="modal">
+    <h2 data-i18n="temp_pwd_title">Contrasenya temporal</h2>
+    <p id="temp-pwd-msg" style="color:var(--text-muted);font-size:15px;line-height:1.6;margin-bottom:16px;"></p>
+    <div id="temp-pwd-value" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:30px;font-weight:700;letter-spacing:3px;text-align:center;padding:14px;margin-bottom:8px;border:2px dashed var(--border);border-radius:8px;user-select:all;"></div>
+    <p data-i18n="temp_pwd_warning" style="color:var(--text-muted);font-size:14px;line-height:1.5;margin-bottom:16px;">
+      Aquesta contrasenya no es podrà tornar a consultar. Copia-la abans de tancar.
+    </p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" id="temp-pwd-copy" onclick="copyTempPassword()" data-i18n="temp_pwd_copy">Copiar</button>
+      <button type="button" class="btn btn-primary" onclick="closeModal('modal-temp-password')" data-i18n="close_btn">Tancar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Nova contrasenya en tornar de l'enllaç de recuperació (Pas 4c).
+     28/07/2026: aquest modal també servia el reset fet per un admin, amb un
+     títol i un missatge alternatius. Aquell camí ja no existeix — el Reset
+     assigna una contrasenya temporal real i el soci entra pel login normal—,
+     així que el modal ha quedat d'un sol propòsit i els textos són fixos. -->
 <div class="modal-overlay" id="modal-new-password">
   <div class="modal">
-    <h2 id="new-pwd-title" data-i18n="new_pwd_modal_title">Crea una nova contrasenya</h2>
-    <p id="new-pwd-msg" data-i18n="new_pwd_modal_msg" style="color:var(--text-muted);font-size:15px;line-height:1.6;margin-bottom:16px;">
-      L'administrador ha resetejat la teva contrasenya. Introdueix-ne una de nova per continuar.
+    <h2 id="new-pwd-title" data-i18n="recovery_pwd_title">Crea la teva nova contrasenya</h2>
+    <p id="new-pwd-msg" data-i18n="recovery_pwd_msg" style="color:var(--text-muted);font-size:15px;line-height:1.6;margin-bottom:16px;">
+      Has entrat des de l'enllaç del correu. Escriu la contrasenya nova que vulguis fer servir a partir d'ara.
     </p>
     <div class="form-group">
       <label data-i18n="new_pwd_label">Nova contrasenya</label>
