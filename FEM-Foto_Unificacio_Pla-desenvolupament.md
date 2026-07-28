@@ -108,7 +108,7 @@ Fora de la numeració de fases. Anàlisi completa a `ANALISI_Login_Navegacio.md`
 
 | Bloc | Estat |
 |---|---|
-| **Autenticació** — migració a Supabase Auth | 🔄 Passos 1, 2, 3a-3c i 4a-4c fets, verificats als dos entorns i desplegats. El **Reset de contrasenya de l'admin** (28/07) està fet i provat **només a Test**, amb el codi de les dues apps pendent de desplegar. Falta **4d** (retirar el sistema antic), bloquejat per una comprovació prèvia a Zampa |
+| **Autenticació** — migració a Supabase Auth | 🔄 Passos 1, 2, 3a-3c i 4a-4c fets, verificats als dos entorns i desplegats, més el **Reset de contrasenya de l'admin** (28/07, contrasenya temporal en lloc de buida — `ANALISI_Login_Navegacio.md` §1.5). Falta **4d** (retirar el sistema antic), bloquejat per una comprovació prèvia a Zampa |
 | **Navegació** — refresc i botó enrere | ⬜ Sense començar. No hi ha cap `pushState`/`hash` a l'app: refrescar torna sempre a l'inici i el botó enrere surt de l'app |
 
 El que ha canviat per als socis amb la migració d'Auth: la sessió es manté oberta fins que es

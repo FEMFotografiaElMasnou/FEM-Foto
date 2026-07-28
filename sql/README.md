@@ -25,8 +25,8 @@ s'ha executat a cada entorn.
 | `2026-07-27_auth_migracio_pas4b_sync_email.sql` | ✅ | ✅ | Pas 4b: `fem_admin_set_email()` |
 | `2026-07-27_auth_migracio_pas4c_reset_contrasenya.sql` | ✅ | ✅ | Pas 4c: `fem_set_own_password()` |
 | `2026-07-27_fase3_commutador.sql` | ✅* | ✅ | Fase 3 Pas A: clau `sistema_puntuacio_nou` a `app_settings` (interruptor antic/nou) |
-| `2026-07-28_reset_admin_contrasenya_temporal.sql` | ⬜ | ✅ | Reset de l'admin Part 1: `fem_admin_reset_password()` (contrasenya temporal a les dues taules) |
-| `2026-07-28_reset_admin_part2_tancament.sql` | ⬜ | ✅ | Reset de l'admin Part 2: tanca `fem_set_new_password`, `fem_login` deixa de retornar `reset_required`, text del modal |
+| `2026-07-28_reset_admin_contrasenya_temporal.sql` | ✅ | ✅ | Reset de l'admin Part 1: `fem_admin_reset_password()` (contrasenya temporal a les dues taules) |
+| `2026-07-28_reset_admin_part2_tancament.sql` | ✅ | ✅ | Reset de l'admin Part 2: tanca `fem_set_new_password`, `fem_login` deixa de retornar `reset_required`, text del modal |
 
 **\* `2026-07-27_fase3_commutador.sql` a Normal**: la fila no la va crear l'script, la va crear
 la pròpia app el 28/07/2026 en provar el commutador des del panell d'admin (l'`upsert` de
@@ -42,7 +42,9 @@ adaptar-los.
 és additiva i es pot aplicar amb el codi antic desplegat. La Part 2 retira la via que el codi
 antic feia servir, i per això va **després** de desplegar el codi nou de **les dues** apps
 (FEM-Foto i FEM-Reptes: comparteixen aquesta base de dades i totes dues tenien el mateix Reset).
-Ordre: Part 1 → desplegar les dues apps → Part 2. A Normal encara no s'ha fet cap de les dues.
+Ordre: Part 1 → desplegar les dues apps → Part 2. **Executat així a Normal el 28/07/2026**, i
+verificat al final a l'app antiga en viu (login del soci, Reset des del panell i una escriptura
+amb la sessió resultant).
 
 ⚠️ **Parany comprovat aquí (i ja vist el 26/07 amb els permisos de columna)**: `REVOKE EXECUTE
 ... FROM anon` **no fa res** en una funció nova. Tota funció neix amb `EXECUTE` concedit a

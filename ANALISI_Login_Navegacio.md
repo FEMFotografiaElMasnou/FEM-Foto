@@ -25,12 +25,10 @@
 | Pas 4a · altes i baixes creen/esborren les dues files | ✅ |
 | Pas 4b · Auth decideix l'accés; sessió persistent | ✅ |
 | Pas 4c · recuperació per correu i enllaç màgic | ✅ |
-| Reset de l'admin · contrasenya temporal (§1.5) | 🔄 **Test sí, Normal no**; codi sense desplegar |
+| Reset de l'admin · contrasenya temporal (§1.5) | ✅ |
 | **Pas 4d · retirada del sistema antic** | ⬜ **Pendent**, bloquejat |
 
-Tot el que està ✅ està aplicat als **dos** projectes, verificat i desplegat. El Reset (§1.5) és
-l'excepció: aplicat i provat a Test, i **pendent de desplegar el codi de les dues apps abans de
-tocar Normal**.
+Tot el que està ✅ està aplicat als **dos** projectes, verificat i desplegat.
 
 **Com funciona l'accés avui**: `handleLogin()` valida amb
 `supabase.auth.signInWithPassword()`. El camp accepta email **o** nom complet (el nom es
@@ -1210,20 +1208,34 @@ Pas 4a-4c ja ho feien bé; la primera versió d'aquesta el va copiar malament.
 pantalla seguia dient "el soci haurà de crear-ne una de nova" amb el codi nou carregat. El text
 va per `UPDATE` a la BD (Part 2 de la migració).
 
-### Estat i què falta
+### Estat: tancat als dos entorns (28/07/2026)
 
-Aplicat i verificat **a Test**: la contrasenya vella falla pels dos camins, la temporal entra
-pels dos, la sessió oberta del soci queda tallada, i l'atac dels tres passos ja no passa del
-primer. Provat **per la interfície de les dues apps** servides en local, i el soci entra a
-FEM-Reptes amb la temporal i amb sessió real d'Auth. Comptes d'un sol ús esborrats; Test a
-50/50, 0 orfes, 0 contrasenyes buides.
+Es va aplicar en l'ordre que la BD compartida obliga: **Part 1 a Normal** (additiva, no canvia
+el comportament del codi ja desplegat) → **desplegar les dues apps** (commits `0bab336` a
+FEM-Foto i `0772b63` a FEM-Reptes, comprovat que els fitxers servits ja portaven el codi nou a
+`fem-foto.vercel.app` i a `www.femfotografiaelmasnou.cat`) → **Part 2 a Normal**.
 
-**A Normal no s'ha tocat res.** L'ordre obligatori, perquè la BD és compartida amb l'app que
-els socis fan servir avui:
+Verificat a **Test** amb comptes d'un sol ús i per la interfície de les dues apps servides en
+local; i a **Normal** amb comptes d'un sol ús (mai un soci real):
 
-1. Part 1 a Normal (additiva, no canvia el comportament del codi desplegat).
-2. Desplegar **FEM-Foto i FEM-Reptes** amb el Reset nou.
-3. Part 2 a Normal (retira la via antiga i canvia el text).
+| Comprovació | Resultat |
+|---|---|
+| Contrasenya vella després del Reset | rebutjada pels dos camins (`invalid_credentials` / `invalid`) |
+| Contrasenya temporal | entra pels dos camins |
+| Sessió que el soci ja tenia oberta | `refresh_token_not_found` |
+| `anon` cridant `fem_admin_reset_password` | `permission denied` |
+| Soci autenticat **no** admin resetejant un **altre compte que existeix** | `null`, no fa res |
+| `anon` cridant `fem_set_new_password` | `permission denied` |
+| Els 41 socis reals: `public.users` ↔ `auth.users` | 41/41 sincronitzats, 0 amb contrasenya buida |
+
+I finalment **a l'app antiga en viu** (`www.femfotografiaelmasnou.cat`), que és la lliçó del 28/07:
+carrega les dades sense error, el Reset des del panell de Socis mostra la temporal, el soci entra
+amb ella i **no** amb la vella, i una escriptura al servidor amb aquella sessió funciona
+(`fem_set_own_password` → `true`, `fem_current_user_id()` resol) — que era exactament el que
+aquell dia fallava en silenci.
+
+Comptes d'un sol ús esborrats de les tres taules. Normal a 41/41 i Test a 50/50, 0 orfes, 0
+contrasenyes buides, 1059 vots i 86 fotos intactes.
 
 ---
 
