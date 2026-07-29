@@ -163,6 +163,36 @@ export function startAutoRefresh() {
   autoRefreshTimer = setInterval(async () => {
     if (!state.currentUser) return;
 
+    // ── La sessió encara val? ────────────────────────────────────────────────
+    // El sondeig de dades de sota NO ho comprova: mentre el testimoni d'accés
+    // (JWT) no caduqui, les consultes funcionen encara que la sessió s'hagi
+    // revocat al servidor, perquè la RLS valida la signatura del testimoni i no
+    // consulta `auth.sessions`. Sense això, un Reset de contrasenya des del
+    // panell de Socis deixava el soci dins —i escrivint— fins a una hora.
+    // Vegeu docs/PROVES_Fase4.md, Annex B.
+    //
+    // Dues condicions perquè això no faci fora ningú per equivocació:
+    //  · Sense sessió local no es comprova res: qui ha entrat pel camí de
+    //    reserva (fem_login, sense sessió d'Auth) no en té, i no se l'ha de
+    //    tocar.
+    //  · Només es tanca amb un rebuig d'autenticació (401/403). Un error de
+    //    xarxa no ha de treure de l'app ningú amb mala cobertura.
+    try {
+      const { data: sessionData } = await sb.auth.getSession();
+      if (sessionData && sessionData.session) {
+        const { error: userErr } = await sb.auth.getUser();
+        if (userErr && (userErr.status === 401 || userErr.status === 403)) {
+          console.warn('Sessió revocada al servidor; es tanca la sessió local.', userErr.status);
+          // El listener de login.js (_listenAuthChanges) ho recull i porta a la
+          // pantalla d'accés amb l'avís de sessió caducada.
+          await sb.auth.signOut({ scope: 'local' });
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Comprovació de sessió fallida (s\'ignora):', e);
+    }
+
     try {
       // LIGHT POLL: only 2 small queries instead of 5 full SELECT *
       const [settingsRes, photosCountRes, votesCountRes] = await Promise.all([

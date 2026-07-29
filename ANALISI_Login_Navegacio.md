@@ -1182,6 +1182,19 @@ retira el mecanisme de contrasenya buida sencer.
   `gen_random_bytes`, l'escriu a `public.users` **i** `auth.users`, **esborra les sessions
   obertes del soci** (`auth.sessions`/`auth.refresh_tokens`: la sessió és persistent des del Pas
   4b, i sense això qui tingués l'app oberta al mòbil no en sortiria) i la retorna a l'admin.
+
+  ⚠️ **Matís comprovat el 29/07/2026, i important**: esborrar aquelles files **no fa fora a
+  l'instant** qui ja tingui l'app oberta. El navegador conserva el testimoni d'accés (JWT) que
+  ja tenia, i la RLS el valida per la signatura, sense consultar `auth.sessions`. Mentre aquell
+  testimoni no caduqui, aquella finestra segueix llegint **i escrivint**, i recarregar la pàgina
+  tampoc no la fa fora (el SDK llegeix el testimoni de `localStorage` i, si no és a prop de
+  caducar, no parla amb el servidor). Qui la fa fora és el **primer intent de renovació**: el
+  refresh token ja no existeix, el SDK emet `SIGNED_OUT` i `_listenAuthChanges()`
+  ([login.js](js/screens/login.js)) torna a la pantalla d'accés. És a dir: la revocació era
+  **efectiva però diferida** fins a la caducitat del testimoni, fins a una hora.
+  **Resolt el mateix dia**: el sondeig de 30 s de `startAutoRefresh()` (`js/core/router.js`) ara
+  valida la sessió contra el servidor i tanca la sessió local si la rebutja — expulsió en 30 s com
+  a màxim, verificada a la interfície. Vegeu `docs/PROVES_Fase4.md`, incidència 1.11 i Annex B.
 - **`fem_set_new_password`**: `REVOKE EXECUTE ... FROM PUBLIC, anon, authenticated`. No
   s'esborra, es queda sense privilegis (mateix criteri d'amagar i no esborrar).
 - **`fem_login`**: una contrasenya buida a la BD retorna `invalid`, no `reset_required`. El
@@ -1222,7 +1235,7 @@ local; i a **Normal** amb comptes d'un sol ús (mai un soci real):
 |---|---|
 | Contrasenya vella després del Reset | rebutjada pels dos camins (`invalid_credentials` / `invalid`) |
 | Contrasenya temporal | entra pels dos camins |
-| Sessió que el soci ja tenia oberta | `refresh_token_not_found` |
+| Sessió que el soci ja tenia oberta, **en intentar renovar-la** | `refresh_token_not_found` |
 | `anon` cridant `fem_admin_reset_password` | `permission denied` |
 | Soci autenticat **no** admin resetejant un **altre compte que existeix** | `null`, no fa res |
 | `anon` cridant `fem_set_new_password` | `permission denied` |

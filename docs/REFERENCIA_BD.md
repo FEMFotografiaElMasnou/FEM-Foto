@@ -146,7 +146,15 @@ Ara el Reset crida `fem_admin_reset_password(user_id)`, que genera una **contras
 (8 caràcters, sense els ambigus O/0/I/l/1, amb `gen_random_bytes`), l'escriu a les dues taules,
 esborra `auth.sessions`/`auth.refresh_tokens` del soci —la sessió és persistent des del Pas 4b,
 sense això un soci amb l'app oberta al mòbil no en sortiria— i la retorna a l'admin, que l'hi fa
-arribar. `fem_set_new_password` queda sense privilegis i `fem_login` ja no retorna
+arribar.
+
+⚠️ **Esborrar aquelles files no expulsa, tot sol, una finestra ja oberta** (comprovat a la
+interfície el 29/07/2026): la RLS valida el testimoni d'accés (JWT) per la signatura, sense
+consultar `auth.sessions`, i recarregar la pàgina tampoc no hi fa res. Fins al 29/07 el soci
+seguia dins —i escrivint— fins que el testimoni intentava renovar-se, o sigui fins a una hora.
+**Resolt des del client**: el sondeig de 30 s de `startAutoRefresh()` (`js/core/router.js`) valida
+la sessió contra el servidor i, si la rebutja, tanca la sessió local. Expulsió en 30 s com a
+màxim. Detall: `docs/PROVES_Fase4.md`, incidència 1.11 i Annex B. `fem_set_new_password` queda sense privilegis i `fem_login` ja no retorna
 `reset_required`.
 
 **Conseqüència per al Pas 4d**: buidar `users.password` per a tothom era, amb el disseny antic,

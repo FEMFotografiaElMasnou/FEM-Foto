@@ -52,12 +52,19 @@ de seguretat (ja feta pels seus passos a `ANALISI_Login_Navegacio.md`).
 | 1.8 | **Recuperació de contrasenya** ("Has oblidat la contrasenya?") | Arriba el correu, deixa posar-ne una de nova, i **la nova entra i la vella ja no** |
 | 1.9 | **Auto-registre** amb un email nou | Compte creat i entra tot seguit, sense confirmació ni aprovació. Rol resultant **`participant`** (comprovar-ho a la BD, no fiar-se de la pantalla) |
 | 1.10 | Auto-registre amb un email **ja existent** | Error entenedor, i **no** es crea cap segon compte |
-| 1.11 | **Reset de l'admin** (panell → Socis → Reset) | Mostra una contrasenya temporal; la temporal entra, **la vella ja no**, i si el soci tenia sessió oberta en una altra finestra, en queda fora |
+| 1.11 | **Reset de l'admin** (panell → Socis → Reset) | Mostra una contrasenya temporal; la temporal entra, **la vella ja no**, i si el soci tenia sessió oberta en una altra finestra, **en queda fora en 30 s com a màxim, sense tocar-la** |
 
 > 1.8 i 1.11 comproven el mateix invariant per dos camins: la contrasenya s'escriu a
 > `public.users` **i** a `auth.users` alhora. És l'única cosa que ha fallat quatre vegades en
 > aquest projecte (§B de `ANALISI_Login_Navegacio.md`). Si algun dels dos punts es posa vermell,
 > és un blocador, no una molèstia.
+
+**Bloc 1 tancat el 29/07/2026.** Els onze punts en verd, amb dues coses trobades pel camí: el
+Reset no expulsava la finestra oberta fins que el testimoni caducava (**incidència 1.11**,
+corregida i verificada, Annex B), i «Sortir» resulta que tanca la sessió **també al servidor**,
+que és més del que demanava el criteri. Comprovat a més, per SQL, que a Test i a Normal **totes**
+les contrasenyes coincideixen entre `public.users` i `auth.users` (51/51 i 41/41, cap compte
+sense parella a `auth.users`).
 
 ---
 
@@ -205,6 +212,7 @@ Una fila per incidència trobada. Si un punt es tanca en verd, s'hi marca la cas
 
 | Data | Punt | Què passa | Blocador? | Estat |
 |---|---|---|---|---|
+| 29/07/2026 | **1.11** | El Reset de l'admin **no feia fora a l'instant** el soci que tingués l'app oberta: seguia dins, i podent escriure, fins que el testimoni d'accés (JWT) intentava renovar-se (fins a una hora). Al servidor la revocació sí que es feia. Diagnòstic i solució a l'**Annex B** | No blocador del tall, però era una promesa que la documentació donava per bona | **Corregit** el 29/07/2026: el sondeig de 30 s valida la sessió contra el servidor. Verificat a la interfície |
 | 29/07/2026 | **7.1** | El sistema nou **no** donava les mateixes posicions que l'antic al repte «Escales» de Normal: 19 posicions de 23 canviaven i la Classificació General es movia. Diagnòstic i solució a l'**Annex A** | **Sí** — blocava el Tall 1 | **Corregit** (arrodoniment a 2 decimals a `getPhotoValoracio()`). Verificat amb el codi real, amb SQL i **a la interfície** (29/07, amb un repte de prova a Test que reprodueix l'empat); queda **1** diferència, explicada a l'Annex A i pendent de la teva confirmació |
 
 **Criteri de tancament de la Fase 4**: tots els punts amb casella marcada, i cap incidència
@@ -334,3 +342,92 @@ antic —que és el que els socis ja han vist i que al tall queda amagat.
   punts repte per repte (33 / 32 / 28, idèntics amb «Antic» i amb «Nou»). Sense la correcció,
   aquell empat es trencava i la tercera foto queia a la 3a posició.
   Scripts de les dades de prova i de la seva marxa enrere: al directori de treball de la sessió.
+
+---
+
+## Annex B — Incidència 1.11: la revocació de sessions és diferida
+
+Trobada el 29/07/2026 executant el punt 1.11 a Test, amb un compte d'un sol ús.
+
+### El fet
+
+Amb el compte de proves amb la sessió oberta en una finestra, un admin li fa **Reset** des del
+panell de Socis. La finestra del soci **segueix activa**, i **recarregar la pàgina tampoc no la fa
+fora**.
+
+Al servidor, en canvi, tot s'ha fet:
+
+| Comprovació | Resultat |
+|---|---|
+| Contrasenya nova a `public.users` i a `auth.users` | sí, i coincideixen |
+| Contrasenya anterior | ja **no** valida |
+| `auth.sessions` del soci | **0** |
+| `auth.refresh_tokens` del soci | **0** |
+
+### La causa
+
+Supabase valida cada petició amb el **testimoni d'accés (JWT)** que el navegador ja té: la RLS en
+llegeix `auth.uid()` a partir de la **signatura**, sense consultar `auth.sessions`. Per tant:
+
+- Esborrar les files de sessió no invalida un testimoni ja emès.
+- Recarregar la pàgina no ajuda: el SDK llegeix el testimoni de `localStorage` i, si no és a prop
+  de caducar, no parla amb el servidor.
+- El sondeig d'auto-refresc de l'app (cada 30 s, `startAutoRefresh()` a
+  [router.js](../js/core/router.js)) fa consultes de **dades**, que amb un JWT vàlid funcionen: no
+  detecta res.
+- Qui acaba expulsant la finestra és el **primer intent de renovació** del testimoni: el refresh
+  token ja no existeix, el SDK emet `SIGNED_OUT`, i `_listenAuthChanges()`
+  ([login.js](../js/screens/login.js)) torna a la pantalla d'accés amb l'avís de sessió caducada.
+
+O sigui: **la revocació funciona, però arriba tard** — fins a la durada del testimoni d'accés (el
+valor per defecte de Supabase és 3600 s; el real es llegeix al tauler, Authentication → Sessions).
+Mentrestant aquell soci pot seguir llegint **i escrivint**.
+
+### Per què no s'havia vist el 28/07
+
+Perquè es va verificar el que es podia verificar per SQL i per crida directa: que les files de
+sessió havien desaparegut i que un **intent de renovació** donava `refresh_token_not_found`. Totes
+dues coses són certes. El que no es va provar és el que ara s'ha provat: una finestra ja oberta,
+sense tocar-la. És la mateixa lliçó del 27/07 amb les proves negatives, en una altra forma: **una
+comprovació al servidor no demostra el que passa al client.**
+
+### Opcions
+
+1. **Afegir una validació de sessió al sondeig de 30 s**: cridar `sb.auth.getUser()` (que sí que
+   va al servidor) i, si falla, forçar la sortida. Expulsió en menys de 30 s, cost d'una crida
+   extra cada mig minut. És l'opció recomanada si es vol arreglar.
+2. **Escurçar la caducitat del testimoni** al tauler de Supabase (per exemple 900 s). Acota la
+   finestra per a tothom, a canvi de més renovacions. Es pot combinar amb l'1.
+3. **Acceptar-ho i deixar-ho escrit.** Defensable: el cas d'ús normal del Reset és un soci que ha
+   perdut l'accés, no un compte segrestat. Deixa de ser defensable el dia que el Reset es faci
+   servir *per* fer fora algú.
+
+Cap de les tres bloca el tall de domini. La correcció dels documents que prometien una expulsió
+immediata (`docs/REFERENCIA_BD.md` i `ANALISI_Login_Navegacio.md` §1.5) sí que s'ha fet ja.
+
+### Solució aplicada (29/07/2026): l'opció 1
+
+Enric va triar l'opció 1. Al sondeig de 30 s d'`startAutoRefresh()`
+([router.js](../js/core/router.js)) s'hi ha afegit una validació de la sessió contra el servidor
+(`sb.auth.getUser()`) i, si el servidor la rebutja, es tanca la sessió local; el listener
+`_listenAuthChanges()` de [login.js](../js/screens/login.js) ja s'encarrega de portar l'usuari a la
+pantalla d'accés amb l'avís de sessió caducada. **Expulsió en 30 segons com a màxim** en lloc de
+fins a una hora.
+
+Dues condicions perquè el remei no fos pitjor que la malaltia:
+
+- **Sense sessió local no es comprova res.** Qui entra pel camí de reserva (`fem_login`, sense
+  sessió d'Auth) no en té, i no se l'ha de fer fora.
+- **Només es tanca amb un rebuig d'autenticació.** Un error de xarxa no pot treure de l'app un
+  soci amb mala cobertura, que amb aquest públic hauria estat pitjor que el problema original.
+
+⚠️ **El codi de rebuig és 403, no 401** (comprovat contra el projecte de Test): 401 és el que
+retorna `/auth/v1/user` quan **no** hi ha cap testimoni, i 403 quan n'hi ha un que no val. La
+condició cobreix els dos; filtrant només per 401 el canvi no hauria fet res justament en el cas
+que havia d'arreglar.
+
+**Verificat a la interfície** (Enric, 29/07/2026): amb el compte de proves amb la sessió oberta i
+un Reset fet des d'una altra finestra, la finestra del soci salta sola a la pantalla d'accés
+—vist en directe, sense tocar-la—, amb el 403 de `/auth/v1/user` a la consola i tot seguit el
+missatge de `_listenAuthChanges()`. Al servidor, `auth.sessions` i `auth.refresh_tokens` a 0 i la
+contrasenya temporal coincidint a les dues taules.
