@@ -33,10 +33,11 @@ aparèixer soles si es torna a posar el commutador en «Antic».
       de prova a Test que reprodueix l'empat): en queda una diferència d'una posició, explicada a
       l'Annex A i **acceptada per Enric el 29/07/2026**. Tot a `docs/PROVES_Fase4.md`.
       Convé repetir la comparació just abans del tall, amb les dades que hi hagi aquell dia.
-- [ ] ⚠️ **Desplegar la correcció del 29/07/2026 abans de prémer el commutador.** El punt de sota
-      («tenir el codi desplegat») es va marcar fet el 28/07, però la correcció d'aquesta incidència
-      és **posterior** i encara viu només en local. Sense desplegar-la, prémer el commutador
-      reordenaria la Classificació General dels reptes històrics.
+- [x] **Desplegar la correcció del 29/07/2026** (l'arrodoniment a 2 decimals de la nota del
+      motor nou). **Fet el 29/07/2026**, commit `ab2c3cd`: comprovat que
+      `fem-foto.vercel.app/js/features/ranking.js` ja serveix la versió corregida i que l'app
+      hi carrega sense errors. Sense això, prémer el commutador hauria reordenat la Classificació
+      General dels reptes històrics.
 - [ ] Avisar els socis del canvi de sistema de vot (decisió de la reunió del 23/07/2026): la
       interfície els canviarà de cop, encara que els noms de les pantalles no.
 - [x] Tenir el codi de la Fase 3 Pas D **desplegat** a `fem-foto.vercel.app`. Sense ell, el
