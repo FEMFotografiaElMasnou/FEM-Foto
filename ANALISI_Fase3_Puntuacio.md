@@ -34,9 +34,14 @@ Les pantalles del sistema nou **ja no són "d'admin"**: es veuen o no segons el 
 igual per a tothom, i porten els noms de sempre («Resultat Repte», «Classificació General»).
 Inventari i regles de visibilitat: `docs/PANTALLES.md`. Llista de comprovació: `docs/TALLS.md`.
 
-**Verificat**: la classificació del sistema nou dona exactament els mateixos punts i posicions
-que la «Classificació General» actual — el resultat matemàticament esperat, perquè l'assignació
-de punts per posició només fa servir la nota per detectar empats, mai la seva magnitud.
+⚠️ **La classificació del sistema nou NO dona sempre els mateixos punts i posicions que la
+«Classificació General» actual.** Es va donar per verificat el 25/07/2026 sobre un repte
+«Dominant», i allà quadra; el 29/07/2026, comparant **tots** els reptes finalitzats de Normal per
+SQL, «Escales» dona 19 posicions diferents de 23 i mou l'ordre de la Classificació General.
+La causa és l'arrodoniment a 2 decimals de `valoracio`, que trenca empats exactes: el raonament
+de "transformació lineal, doncs mateix ordre" val per a la fórmula, no per al valor desat.
+**Corregit el mateix dia** (el motor nou ordena per la nota arrodonida a 2 decimals) i verificat
+per SQL, amb el codi real i a la interfície. Diagnòstic i números: `docs/PROVES_Fase4.md`, Annex A.
 
 **Ja no és una decisió pendent** què es fa amb els reptes que tinguin la votació oberta el dia
 del tall (§3.3): amb el commutador, els dos sistemes escriuen les mateixes dades i un repte a
@@ -414,12 +419,19 @@ arriscar l'existent):
   l'actual).
 - Nova entrada "Taula de Classificació" a l'inici, amagada rere el mateix gate d'admin real
   que "Valoració Repte".
-- **Verificat per Enric**: amb els reptes ja tancats, "Taula de Classificació" dona
-  **exactament els mateixos punts i posicions** que "Classificació General" — el resultat
-  esperat (vegeu la nota matemàtica del Pas 1b: `valoracio` és una transformació lineal de
-  les mateixes dades de vot, i el backfill del Pas 1 va ser universal). El valor d'aquesta
-  pantalla, doncs, és de comparació/validació ara mateix; el canvi real de números només
-  arribarà amb vots nous capturats directament en 0-10.
+- **Verificat per Enric** (25/07/2026): amb els reptes ja tancats, "Taula de Classificació" dona
+  **els mateixos punts i posicions** que "Classificació General" — el resultat esperat (vegeu la
+  nota matemàtica del Pas 1b: `valoracio` és una transformació lineal de les mateixes dades de
+  vot, i el backfill del Pas 1 va ser universal). El valor d'aquesta pantalla, doncs, és de
+  comparació/validació ara mateix; el canvi real de números només arribarà amb vots nous
+  capturats directament en 0-10.
+
+  ⚠️ **Rectificació (29/07/2026)**: aquella comparació es va fer sobre un repte «Dominant», i la
+  conclusió **no és general**. Repassats tots els reptes finalitzats de Normal per SQL,
+  «Escales» dona 19 posicions diferents de 23. La transformació és lineal en la **fórmula**, però
+  el que es desa és `round(...*10.0/15, 2)` en una columna `numeric(4,2)`, i el residu de
+  l'arrodoniment trenca els empats exactes del sistema antic. Corregit i verificat el mateix dia:
+  vegeu `docs/PROVES_Fase4.md`, Annex A.
 - Fitxers tocats: `js/features/ranking.js`, `index.html`, `js/screens/participant.js`,
   `js/core/i18n.js` (noves claus ca/es). "Classificació General" no s'ha tocat.
 

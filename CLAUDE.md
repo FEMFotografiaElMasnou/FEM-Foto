@@ -115,5 +115,6 @@ l'autorització, i va amagar un forat real durant hores.
 | `docs/REFERENCIA_BD.md` | Taules, funcions RPC, RLS, cron — la superfície de servidor |
 | `docs/PANTALLES.md` | Quines pantalles hi ha i qui les veu |
 | `docs/TALLS.md` | Llistes de comprovació dels dos talls pendents |
+| `docs/PROVES_Fase4.md` | Guió de proves internes (Fase 4) i registre d'incidències |
 | `sql/README.md` | Quina migració s'ha aplicat on |
 | `docs/arxiu/` | Documents tancats. Historial, no referència. |

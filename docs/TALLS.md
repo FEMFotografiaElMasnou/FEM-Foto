@@ -25,9 +25,18 @@ aparèixer soles si es torna a posar el commutador en «Antic».
 
 ### Abans
 
-- [ ] Comprovar que les pantalles del sistema nou donen els mateixos punts i posicions que les
-      antigues, amb dades reals de Normal. *(Ja verificat al Pas 3 de la Fase 3 amb les
-      pantalles de comparació; convé repetir-ho just abans del tall.)*
+- [ ] **Comprovar que les pantalles del sistema nou donen els mateixos punts i posicions que les
+      antigues, amb dades reals de Normal.** El 29/07/2026 va sortir **vermell** (al repte
+      «Escales», 19 posicions de 23 i l'ordre de la Classificació General; la verificació del Pas
+      3 de la Fase 3 s'havia fet sobre un «Dominant», on sí que quadra). **Corregit el mateix dia**
+      a `getPhotoValoracio()`, i comprovat per SQL, amb el codi real i **a la interfície** (repte
+      de prova a Test que reprodueix l'empat): en queda una diferència d'una posició, explicada a
+      l'Annex A i **acceptada per Enric el 29/07/2026**. Tot a `docs/PROVES_Fase4.md`.
+      Convé repetir la comparació just abans del tall, amb les dades que hi hagi aquell dia.
+- [ ] ⚠️ **Desplegar la correcció del 29/07/2026 abans de prémer el commutador.** El punt de sota
+      («tenir el codi desplegat») es va marcar fet el 28/07, però la correcció d'aquesta incidència
+      és **posterior** i encara viu només en local. Sense desplegar-la, prémer el commutador
+      reordenaria la Classificació General dels reptes històrics.
 - [ ] Avisar els socis del canvi de sistema de vot (decisió de la reunió del 23/07/2026): la
       interfície els canviarà de cop, encara que els noms de les pantalles no.
 - [x] Tenir el codi de la Fase 3 Pas D **desplegat** a `fem-foto.vercel.app`. Sense ell, el
@@ -90,9 +99,19 @@ antiga.
 - [ ] Fase 4 (proves internes) i Fase 5 (validació amb socis) tancades.
 - [ ] Tall 1 fet i estable, o decidit explícitament que es fan alhora.
 - [ ] Pas 4d de la migració d'Auth tancat (o decidit que pot esperar).
-- [ ] **Afegir el domini a Site URL i a Redirect URLs de Supabase, als dos projectes.** Sense
-      això, els correus de recuperació i els enllaços màgics continuaran portant a
-      `fem-foto.vercel.app`. És el punt que de debò pot deixar algú fora.
+- [x] **Redirect URLs de Supabase, als dos projectes** — **FET el 29/07/2026**. Hi ha les 4
+      entrades a `FEM_Reptes` (Normal) i a `FEM_Reptes-test` (Test): `fem-foto.vercel.app/**`,
+      `localhost:3000/**`, `www.femfotografiaelmasnou.cat/**` i `femfotografiaelmasnou.cat/**`.
+      Fer-ho per avançat és inert: les Redirect URLs només **autoritzen** destinacions, i qui
+      tria la destinació és el `redirectTo` que envia l'app (`_emailRedirectTo()`, `login.js`),
+      que mentre l'app se serveixi des de Vercel seguirà demanant Vercel. Comprovat també que
+      l'app antiga no pot generar cap correu que hi caigui: al repo de FEM-Reptes (`0772b63`)
+      no hi ha cap crida a `resetPasswordForEmail`, `signInWithOtp` ni cap `emailRedirectTo`.
+- [ ] **Site URL de Supabase → `https://www.femfotografiaelmasnou.cat`, als dos projectes.**
+      Aquest punt sí que és del dia del tall, i **no abans**: la Site URL és el destí de reserva
+      quan una adreça no encaixa amb l'allowlist, així que canviar-la mentre l'app viu a Vercel
+      desviaria correus legítims. Avui val `https://fem-foto.vercel.app` als dos projectes.
+      És el punt que de debò pot deixar algú fora si s'oblida.
 
       ⚠️ **Amb `www`, i les dues formes** (comprovat 28/07/2026). L'àpex
       `femfotografiaelmasnou.cat` no serveix l'app: fa un **308 cap a
@@ -100,11 +119,9 @@ antiga.
       de retorn dels correus amb `window.location.origin` (`_emailRedirectTo()`, `login.js`), al
       domini viu enviarà **`https://www.femfotografiaelmasnou.cat`**; si l'allowlist només porta
       la forma sense `www`, Supabase la rebutja i la substitueix per la Site URL, i el soci acaba
-      en un lloc que no és el del seu enllaç. Per tant:
-      - Site URL: `https://www.femfotografiaelmasnou.cat`
-      - Redirect URLs: `https://www.femfotografiaelmasnou.cat/**` **i**
-        `https://femfotografiaelmasnou.cat/**` (i mantenir-hi les de
-        `fem-foto.vercel.app` i `localhost` mentre facin servei)
+      en un lloc que no és el del seu enllaç. Per tant, la Site URL ha de ser la forma **amb
+      `www`**: `https://www.femfotografiaelmasnou.cat`. (La part de Redirect URLs d'aquest
+      raonament ja està resolta al punt anterior, amb les dues formes autoritzades.)
 
       El redirect de l'àpex **sí** que preserva camí, query i fragment (verificat amb
       `?db=normal#access_token=…`), així que un soci que escrigui el domini sense `www` no té cap

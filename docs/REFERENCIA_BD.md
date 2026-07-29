@@ -207,6 +207,8 @@ el renombrat pendent `objectives` → `reptes`, aquesta funció s'ha de reescriu
 - **SMTP**: servidor de correu propi del club (`authsmtp.securemail.pro:465`, SSL,
   `info@femfotografiaelmasnou.cat`), configurat als dos projectes.
 - **Configuració del tauler** (als dos projectes): Site URL `https://fem-foto.vercel.app`;
-  Redirect URLs `https://fem-foto.vercel.app/**` i `http://localhost:3000/**`; Email OTP
-  Expiration **3600 s**; Leaked Password Protection **desactivada a propòsit** (rebutjaria
+  Redirect URLs `https://fem-foto.vercel.app/**`, `http://localhost:3000/**`,
+  `https://www.femfotografiaelmasnou.cat/**` i `https://femfotografiaelmasnou.cat/**` (les dues
+  del domini, afegides per avançat el 29/07/2026; inertes fins al tall — vegeu `docs/TALLS.md`);
+  Email OTP Expiration **3600 s**; Leaked Password Protection **desactivada a propòsit** (rebutjaria
   contrasenyes febles a cada registre i reset — fricció que no compensa per a aquest públic).

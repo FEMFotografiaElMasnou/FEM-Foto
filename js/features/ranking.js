@@ -375,7 +375,16 @@ export function getPhotoValoracio(photoId, scope = 'all') {
   const sum = photoVotes
     .filter(v => v.valoracio > 0)
     .reduce((acc, v) => acc + v.valoracio, 0);
-  return sum / totalVotants;
+  // Arrodonit a 2 decimals, que és la nota tal com es mostra a la pantalla.
+  // No és cosmètic: és el que fa que aquest motor ordeni igual que el dels 3
+  // criteris en els reptes històrics. `valoracio` es desa com
+  // round((c+t+comp)*10/15, 2) en una columna numeric(4,2), i aquell
+  // arrodoniment deixa un residu de fins a ±0,0033 per vot que NO es cancel·la:
+  // trencava els empats exactes del sistema antic i, com que les posicions són
+  // denses, empenyia una posició avall tothom qui venia després. Al repte
+  // «Escales» de Normal això movia 19 posicions de 23 i l'ordre de la
+  // Classificació General. Vegeu docs/PROVES_Fase4.md, Annex A.
+  return Math.round((sum / totalVotants) * 100) / 100;
 }
 
 // Rànquing d'un repte segons `valoracio`. Mateix pool de fotos que Resultat
