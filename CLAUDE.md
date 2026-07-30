@@ -116,5 +116,6 @@ l'autorització, i va amagar un forat real durant hores.
 | `docs/PANTALLES.md` | Quines pantalles hi ha i qui les veu |
 | `docs/TALLS.md` | Llistes de comprovació dels dos talls pendents |
 | `docs/PROVES_Fase4.md` | Guió de proves internes (Fase 4) i registre d'incidències |
+| `docs/NETEJA_codi_mort.md` | Què s'esborra, què no es toca i per què. Inventari pendent |
 | `sql/README.md` | Quina migració s'ha aplicat on |
 | `docs/arxiu/` | Documents tancats. Historial, no referència. |

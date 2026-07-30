@@ -146,6 +146,18 @@ Coses menors, sense data, que no justifiquen una fase pròpia:
   valorar el renombrat `objectives` → `reptes`. ⚠️ El renombrat obliga a reescriure a mà
   `fem_apply_calendar()` (té els noms de taula escrits com a text) i a tocar 2 línies de
   l'antiga FEM-Resultats si encara existeix.
+- **Restes de la compactació del panell d'admin** (detectades el 29/07/2026 provant el bloc 2 de
+  la Fase 4; cap d'elles fa mal, totes enganyen qui llegeixi el codi):
+  - Els contenidors `admin-tab-voting` i `admin-tab-ranking` segueixen a `index.html` **sense cap
+    entrada al sidebar**, i `showAdminScreen()` encara hi pinta a dins a cada càrrega
+    (`renderAdminVotingGrid()`, `renderRanking()`). La barra antiga de 6 pestanyes també hi és,
+    amb `display:none`.
+  - Els quatre `force_hide_*` **ja no tenen cap control a la interfície**; el codi que els llegeix
+    sí que hi és. Avui només es poden canviar per SQL, i tots quatre són `false` a les dues bases.
+  - `getButtonVisibility()` calcula un `showUpload` que ningú no fa servir.
+  - `window.showAdminScreen` no comprova el rol: des de la consola del navegador se'n pot pintar
+    la carcassa. No exposa dades ni deixa escriure (RLS + `fem_is_admin()`), però convindria
+    posar-hi la mateixa comprovació que ja té `toggleAdminParticipantView()`.
 - **Interpunt de "Cancel·lar"**: es veu malament amb la font condensada dels botons (Barlow
   Condensed). Confirmat que el caràcter és correcte i que és un problema de renderització de la
   font. Sense pedaç net trobat; acceptat com a menor.

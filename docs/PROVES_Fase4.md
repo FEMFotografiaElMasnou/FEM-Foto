@@ -72,12 +72,12 @@ sense parella a `auth.users`).
 
 | # | Prova | Verd si |
 |---|---|---|
-| 2.1 | Soci `participant` | Veu la pantalla de participant. **No** hi ha cap manera d'arribar al panell d'admin |
-| 2.2 | `admin` | Veu el panell i les 7 pestanyes (Fotos, Votació, Rànquing, Reptes, Socis, Textos, Puntuació) |
+| 2.1 | Soci `participant` | Veu la pantalla de participant i **cap camí d'interfície** cap al panell d'admin. ✅ Verificat el 29/07/2026 (a la pantalla i al codi: `_enterApp()` reparteix per rol i `toggleAdminParticipantView()` surt si el rol no és admin). Matís escrit a posta: `window.showAdminScreen` no comprova el rol, així que des de la **consola** del navegador se'n pot pintar la carcassa. No exposa dades noves (la llista de socis ja la carrega tothom, el login per nom la necessita) i les escriptures les rebutja el servidor (RLS + `fem_is_admin()`) |
+| 2.2 | `admin` | Té accés a **les 5 seccions del sidebar** (Fotos, Reptes, Socis, Textos, Puntuació) i pot entrar a totes. ✅ Verificat el 29/07/2026: en són cinc, i són les que han de ser des de la compactació del panell (Votacions, Controls i Calendari es van moure a cada targeta de repte el 18/07/2026, a petició de Pablo) |
 | 2.3 | `expert` | Entra com un participant normal. **L'únic efecte del rol és el filtre de vots** (bloc 7) |
-| 2.4 | Admin → **"veure com a participant"** | Veu exactament el que veu un soci: cap targeta extra i **cap distintiu `3×5`/`0-10`** |
-| 2.5 | Distintiu `3×5`/`0-10` | Es veu **només** amb rol admin real, i diu el sistema que la targeta representa |
-| 2.6 | `force_hide_upload`, `force_hide_vote`, `force_hide_resultats`, `force_hide_classificacio` | Cada un amaga **la parella sencera** de pantalles, digui el que digui el commutador de puntuació |
+| 2.4 | Admin → **"veure com a participant"** | Les targetes de resultats són les que toquen **segons el commutador**, no segons el rol (això és el que va canviar al Pas D). **Dues excepcions legítimes**, que depenen del rol **real** i per tant no desapareixen en aquest mode: el distintiu `3×5`/`0-10` (hi ha de ser: serveix precisament per saber quina pantalla es revisa) i la targeta de Galeria, que l'admin també veu quan hi ha repte **actiu** i encara no cap de finalitzat |
+| 2.5 | Distintiu `3×5`/`0-10` | El veu **qui té rol admin real** i **mai** un soci, i diu el sistema actiu a cada targeta de les parelles. A Galeria no n'hi ha d'haver: el commutador no l'afecta |
+| 2.6 | `force_hide_upload`, `force_hide_vote`, `force_hide_resultats`, `force_hide_classificacio` | ⚠️ **Aquest punt estava mal plantejat i queda reformulat** (29/07/2026): aquests quatre valors **ja no es poden tocar des de la interfície** — no hi ha cap control a `index.html`, perquè es van retirar amb la compactació del panell. Avui només es poden canviar per SQL. El que sí que s'ha comprovat, i és el que importa, és que **tots quatre valen `false` a les dues bases**, o sigui que no estan amagant res en silenci. El codi que els llegeix segueix viu (`participant.js`, `fotos.js`) i funcionaria si algú els posés a `true` per SQL |
 
 ---
 
