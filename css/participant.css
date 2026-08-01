@@ -636,18 +636,19 @@
 
 /* Valoració Repte — barra de progrés 0-10, substitueix les 5 estrelles
    (forçades per a una escala de 10 punts) a la targeta de foto. Ocupa
-   l'espai que abans quedava buit sota el nom de l'autor. */
+   l'espai que abans quedava buit sota el nom de l'autor. 10 blocs (un per
+   punt), amplada flexible segons l'espai disponible, molt junts entre si.
+   Colors calculats a ranking.js (_valoracioSegColor/_valoracioBarHtml). */
 .valoracio-bar-track {
   margin-top: 10px;
   height: 10px;
-  border-radius: 5px;
-  background: var(--border);
-  overflow: hidden;
+  display: flex;
+  gap: 2px;
 }
-.valoracio-bar-fill {
+.valoracio-seg {
+  flex: 1 1 0;
   height: 100%;
-  border-radius: 5px;
-  background: var(--gold);
+  border-radius: 2px;
 }
 
 @media (max-width: 640px) {

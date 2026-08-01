@@ -403,6 +403,31 @@ concepte.
 
 Pas 2b tancat.
 
+### Pas 2c — Barra segmentada a "Valoració Repte" (FET, 2026-08-01)
+Retoc estètic de la barra de progrés 0-10 de la targeta (§Pas 2), demanat per Enric i
+iterat amb una mostra HTML aïllada (mateix codi de color/marcatge que `ranking.js`,
+servida en local, mai `file://`) abans de tocar la pantalla real:
+- `_valoracioBarHtml()`/`_valoracioSegColor()` (ranking.js) substitueixen la barra
+  contínua d'un sol `<div>` per **10 blocs** (un per punt sencer), amplada flexible
+  (`flex:1 1 0`) i 2px de separació.
+- Tots els blocs comparteixen el to del `--gold` actual (~37°); només varia la
+  intensitat (saturació 50%→100%, lluminositat 32%→55%) del primer bloc (0-1) al
+  darrer (9-10) — més "vistós" que la primera versió (35%→91%), a petició d'Enric.
+- El bloc que conté la puntuació es reparteix amb un **tall net** (no degradat) entre
+  el seu color i `var(--border)` (blau apagat, ja fet servir a la resta de l'app per a
+  "no activat"); p. ex. una nota de 9,5 deixa el bloc 9 mig ple d'intensitat màxima i
+  mig blau. Els blocs posteriors a la puntuació queden sencers en blau.
+- Perfil fi (`box-shadow: inset 0 0 0 1px`, `rgba(245,166,35,0.5)` — gold al 50%) als
+  blocs no assolits (inclosa la part no assolida del bloc parcial), perquè no quedin
+  invisibles fosos amb `--border`. Primera prova amb un blau (`--accent2` al 50%) es
+  va descartar a favor del gold, més coherent amb la resta de la barra.
+- `box-shadow` en lloc de `border` perquè no consumeix espai de layout (els blocs
+  són `flex`, un `border` real n'hauria alterat l'amplada calculada).
+- Només toca `css/participant.css` (`.valoracio-bar-track`/`.valoracio-seg`, abans
+  `.valoracio-bar-fill`) i `js/features/ranking.js`. No toca "Resultat Repte".
+
+Pas 2c tancat.
+
 ### Pas 3 — Assignació de punts per a la Classificació General (FET, 2026-07-25)
 Confirmada la hipòtesi del §3.7: `assignPositionPoints`/`getPointsForPosition` només fan
 servir la nota per detectar empats (comparació d'igualtat), mai la seva magnitud — la taula

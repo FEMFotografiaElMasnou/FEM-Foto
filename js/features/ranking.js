@@ -440,6 +440,55 @@ export function getPhotoValoracioBreakdown(photoId) {
   return { objectiveId, blocks };
 }
 
+// Color d'un dels 10 blocs de la barra de "Valoració Repte", segons la seva
+// posició (0=primer bloc, puntuació 0-1; 9=últim, puntuació 9-10). Mateix to
+// (hue del --gold) per a tots els blocs: només varia la intensitat, de molt
+// apagada al principi (però ja prou saturada per ser vistosa) a la
+// intensitat plena de --gold al final.
+function _valoracioSegColor(i) {
+  const s = 50 + (50 * i) / 9;
+  const l = 32 + (23 * i) / 9;
+  return `hsl(37, ${s.toFixed(0)}%, ${l.toFixed(0)}%)`;
+}
+
+// Perfil fi (1px, 50% opacitat) que marca lleument la forma dels blocs
+// encara no assolits -- inclòs el bloc parcialment assolit -- que si no
+// quedarien gairebé invisibles fosos amb --border.
+const _VALORACIO_SEG_PROFILE = 'box-shadow:inset 0 0 0 1px rgba(245,166,35,0.5)';
+
+// 10 blocs (un per punt sencer 0-10). Els blocs anteriors al de la
+// puntuació es pinten sencers amb la intensitat que els toca; el bloc de la
+// puntuació es reparteix entre la intensitat que li toca (proporció exacta,
+// p. ex. 9,5 -> el bloc 9 queda mig taronja ple) i --border (blau apagat,
+// "no activat"); els blocs posteriors queden sencers en --border.
+function _valoracioBarHtml(valoracio) {
+  const score = Math.max(0, Math.min(10, valoracio));
+  const segIndex = Math.min(9, Math.floor(score));
+  const segs = [];
+  for (let i = 0; i < 10; i++) {
+    let bg;
+    let profile = '';
+    if (i < segIndex) {
+      bg = _valoracioSegColor(i);
+    } else if (i === segIndex) {
+      const fraction = Math.max(0, Math.min(100, Math.round((score - segIndex) * 100)));
+      if (fraction >= 100) {
+        bg = _valoracioSegColor(i);
+      } else {
+        profile = _VALORACIO_SEG_PROFILE;
+        bg = fraction <= 0
+          ? 'var(--border)'
+          : `linear-gradient(to right, ${_valoracioSegColor(i)} ${fraction}%, var(--border) ${fraction}%)`;
+      }
+    } else {
+      bg = 'var(--border)';
+      profile = _VALORACIO_SEG_PROFILE;
+    }
+    segs.push(`<div class="valoracio-seg" style="background:${bg};${profile}"></div>`);
+  }
+  return segs.join('');
+}
+
 // Pinta "Valoració Repte". Mateixa targeta que Resultat Repte (.photo-card)
 // però sense el bloc de 3 criteris (ja no n'hi ha, només la nota total),
 // i amb una barra de progrés 0-10 en lloc d'estrelles (5 estrelles fixes
@@ -466,7 +515,6 @@ export function renderValoracioRepte(objId, listId, scope = 'all') {
   // (posició densa, pot repetir-se en empats) és el que es pinta.
   const cards = ranked.map(({ photo, valoracio, position }, idx) => {
     const title = photo.caption ? ` - ${photo.caption}` : '';
-    const pct = Math.max(0, Math.min(100, (valoracio / 10) * 100));
     return `
     <div class="photo-card">
       <div class="card-pos ${posClasses[position - 1] || ''}">${position}</div>
@@ -476,9 +524,7 @@ export function renderValoracioRepte(objId, listId, scope = 'all') {
       </div>
       <div class="card-body">
         <div class="card-author">${_authorName(photo.userId)}${title}</div>
-        <div class="valoracio-bar-track">
-          <div class="valoracio-bar-fill" style="width:${pct}%"></div>
-        </div>
+        <div class="valoracio-bar-track">${_valoracioBarHtml(valoracio)}</div>
       </div>
       <div class="card-total">
         <div class="total-val">${formatScore(valoracio)}</div>
