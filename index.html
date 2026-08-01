@@ -269,33 +269,6 @@
       </div>
     </div>
 
-    <!-- TAB: RANKING -->
-    <div id="admin-tab-ranking" class="tab-content">
-      <div class="tab-nav" style="margin-bottom:20px;">
-        <button type="button" class="tab-btn active" onclick="switchTab('rank', 'current')" data-i18n="current_ranking">Repte Actual</button>
-        <button type="button" class="tab-btn" onclick="switchTab('rank', 'general')" data-i18n="general_ranking">Ranking General</button>
-      </div>
-      <div id="rank-tab-current" class="tab-content active">
-        <div class="card">
-          <div class="card-title" style="margin-bottom:16px;" data-i18n="ranking_current_title">Ranking — Repte Actual</div>
-          <div id="ranking-current-list" class="ranking-list">
-            <div class="empty-state"><div class="empty-icon">🏆</div><p data-i18n="no_data_voting">Sense dades de votació encara.</p></div>
-          </div>
-        </div>
-      </div>
-      <div id="rank-tab-general" class="tab-content">
-        <div class="card">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-            <div class="card-title" style="margin-bottom:0;" data-i18n="general_ranking">Ranking General</div>
-
-          </div>
-          <div id="ranking-general-list" class="ranking-list">
-            <div class="empty-state"><div class="empty-icon">🏅</div><p data-i18n="no_data_voting">Sense dades generals.</p></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- TAB: REPTES -->
     <div id="admin-tab-objectives" class="tab-content">
       <div class="card">
@@ -657,32 +630,6 @@
         </div>
         <div style="margin-top:20px;text-align:center;">
           <button type="button" class="btn btn-primary" onclick="saveVotsPuntuacio()" id="btn-save-puntuacio-votes" data-i18n="save_votes_btn">Enviar Vots</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Panel Ranking -->
-    <div id="participant-panel-ranking" class="hidden">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
-        <button type="button" class="btn btn-secondary btn-sm" onclick="showParticipantMain()" data-i18n="embedded_back">← Tornar</button>
-        <h2 style="font-family:var(--font-display);font-weight:700;font-size:24px;letter-spacing:2px;" data-i18n="ranking_screen_title">Ranking</h2>
-      </div>
-      <div class="tab-nav">
-        <button type="button" class="tab-btn active" onclick="switchTab('p-rank', 'current')" data-i18n="current_ranking">Repte Actual</button>
-        <button type="button" class="tab-btn" onclick="switchTab('p-rank', 'general')" data-i18n="general_tab">General</button>
-      </div>
-      <div id="p-rank-tab-current" class="tab-content active">
-        <div class="card">
-          <div id="p-ranking-current-list" class="ranking-list">
-            <div class="empty-state"><div class="empty-icon">🏆</div><p data-i18n="no_data_voting">Sense dades.</p></div>
-          </div>
-        </div>
-      </div>
-      <div id="p-rank-tab-general" class="tab-content">
-        <div class="card">
-          <div id="p-ranking-general-list" class="ranking-list">
-            <div class="empty-state"><div class="empty-icon">🏅</div><p data-i18n="no_participations">Sense dades.</p></div>
-          </div>
         </div>
       </div>
     </div>

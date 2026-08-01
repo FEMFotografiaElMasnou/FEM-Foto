@@ -33,7 +33,6 @@ export const TRANSLATIONS = {
     // voler-les recuperar per a una altra pantalla).
     voting_progress: 'Progrés de votacions', members_voted: 'votants',
     votes_received_title: 'Votacions rebudes',
-    close_voting_btn: 'Tancar Votacions i Revelar Noms',
     // Photos
     manage_photos: 'Gestió de fotos', photos_subtitle: 'Fotos rebudes dels participants',
     publish_btn: 'Publicar Fotos', delete_selected: 'Eliminar Seleccionades',
@@ -120,8 +119,6 @@ export const TRANSLATIONS = {
     // Settings
     uploads_toggle: 'Pujada de fotos', voting_toggle: 'Votacions obertes',
     cal_mark_upload: 'Marcar pujada', cal_mark_voting: 'Marcar votació',
-    reveal_toggle: 'Revelar Noms',
-    reveal_hint: '🔒 Tanca les votacions primer',
     hide_ranking_toggle: 'Ocultar Ranking General',
     // Upload
     upload_zone_title: 'Selecciona o arrossega la teva foto',
@@ -235,7 +232,6 @@ export const TRANSLATIONS = {
     member_role_name: 'Soci',
     expert_role_name: 'Expert',
     confirm_close_voting: 'Tancar Votacions',
-    confirm_close_voting_msg: "Estàs segur que vols tancar les votacions i revelar els noms?",
     confirm_delete_photo: 'Eliminar Foto',
     confirm_delete_photo_msg: "Vols eliminar la teva foto i pujar-ne una de diferent?",
     confirm_finalize_title: 'Finalitzar Repte',
@@ -333,13 +329,9 @@ export const TRANSLATIONS = {
     upload_disabled_msg: 'Pujada de fotos desactivada 🔒',
     publish_photos_first: '🔒 Publica les fotos primer',
     voting_opened_msg: 'Votacions obertes ✅ (pujada de fotos tancada)',
-    voting_closed_ranking_msg: 'Votacions tancades · noms i rànquing revelats 🏆',
     no_photos_published_toast: 'Encara no hi ha fotos publicades 📷',
     admin_role_name: 'Admin',
-    points_label: 'punts',
     no_data_voting: 'Sense dades de votació.',
-    ranking_locked_msg: 'Disponible quan es tanquin les votacions.',
-    general_ranking_hidden_msg: 'El Ranking General està amagat temporalment.',
     no_participations: 'Sense participacions.',
     unknown_user: 'Desconegut',
     downloading: 'Descarregant...',
@@ -458,7 +450,6 @@ export const TRANSLATIONS = {
     photo_pending: 'Foto subida (pendiente) ⏳', photo_published: 'Foto publicada ✅',
     voting_progress: 'Progreso de votaciones', members_voted: 'votantes',
     votes_received_title: 'Votaciones recibidas',
-    close_voting_btn: 'Cerrar Votaciones y Revelar Nombres',
     // Photos
     manage_photos: 'Gestión de fotos', photos_subtitle: 'Fotos recibidas de los participantes',
     publish_btn: 'Publicar Fotos', delete_selected: 'Eliminar Seleccionadas',
@@ -540,8 +531,6 @@ export const TRANSLATIONS = {
     // Settings
     uploads_toggle: 'Subida de fotos', voting_toggle: 'Votaciones abiertas',
     cal_mark_upload: 'Marcar subida', cal_mark_voting: 'Marcar votación',
-    reveal_toggle: 'Revelar Nombres',
-    reveal_hint: '🔒 Cierra las votaciones primero',
     hide_ranking_toggle: 'Ocultar Ranking General',
     // Upload
     upload_zone_title: 'Selecciona o arrastra tu foto',
@@ -655,7 +644,6 @@ export const TRANSLATIONS = {
     member_role_name: 'Socio',
     expert_role_name: 'Experto',
     confirm_close_voting: 'Cerrar Votaciones',
-    confirm_close_voting_msg: '¿Seguro que quieres cerrar las votaciones y revelar los nombres?',
     confirm_delete_photo: 'Eliminar Foto',
     confirm_delete_photo_msg: '¿Quieres eliminar tu foto y subir una diferente?',
     confirm_finalize_title: 'Finalizar Reto',
@@ -748,13 +736,9 @@ export const TRANSLATIONS = {
     upload_disabled_msg: 'Subida de fotos desactivada 🔒',
     publish_photos_first: '🔒 Publica las fotos primero',
     voting_opened_msg: 'Votaciones abiertas ✅ (subida de fotos cerrada)',
-    voting_closed_ranking_msg: 'Votaciones cerradas · nombres y ranking revelados 🏆',
     no_photos_published_toast: 'No hay fotos publicadas aún 📷',
     admin_role_name: 'Admin',
-    points_label: 'puntos',
     no_data_voting: 'Sin datos de votación.',
-    ranking_locked_msg: 'Disponible cuando se cierren las votaciones.',
-    general_ranking_hidden_msg: 'El Ranking General está oculto temporalmente.',
     no_participations: 'Sin participaciones.',
     unknown_user: 'Desconocido',
     downloading: 'Descargando...',
@@ -911,10 +895,6 @@ export function applyTranslations() {
   // recursió infinita que bloqueja la pestanya (bug detectat i corregit en aquesta ronda).
   // La llista de reptes es repinta sola gràcies a aquesta crida interna seva.
   if (typeof window.refreshAdminDashboard  === 'function') _safeCall(window.refreshAdminDashboard);
-  if (typeof window.renderRanking === 'function') {
-    _safeCall(() => window.renderRanking('ranking-current-list', 'ranking-general-list'));
-    _safeCall(() => window.renderRanking('p-ranking-current-list', 'p-ranking-general-list'));
-  }
 }
 
 // Exponer en window las funciones usadas desde onclick del HTML

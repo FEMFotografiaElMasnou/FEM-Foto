@@ -75,7 +75,6 @@ export async function loadAllData() {
     // client (REVOKE, sql/2026-07-26_login_seguretat_fem_login.sql) — el
     // login passa per fem_login(), que la verifica al servidor.
     sb.from('users').select('id,display_name,email,role,created_at').order('id', { ascending: true }),
-    // names_revealed afegit a la Fase 2 (multi-repte): vegeu FEM_reptes.md.
     // uploads_enabled/voting_enabled ja existien a la taula però eren lletra
     // morta fins la Fase 2 — ara SÍ que en depèn el mirall de state.settings.
     // cal_upload_start/end, cal_voting_start/end, upload_mode, voting_mode:
@@ -85,8 +84,8 @@ export async function loadAllData() {
     // una sola fila d'`objectives`.
     // cover_image_url afegit (2026-07-24): imatge de fons de la capçalera del
     // repte, box "Repte / Foto pujada" (costat participant). Opcional.
-    sb.from('objectives').select('id,name,description,status,uploads_enabled,voting_enabled,names_revealed,start_date,end_date,created_by,cal_upload_start,cal_upload_end,cal_voting_start,cal_voting_end,upload_mode,voting_mode,cover_image_url'),
-    sb.from('photo_submissions').select('id,user_id,objective_id,file_name,file_url,original_url,file_size,published,revealed,submitted_at,caption'),
+    sb.from('objectives').select('id,name,description,status,uploads_enabled,voting_enabled,start_date,end_date,created_by,cal_upload_start,cal_upload_end,cal_voting_start,cal_voting_end,upload_mode,voting_mode,cover_image_url'),
+    sb.from('photo_submissions').select('id,user_id,objective_id,file_name,file_url,original_url,file_size,published,submitted_at,caption'),
     // valoracio (Fase 3, Pas 1): nova nota única 0-10, calculada per un trigger
     // de Supabase a partir de creativity/theme/composition — es llegeix aquí
     // perquè hi hagi accés des del client (Valoració Repte, ranking.js), sense
@@ -150,7 +149,6 @@ export async function loadAllData() {
     status:          o.status || 'inactive',
     uploads_enabled: !!o.uploads_enabled,
     voting_enabled:  !!o.voting_enabled,
-    names_revealed:  !!o.names_revealed,
     start_date:      o.start_date || '',
     end_date:        o.end_date || '',
     created_by:      o.created_by || '',
@@ -173,7 +171,6 @@ export async function loadAllData() {
     originalUrl:  _noAutoRotateUrl(p.original_url || p.file_url || ''),
     fileSize:     p.file_size || '',
     published:    !!p.published,
-    revealed:     !!p.revealed,
     submitted_at: p.submitted_at || '',
     caption:      p.caption || '',
   }));
@@ -228,14 +225,13 @@ export async function loadAllData() {
     }
     return def;
   };
-  // uploads_enabled/voting_enabled/namesRevealed: FONT DE VERITAT des de la
-  // Fase 2 = el repte actiu (objectives.uploads_enabled/voting_enabled/
-  // names_revealed), NO app_settings. Es calculen uns quants línies més avall,
-  // un cop es coneix state.currentObjective (mirall — vegeu comentari allà).
-  // Les claus d'app_settings 'uploads_enabled'/'voting_enabled'/'names_revealed'
-  // queden com a residu de l'etapa pre-Fase 2: ja no s'hi llegeix res.
+  // uploads_enabled/voting_enabled: FONT DE VERITAT des de la Fase 2 = el
+  // repte actiu (objectives.uploads_enabled/voting_enabled), NO app_settings.
+  // Es calculen uns quants línies més avall, un cop es coneix
+  // state.currentObjective (mirall — vegeu comentari allà).
+  // Les claus d'app_settings 'uploads_enabled'/'voting_enabled' queden com a
+  // residu de l'etapa pre-Fase 2: ja no s'hi llegeix res.
   state.settings = {
-    rankingHidden:   parseSetting('ranking_hidden', false),
     force_hide_upload:        parseSetting('force_hide_upload', false),
     force_hide_vote:          parseSetting('force_hide_vote', false),
     force_hide_resultats:     parseSetting('force_hide_resultats', false),
@@ -253,13 +249,12 @@ export async function loadAllData() {
   state.currentObjective = state.objectives.find(o => o.status === 'active') || null;
 
   // ── Mirall (Fase 2 — pla multi-repte, FEM_reptes.md): uploads_enabled/
-  // voting_enabled/namesRevealed a `state.settings` es mantenen NOMÉS perquè
-  // participant.js/votacio.js/fotos.js/router.js/ranking.js encara els
-  // llegeixen d'aquí (no es toquen fins la Fase 3/6). El valor real viu al
-  // repte actiu; sense repte actiu, tot està tancat/no revelat.
+  // voting_enabled a `state.settings` es mantenen NOMÉS perquè
+  // participant.js/votacio.js/fotos.js/router.js encara els llegeixen d'aquí
+  // (no es toquen fins la Fase 3/6). El valor real viu al repte actiu; sense
+  // repte actiu, tot està tancat.
   state.settings.uploads_enabled = state.currentObjective ? !!state.currentObjective.uploads_enabled : false;
   state.settings.voting_enabled  = state.currentObjective ? !!state.currentObjective.voting_enabled  : false;
-  state.settings.namesRevealed   = state.currentObjective ? !!state.currentObjective.names_revealed  : false;
 
   // Calendari de reptes: RACIONALITZACIÓ BD 2026-07 — `reptes_calendari` (taula
   // a part) ha quedat absorbida dins `objectives` (columnes cal_upload_start/
@@ -300,7 +295,6 @@ export async function saveObjectives() {
     status:          o.status,
     uploads_enabled: !!o.uploads_enabled,
     voting_enabled:  !!o.voting_enabled,
-    names_revealed:  !!o.names_revealed,
     start_date:      o.start_date || null,
     end_date:        o.end_date || null,
     created_by:      o.created_by || (state.currentUser ? state.currentUser.id : null),
@@ -359,8 +353,6 @@ export async function saveSettings() {
   const rows = [
     { id: 'cfg_uploads',  key: 'uploads_enabled', value: String(state.settings.uploads_enabled),  updated_at: now, updated_by: updatedBy },
     { id: 'cfg_voting',   key: 'voting_enabled',  value: String(state.settings.voting_enabled),   updated_at: now, updated_by: updatedBy },
-    { id: 'cfg_revealed', key: 'names_revealed',   value: String(state.settings.namesRevealed),    updated_at: now, updated_by: updatedBy },
-    { id: 'cfg_ranking_hidden', key: 'ranking_hidden', value: String(state.settings.rankingHidden), updated_at: now, updated_by: updatedBy },
     { id: 'cfg_force_hide_upload',        key: 'force_hide_upload',        value: String(state.settings.force_hide_upload),        updated_at: now, updated_by: updatedBy },
     { id: 'cfg_force_hide_vote',          key: 'force_hide_vote',          value: String(state.settings.force_hide_vote),          updated_at: now, updated_by: updatedBy },
     { id: 'cfg_force_hide_resultats',     key: 'force_hide_resultats',     value: String(state.settings.force_hide_resultats),     updated_at: now, updated_by: updatedBy },
@@ -485,10 +477,3 @@ export function getParticipantNumber(userId) {
   return idx >= 0 ? (idx + 1) : '?';
 }
 
-export function getDisplayName(userId) {
-  if (state.settings.namesRevealed) {
-    const u = state.users.find(u => u.id === userId);
-    return u ? u.name : `Participant #${getParticipantNumber(userId)}`;
-  }
-  return `Participant #${getParticipantNumber(userId)}`;
-}

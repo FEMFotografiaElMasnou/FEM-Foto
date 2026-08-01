@@ -5,7 +5,7 @@ import { state, actingAsAdmin } from '../core/state.js';
 import { t, applyTranslations } from '../core/i18n.js';
 import { showToast } from '../ui/toast.js';
 import { renderVotingGrid, updateVoteButtonsState, isVotingSubmitted, renderPuntuacioGrid } from '../features/votacio.js';
-import { renderRanking, renderResultatsRepte, objectiveHasExpertVoting, renderClassificacioGeneral, renderValoracioRepte, renderTaulaClassificacio } from '../features/ranking.js';
+import { renderResultatsRepte, objectiveHasExpertVoting, renderClassificacioGeneral, renderValoracioRepte, renderTaulaClassificacio } from '../features/ranking.js';
 import { updateUploadSection, _formatDateEs, _formatDateSlash } from '../features/fotos.js';
 import { setActiveNav, switchTab } from '../core/router.js';
 import { populateGalleryFilters, renderGallery, startGalleryCarousel, stopGalleryCarousel } from '../features/galeria.js';
@@ -34,7 +34,6 @@ function sistemaNou() {
 function _hideAllParticipantPanels() {
   document.getElementById('participant-panel-main').classList.add('hidden');
   document.getElementById('participant-panel-voting').classList.add('hidden');
-  document.getElementById('participant-panel-ranking').classList.add('hidden');
   document.getElementById('participant-panel-gallery').classList.add('hidden');
   document.getElementById('participant-panel-resultats').classList.add('hidden');
   document.getElementById('participant-panel-classificacio').classList.add('hidden');
@@ -149,13 +148,6 @@ export function showParticipantPuntuacioRepte() {
   // quedava congelat amb l'estat del primer render encara que la votació
   // s'obrís/tanqués després — semblava "inhabilitat sense motiu".
   updateVoteButtonsState();
-}
-
-export function showParticipantRanking() {
-  _hideAllParticipantPanels();
-  document.getElementById('participant-panel-ranking').classList.remove('hidden');
-  setActiveNav('bnav-rank');
-  renderRanking('p-ranking-current-list', 'p-ranking-general-list');
 }
 
 export function showParticipantGallery() {
@@ -355,12 +347,6 @@ export function onTaulaClassificacioVoteFilterChange() {
   renderTaulaClassificacio('taula-classificacio-list', _taulaClassificacioScope());
 }
 
-// ── Classificació General (vista interna antiga; ja no enllaçada, es manté per referència) ──
-export function showParticipantClassificacio() {
-  showParticipantRanking();
-  switchTab('p-rank', 'general');
-}
-
 // ═══════════════════════════════════
 // PARTICIPANT DASHBOARD
 // ═══════════════════════════════════
@@ -537,7 +523,6 @@ function _updateSistemaBadges(isAdminRole, nou) {
 window.showParticipantMain = showParticipantMain;
 window.showParticipantVoting = showParticipantVoting;
 window.obrirVotacioRepte = obrirVotacioRepte;
-window.showParticipantRanking = showParticipantRanking;
 window.showParticipantResultats = showParticipantResultats;
 window.onResultatsRepteChange = onResultatsRepteChange;
 window.onResultatsVoteFilterChange = onResultatsVoteFilterChange;
@@ -549,7 +534,6 @@ window.onValoracioVoteFilterChange = onValoracioVoteFilterChange;
 window.showParticipantTaulaClassificacio = showParticipantTaulaClassificacio;
 window.onTaulaClassificacioVoteFilterChange = onTaulaClassificacioVoteFilterChange;
 window.showParticipantPuntuacioRepte = showParticipantPuntuacioRepte;
-window.showParticipantClassificacio = showParticipantClassificacio;
 window.showParticipantGallery = showParticipantGallery;
 window.refreshParticipantDashboard = refreshParticipantDashboard;
 window.renderVotingHeader = renderVotingHeader;

@@ -25,6 +25,9 @@ de seguretat (ja feta pels seus passos a `ANALISI_Login_Navegacio.md`).
    de "no trobat" i el verd no prova res. Va passar el 27/07/2026.
 6. **Cada punt es tanca amb un verd o amb una incidència**, mai amb "sembla que sí". Les
    incidències van a §Registre, al final.
+7. **Un canvi, una comprovació.** Encadenar quatre canvis i mirar el servidor al final només
+   demostra l'últim: els estats intermedis ja no hi són. Va passar al punt 3.2 el 30/07/2026 i va
+   caldre repetir-lo pas a pas. Si el punt té diverses transicions, es verifica cadascuna.
 
 ### Preparatius
 
@@ -74,10 +77,15 @@ sense parella a `auth.users`).
 |---|---|---|
 | 2.1 | Soci `participant` | Veu la pantalla de participant i **cap camí d'interfície** cap al panell d'admin. ✅ Verificat el 29/07/2026 (a la pantalla i al codi: `_enterApp()` reparteix per rol i `toggleAdminParticipantView()` surt si el rol no és admin). Matís escrit a posta: `window.showAdminScreen` no comprova el rol, així que des de la **consola** del navegador se'n pot pintar la carcassa. No exposa dades noves (la llista de socis ja la carrega tothom, el login per nom la necessita) i les escriptures les rebutja el servidor (RLS + `fem_is_admin()`) |
 | 2.2 | `admin` | Té accés a **les 5 seccions del sidebar** (Fotos, Reptes, Socis, Textos, Puntuació) i pot entrar a totes. ✅ Verificat el 29/07/2026: en són cinc, i són les que han de ser des de la compactació del panell (Votacions, Controls i Calendari es van moure a cada targeta de repte el 18/07/2026, a petició de Pablo) |
-| 2.3 | `expert` | Entra com un participant normal. **L'únic efecte del rol és el filtre de vots** (bloc 7) |
-| 2.4 | Admin → **"veure com a participant"** | Les targetes de resultats són les que toquen **segons el commutador**, no segons el rol (això és el que va canviar al Pas D). **Dues excepcions legítimes**, que depenen del rol **real** i per tant no desapareixen en aquest mode: el distintiu `3×5`/`0-10` (hi ha de ser: serveix precisament per saber quina pantalla es revisa) i la targeta de Galeria, que l'admin també veu quan hi ha repte **actiu** i encara no cap de finalitzat |
+| 2.3 | `expert` | Entra com un participant normal. **L'únic efecte del rol és el filtre de vots** (bloc 7). ✅ Verificat el 30/07/2026 a Test amb el compte real «Jordi Farrus»: pantalla de participant, rètol de rol dient «Expert», navegació idèntica a la d'un soci i cap camí cap al panell. Comprovat per SQL que va entrar **per Auth i no pel camí de reserva** (`auth.sessions` de 0 → 1, `refresh_tokens` 1, `last_sign_in_at` de l'instant), cosa que amb aquest compte no era gratuïta —vegeu la incidència 2.3 al registre. I que el rol no dona res més enlloc: **0 polítiques de RLS** esmenten `expert` i l'única funció que el nomena és `fem_admin_create_member`, per acceptar-lo com a valor vàlid; al client, els únics usos són el filtre de `ranking.js`, el rètol de `participant.js` i la protecció del badge a `socis.js` |
+| 2.4 | Admin → **"veure com a participant"** | Les targetes de resultats són les que toquen **segons el commutador**, no segons el rol (això és el que va canviar al Pas D). **Dues excepcions legítimes**, que depenen del rol **real** i per tant no desapareixen en aquest mode: el distintiu `3×5`/`0-10` (hi ha de ser: serveix precisament per saber quina pantalla es revisa) i la targeta de Galeria, que l'admin també veu quan hi ha repte **actiu** i encara no cap de finalitzat. ✅ Verificat el 30/07/2026 a Test (sistema Nou, repte «Repte de proves» a la capçalera: pujada tancada i votació oberta): la píndola passa a `PARTICIPANT ⇄` i «Sortir» deixa lloc a la ✕, es veuen les targetes `0-10` i s'amaguen les `3×5`, els distintius **hi són** (rol real) amb `0-10` al mosaic, i la pujada i la votació queden gatejades com per a un soci qualsevol —amb el botó de descàrrega del lightbox retirat, que és el contrast net contra el mode admin normal. Matís: l'excepció de la Galeria **no s'ha pogut distingir** perquè Test té reptes finalitzats i la targeta es veuria igual sense ella |
 | 2.5 | Distintiu `3×5`/`0-10` | El veu **qui té rol admin real** i **mai** un soci, i diu el sistema actiu a cada targeta de les parelles. A Galeria no n'hi ha d'haver: el commutador no l'afecta |
 | 2.6 | `force_hide_upload`, `force_hide_vote`, `force_hide_resultats`, `force_hide_classificacio` | ⚠️ **Aquest punt estava mal plantejat i queda reformulat** (29/07/2026): aquests quatre valors **ja no es poden tocar des de la interfície** — no hi ha cap control a `index.html`, perquè es van retirar amb la compactació del panell. Avui només es poden canviar per SQL. El que sí que s'ha comprovat, i és el que importa, és que **tots quatre valen `false` a les dues bases**, o sigui que no estan amagant res en silenci. El codi que els llegeix segueix viu (`participant.js`, `fotos.js`) i funcionaria si algú els posés a `true` per SQL |
+
+**Bloc 2 tancat el 30/07/2026.** Els sis punts en verd (2.1, 2.2, 2.5 i 2.6 el 29; 2.3 i 2.4 el 30),
+amb una incidència de dades trobada pel camí —l'expert sense adreça de correu (registre, 2.3)— i el
+2.6 reformulat perquè el que demanava ja no es pot clicar. Els quatre `force_hide_*` no tornen a
+sortir com a condició de cap punt: són codi inert, i van al calaix 3 de `docs/NETEJA_codi_mort.md`.
 
 ---
 
@@ -85,12 +93,34 @@ sense parella a `auth.users`).
 
 | # | Prova | Verd si |
 |---|---|---|
-| 3.1 | Crear un repte des del panell (Reptes) | Es crea amb `status = active` i surt a la pantalla del soci |
-| 3.2 | `upload_mode` i `voting_mode` a **`obert`** i a **`tancat`** | Manen sobre les dates: obert deixa fer sempre, tancat no deixa mai |
-| 3.3 | `upload_mode`/`voting_mode` = **`calendari`** amb finestres passades i futures | `uploads_enabled`/`voting_enabled` acaben coherents amb les finestres |
-| 3.4 | **Cron `fem-calendar`** (00:05 UTC, `fem_apply_calendar()`) | Executada a mà a Test, deixa els estats efectius com toca i **no** toca cap repte `finished` |
-| 3.5 | Imatge de portada del repte: posar-la i treure-la | Es veu i desapareix, sense deixar l'URL penjat |
-| 3.6 | Finalitzar un repte | Passa a `finished`, apareix a Galeria i a la Classificació General |
+| 3.1 | Crear un repte des del panell (Reptes) | Es crea amb `status = active` i surt a la pantalla del soci. ✅ Verificat el 30/07/2026 a Test amb «ZZ Prova B3 (esborrable)» (`obj_1785414100165`): neix `active`, amb `uploads_enabled` i `voting_enabled` a `false`, `upload_mode`/`voting_mode` a `calendari` i les quatre dates buides —els valors per defecte de les columnes—, i surt a la capçalera del soci amb tot tancat. **Va caldre deixar-lo com a únic repte actiu** per poder-ho comprovar: vegeu les dues notes de sota |
+| 3.2 | `upload_mode` i `voting_mode` a **`obert`** i a **`tancat`** | Manen sobre les dates: obert deixa fer sempre, tancat no deixa mai. ✅ Verificat el 30/07/2026 a Test sobre «ZZ Prova B3», que **no té cap data de calendari**: `obert` obre i `tancat` tanca igualment (`uploads_enabled` a `true` amb les quatre dates buides). Comprovada també la regla de negoci heretada: **posar la votació a `obert` força la pujada a `tancat`** al mateix instant (`setPhaseMode`, `patch.upload_mode='tancat'`), vist a la pantalla i a la base. Efecte lateral que convé saber: quan la votació passa d'oberta a tancada, `names_revealed` salta a `true` i **no torna enrere sol** (`applyPhaseModes`, regla `closedNow`) |
+| 3.3 | `upload_mode`/`voting_mode` = **`calendari`** amb finestres passades i futures | `uploads_enabled`/`voting_enabled` acaben coherents amb les finestres. ✅ Verificat el 30/07/2026 a Test sobre «ZZ Prova B3», amb els cinc casos comprovats un per un a la base: pujada amb finestra **passada** → tancada; pujada amb finestra que **conté avui** → oberta; votació amb finestra **futura** → tancada; votació amb finestra que **conté avui** → oberta; i l'intent de posar l'inici de votació el mateix dia que acaba la pujada → **rebutjat** amb avís, sense desar-se (`updateCalendarDate`, marge mínim d'1 dia). ⚠️ Parany trobat pel camí: el mode `obert` que havia quedat del punt 3.2 feia veure una votació oberta que **no** provava el camí del calendari. Amb un mode forçat, les dates no demostren res: comprovar sempre que els dos desplegables siguin a `Calendari` abans de llegir el resultat |
+| 3.4 | **Cron `fem-calendar`** (00:05 UTC, `fem_apply_calendar()`) | Executada a mà a Test, deixa els estats efectius com toca i **no** toca cap repte `finished`. ✅ Verificat el 30/07/2026, i **fent-la fallar en lloc de donar-la per bona**: es van desquadrar els valors a posta abans d'executar-la (al repte actiu, pujada `true` i votació `false`, just al contrari del que diuen les finestres; i a «Escales», `finished`, pujada `true`). Després de la crida, el repte actiu queda **corregit** i «Escales» **segueix desquadrada** —restaurada tot seguit—, que és la prova que la funció només recorre `status='active'`. El cron existeix i s'executa de debò: `5 0 * * *`, actiu, **27 execucions, totes `succeeded`**, l'última el 30/07 a les 00:05 UTC (`cron.job_run_details`) |
+| 3.5 | Imatge de portada del repte: posar-la i treure-la | Es veu i desapareix, sense deixar l'URL penjat. ✅ Verificat el 30/07/2026 a Test: en posar-la, `cover_image_url` queda amb l'URL de Cloudinary a `FemReptes_TEST/_cover_reptes` (comprovat que respon **HTTP 200**, `image/jpeg`) i la capçalera del repte la mostra amb el degradat; en treure-la, la columna queda a **`NULL`** —no a cadena buida— i la capçalera torna al fons pla. **El fitxer es queda a Cloudinary**, com tot a l'app: el frontend no esborra res (ADR-015). ⚠️ Pel camí va semblar que no es veia: la portada es pinta a `#objective-header`, que viu **dins** de `card-objective-photo`, i amb la **votació oberta** aquella targeta sencera s'amaga i la substitueix la de «Votar el repte» (`updateUploadSection`, fotos.js:199-221). Per provar aquest punt cal que el repte sigui en fase de **pujada** |
+| 3.6 | Finalitzar un repte | Passa a `finished`, apareix a Galeria i a la Classificació General. ✅ Verificat el 30/07/2026 a Test amb «ZZ Prova B3»: `status='finished'`, `end_date` d'avui, pujada i votació a `false`, i surt tant al desplegable de Galeria com de columna a la Classificació General —amb «—» a tothom, perquè no té cap foto—, igual que «ZZ Prova A2». Detall menor: els **modes** no es reinicien en finalitzar (queden `obert`/`tancat`); inofensiu, perquè `fem_apply_calendar()` no toca els `finished`. ⚠️ Pel camí va sortir la **incidència 3.6** del registre |
+
+**Bloc 3 tancat el 30/07/2026.** Els sis punts en verd, amb un repte de proves creat a posta
+(«ZZ Prova B3») i deixat com a **únic actiu** perquè els criteris fossin comprovables. Una incidència
+trobada (**3.6**, el mirall `general_ranking`) i tres coses que el bloc ha obligat a saber:
+
+> **Tres coses que aquest bloc ha obligat a saber** (30/07/2026):
+>
+> 1. **«Surt a la pantalla del soci» només és comprovable amb UN repte actiu.** `state.currentObjective`
+>    agafa el primer `status = 'active'` que troba (`data.js:253`) i el `select` d'`objectives` no porta
+>    cap `.order()`: amb més d'un actiu, quin surt és arbitrari. Per al bloc 3 s'han deixat «Contrallums»
+>    i «Repte de proves» com a `inactive` a Test, amb la marxa enrere apuntada a §Dades de prova.
+> 2. **`fem_apply_calendar()` tampoc no toca els reptes `inactive`**, no només els `finished` (vist al
+>    3.4). Conseqüència: un repte que es torni a activar arrossega l'estat efectiu que tenia el dia que
+>    es va desactivar, fins que algú el recalcula —el cron de la nit següent, o un admin obrint el
+>    panell (`applyAllActiveCalendars()`). Al Test del 30/07 «Contrallums» va quedar amb la pujada
+>    oberta mentre era inactiu.
+> 3. **El sondeig de 30 s no veu els canvis d'`objectives`.** La signatura que compara
+>    (`startAutoRefresh()`, [router.js](../js/core/router.js)) només porta valors d'`app_settings` i els
+>    recomptes de fotos i de vots. Crear, activar o finalitzar un repte des d'una altra sessió **no**
+>    arriba sol a qui té l'app oberta: cal recarregar. Els canvis de **fase** sí que hi arriben, perquè
+>    viuen al mirall d'`app_settings`. No és una incidència del guió —cap punt ho promet— però afecta
+>    com es proven el 3.1 i el 3.6, i val la pena saber-ho abans de la Fase 5.
 
 ---
 
@@ -98,15 +128,21 @@ sense parella a `auth.users`).
 
 | # | Prova | Verd si |
 |---|---|---|
-| 4.1 | Soci puja una foto amb la pujada oberta | Puja a Cloudinary i queda visible per a ell, **no** per als altres fins a publicar-la |
-| 4.2 | Pujar amb la pujada **tancada** | No hi ha camí per fer-ho |
-| 4.3 | Segona foto del mateix soci al mateix repte | El comportament és el que espera l'admin (substitueix o rebutja) i és **el mateix** que fa l'app antiga |
-| 4.4 | Editar el peu de foto (`caption`) | Es desa i es veu on toca |
-| 4.5 | El soci esborra **la seva** foto | Desapareix. Provar també que **no** pot esborrar la d'un altre (prova negativa, amb una foto real d'un altre soci) |
-| 4.6 | Admin: **Publicar Fotos** | `published` a totes les seleccionades; a partir d'aquí les veu tothom |
-| 4.7 | Admin: esborrar seleccionades | Només les marcades |
-| 4.8 | Admin: **Descarregar Totes** | Baixa les de la pantalla, amb els filtres aplicats |
-| 4.9 | Noms revelats (`names_revealed`) | Amb `false` no es veu qui ha fet cada foto en cap pantalla; amb `true`, sí |
+| 4.1 | Soci puja una foto amb la pujada oberta | Puja a Cloudinary i queda visible per a ell, **no** per als altres fins a publicar-la. ✅ Verificat el 31/07/2026 a Test amb «Contrallums» (pujada oberta per calendari) i un compte d'un sol ús («TEST Bloc4 A»): la foto queda a Cloudinary (`FemReptes_TEST/contrallums/`), `published=false` a la BD, i la targeta «La meva foto» la mostra només a ella |
+| 4.2 | Pujar amb la pujada **tancada** | No hi ha camí per fer-ho. ✅ **Verd des del 31/07/2026** (vegeu incidència 4.2 al registre): es va trobar que la UI amagava la zona de pujada però ni `uploadPhoto()` ni la política RLS d'`INSERT` comprovaven `uploads_enabled` — disparant l'event de canvi a mà (consola) es pujava una foto igualment. **Corregit el mateix dia**: política `photo_submissions_insert_own` endurida (exigeix `uploads_enabled=true` al repte o `fem_is_admin()`) + guarda bessona a `uploadPhoto()`. Reprovat exactament igual (mateixa consola, mateix compte «TEST Bloc4 B», «Contrallums» tancat): ara `[error] Photo insert error` a la consola i cap fila nova a la BD |
+| 4.3 | Segona foto del mateix soci al mateix repte | El comportament és el que espera l'admin (substitueix o rebutja) i és **el mateix** que fa l'app antiga. ✅ Verificat el 31/07/2026: no hi ha manera de pujar-ne una segona sense passar abans per «Eliminar i Tornar a Pujar» (substitueix, mai coexisteixen dues files). Matís: no hi ha cap `UNIQUE` a BD sobre `(user_id, objective_id)` — la protecció és només de la UI, igual que a l'app antiga (mateix patró, no és una regressió) |
+| 4.4 | Editar el peu de foto (`caption`) | Es desa i es veu on toca. ✅ Verificat el 31/07/2026: el botó «Desar canvis» només apareix quan hi ha un canvi real, i actualitza el `caption` de la mateixa fila (no en crea cap de nova) |
+| 4.5 | El soci esborra **la seva** foto | Desapareix. Provar també que **no** pot esborrar la d'un altre (prova negativa, amb una foto real d'un altre soci). ✅ Meitat positiva verificada el 31/07/2026 («TEST Bloc4 B» esborra la seva pròpia foto per la UI). Meitat negativa **no provada en cru** (una crida `DELETE` directa amb el testimoni de B contra la fila d'A xoca amb l'ADR-015 i el classificador de permisos la va bloquejar); verificada per anàlisi en lloc seu: la política RLS `photo_submissions_delete_own_or_admin` exigeix `user_id = fem_current_user_id() OR fem_is_admin()`, `fem_current_user_id()` resol per `auth.uid()` real (sense el parany de NULL del 27/07), i `deleteMyPhoto()` a `fotos.js` només construeix la crida amb el `user_id` propi — cap camí de la UI arriba mai a l'id d'un altre soci |
+| 4.6 | Admin: **Publicar Fotos** | `published` a totes les seleccionades; a partir d'aquí les veu tothom. ✅ Verificat el 31/07/2026 amb «UserAdminTest» (compte de prova admin): `published` passa a `true` a la BD i la UI ho reflecteix («Publicades: 1 · Pendents: 0») |
+| 4.7 | Admin: esborrar seleccionades | Només les marcades. ✅ Verificat el 01/08/2026 a Test: es va pujar una segona foto real («TEST Bloc4 B», `photo_1785580826427`, a «Contrallums») perquè hi hagués dues files i la selecció fos demostrable. Amb «UserAdminTest», seleccionant només la de B (el diàleg de confirmació deia «Vols eliminar 1 foto(s)?») i confirmant: la fila de B desapareix de `photo_submissions` i la de A (`photo_1785520442921`, publicada) queda **intacta** — comprovat a la interfície i per SQL |
+| 4.8 | Admin: **Descarregar Totes** | Baixa les de la pantalla, amb els filtres aplicats. ✅ Verificat l'01/08/2026 a Test amb «UserAdminTest»: amb la foto de «TEST Bloc4 A» (única de «Contrallums», l'objectiu actiu) es descarrega un ZIP i apareix el toast «1 foto(s) descarregades en ZIP ✅», sense errors de consola. `downloadAllPhotos()` fa servir `getActiveAllPhotos()` — el mateix conjunt que pinta la graella — així que "amb els filtres aplicats" es compleix per construcció |
+| 4.9 | Noms revelats (`names_revealed`) | ❌→🗑️ **Retirat, no verificat.** En investigar-ho es va trobar que el flag no controlava res que un soci o un admin poguessin arribar a veure mai: l'única pantalla que el consultava (`Ranking → Repte Actual`) ja era codi mort des d'abans (`showParticipantClassificacio()`/`admin-tab-ranking`, sense cap `onclick` enlloc). Decisió d'Enric el 31/07/2026: eliminar tot el concepte en lloc de mantenir-lo. Vegeu incidència 4.9 al registre |
+
+**Bloc 4 tancat l'01/08/2026.** Els vuit punts provables en verd (4.1-4.6 el 31/07, 4.7 i 4.8 l'1/08) i
+el 4.9 retirat amb el vistiplau d'Enric. Una incidència trobada i corregida pel camí (**4.2**, la
+pujada tancada que només es feia complir a la UI), amb la seva migració ja portada a Normal
+l'1/08/2026 (detall al registre). Comptes de prova «TEST Bloc4 A»/«TEST Bloc4 B» i la seva foto,
+esborrats — vegeu §Dades de prova vives.
 
 ---
 
@@ -151,7 +187,14 @@ Amb el commutador de Test a **«Nou»**, que és com està ara.
 | 7.4 | Empat de puntuació | El desempat és el mateix a les dues pantalles i el mateix que fa l'app antiga |
 | 7.5 | Taula de punts per posició (25, 18, 15, 12, 10, 8, 7, 6, 5, 4…) | Coincideix amb `app_settings` i amb l'app antiga |
 | 7.6 | Classificació General amb un soci que **no ha participat** en algun repte | Compta 0 en aquell repte, i no desapareix de la taula |
-| 7.7 | `rankingHidden` | Amaga el rànquing on toca, sense trencar la resta de la pantalla |
+| 7.7 | `rankingHidden` | 🗑️ **Retirat, no verificat.** Mateix cas que 4.9: l'única pantalla que el mirava (`renderRanking()`) ja s'havia esborrat amb la incidència 4.9; la Classificació General real no l'ha llegit mai. Enric ha confirmat l'01/08/2026 que no hi ha ni hi ha hagut cap ús real esperat — cada pantalla ja fa la seva pròpia funció de mostrar/amagar. Eliminada tota la plumbing de client, vegeu la incidència 4.9 |
+
+> ⚠️ **7.2 i 7.3 encara no es poden provar a Test** (comprovat per SQL el 30/07/2026). El filtre
+> Tots/Socis/Expert només apareix si algun expert ha **enviat** el vot, i `_submittedUserIdsForScope()`
+> compta les files de `seguiment_votacio` amb `es_esborrany = false`, no els vots. A Test l'expert té
+> 22 vots i **cap** fila de seguiment: per a l'app no ha votat mai, i cap repte de Test té vot d'expert.
+> A Normal només en té «Escales» (1). Per tant, o es fabrica a Test una votació d'expert enviada (amb
+> la seva marxa enrere) o aquests dos punts es fan **[N]**, en lectura, sobre Normal.
 
 ---
 
@@ -213,10 +256,54 @@ Una fila per incidència trobada. Si un punt es tanca en verd, s'hi marca la cas
 | Data | Punt | Què passa | Blocador? | Estat |
 |---|---|---|---|---|
 | 29/07/2026 | **1.11** | El Reset de l'admin **no feia fora a l'instant** el soci que tingués l'app oberta: seguia dins, i podent escriure, fins que el testimoni d'accés (JWT) intentava renovar-se (fins a una hora). Al servidor la revocació sí que es feia. Diagnòstic i solució a l'**Annex B** | No blocador del tall, però era una promesa que la documentació donava per bona | **Corregit** el 29/07/2026: el sondeig de 30 s valida la sessió contra el servidor. Verificat a la interfície |
+| 30/07/2026 | **3.6** | **Finalitzar un repte infla el mirall antic `app_settings.general_ranking`.** `finalizeObjective()` ([tematiques.js:141](../js/features/tematiques.js)) ordena **`state.publishedPhotos` sencer, sense filtrar per repte**, reparteix punts per posició sobre aquell munt i els suma al mirall. Comprovat el 30/07 finalitzant a Test un repte **sense cap foto**: el mirall va passar de 24 socis i 83 participacions a **32 socis i 8 participacions per soci**, amb 8 socis nous apareguts del no-res. **No és cosa de Test ni d'avui**: a Normal el mirall diu fins a **11 participacions** per soci i **235 en total**, amb només 4 reptes finalitzats i 86 fotos publicades | **No visible per a ningú, avui.** Aquell mirall només alimenta `computeGeneralRanking()` → `ranking-general-list` i `p-ranking-general-list`, dues pantalles **no accessibles** i ja marcades per esborrar. La Classificació General que veuen els socis es recalcula en viu des dels vots (`computeGeneralRankingLive`) i no el llegeix | **Parcialment resolt el 31/07/2026**, de rebot en netejar la incidència 4.9 (les mateixes pantalles mortes alimentaven totes dues coses): `computeGeneralRanking()`, les pantalles `ranking-general-list`/`p-ranking-general-list` i el bloc de `finalizeObjective()` que sumava punts al mirall ja **no existeixen**. `state.generalRanking` ara és inert (es carrega i es torna a desar sense que res el modifiqui). **Encara queda pendent**: la fila `app_settings.general_ranking` en si —a Test i a Normal— no s'ha tocat, perquè `app_settings` és compartida amb FEM-Reptes i cal comprovar-ho abans (mateixa cautela del §4 de `docs/NETEJA_codi_mort.md`) |
+| 30/07/2026 | **2.3** | **L'únic expert del club no tenia adreça de correu.** A les **dues** bases, «Jordi Farrus» (`u_1784634252316`, rol `expert`) tenia `email = 'Jordi'` —no cap adreça— perquè es va donar d'alta directament a Supabase perquè pogués emetre la seva votació. Conseqüència: mai podria fer servir ni la recuperació per correu ni l'enllaç màgic; només la contrasenya i el Reset de l'admin. Entrar sí que podia: `/auth/v1/token` **no valida el format** de l'adreça (comprovat contra Test amb `'a@'`, `'@b.com'` i `'clarament malformat!!'`: sempre `invalid_credentials`, mai un error de format), i la fila hi era amb la contrasenya bona | No blocador. Sí que ho seria el dia que aquell soci hagués de recuperar l'accés tot sol | **Corregit a Test** el 30/07/2026 (email real, per la RPC del panell; les tres taules coincideixen i els 22 vots intactes). **Pendent a Normal** — vegeu la nota de sota |
+| 30/07/2026 | **2.3 (b)** | **Editar l'email des de l'editor de taules de Supabase trenca l'invariant del §B.** En rectificar-ho, el primer intent es va fer a mà sobre `public.users` i va deixar `auth.users` i `auth.identities` amb el valor vell. Aquell estat és **pitjor que el de partida**: amb l'adreça nova no hi ha compte d'Auth que hi correspongui, així que el soci cauria al camí de reserva `fem_login` i entraria **sense sessió d'Auth** —dins l'app, però amb totes les escriptures rebutjades per RLS, o sigui sense poder votar. L'app **no** té aquest defecte: `saveMember()` (`socis.js`) no toca mai `public.users.email` directament, ho fa tot `fem_admin_set_email()` dins la mateixa transacció, i si falla surt abans d'escriure res | No és un defecte de l'app, és d'operació | **Resolt** el mateix dia refent-ho pel panell. ⚠️ Parany a recordar: `saveMember()` decideix si crida la RPC comparant amb l'email que ja té a `state.users`; si allà ja hi ha el valor nou, tornar a escriure'l **no** dispara la RPC |
 | 29/07/2026 | **7.1** | El sistema nou **no** donava les mateixes posicions que l'antic al repte «Escales» de Normal: 19 posicions de 23 canviaven i la Classificació General es movia. Diagnòstic i solució a l'**Annex A** | **Sí** — blocava el Tall 1 | **Corregit** (arrodoniment a 2 decimals a `getPhotoValoracio()`). Verificat amb el codi real, amb SQL i **a la interfície** (29/07, amb un repte de prova a Test que reprodueix l'empat); queda **1** diferència, explicada a l'Annex A i pendent de la teva confirmació |
+| 31/07/2026 | **4.2** | **La pujada «tancada» només es feia complir a la UI, no al servidor.** Amb `uploads_enabled=false`, la targeta «La meva foto» mostra un cadenat i amaga la zona de pujada — però l'`input[type=file]` seguia al DOM dins un contenidor `hidden`, i ni `previewFile()`/`uploadPhoto()` (`fotos.js`) ni la política RLS `photo_submissions_insert_own` (`WITH CHECK (user_id = fem_current_user_id())`) comprovaven `uploads_enabled` enlloc. Provat el 31/07/2026 a Test: amb «Contrallums» tancat a mà, disparant l'event `change` de l'input per consola (sense tocar cap botó visible) es va pujar i desar una foto amb normalitat | No blocador del tall (cap dany real: la foto pujada fora de termini no es publica sola, un admin encara ha de fer «Publicar Fotos»), però és el mateix patró de forat —comprovació només al client— que ja va aparèixer amb les contrasenyes (26/07) i les escriptures (27/07) | **Corregit i verificat el mateix dia** (Enric ho va aprovar en veure el diagnòstic). `sql/2026-07-31_incidencia_4.2_rls_pujada_tancada.sql`: la política ara exigeix `uploads_enabled=true` al repte o `fem_is_admin()` (preserva el bypass volgut de l'admin, punt 2.4). Guarda bessona a `uploadPhoto()` (`fotos.js`). Aplicat i verificat a Test el 31/07; reproduint exactament la mateixa prova (consola, «Contrallums» tancat) va sortir `Photo insert error` i no es va crear cap fila. **Portat a Normal l'01/08/2026** (Enric ho va autoritzar): abans de tocar-la es va comprovar que FEM-Reptes —que comparteix aquesta taula i ja va quedar tallada un cop, el 28/07, per un canvi de RLS des d'aquí— gateja el seu propi formulari de pujada amb `state.currentObjective.uploads_enabled`, la mateixa columna i el mateix objectiu que consulta la política nova, i el seu bypass d'admin fa la mateixa comprovació; per tant la política més estricta no li canvia res a l'ús normal. Rollback a `sql/2026-07-31_incidencia_4.2_rls_pujada_tancada_rollback.sql`, verificat que reprodueix exactament la política anterior de Normal |
+| 31/07/2026 | **4.9** | **`names_revealed` no protegia res, en cap dels dos llocs on semblava fer-ho.** (1) Durant la votació activa l'anonimat ja el garanteix l'estructura del codi (`votacio.js` només mostra `getParticipantNumber()`, mai el nom; el flag no hi intervé). (2) La única pantalla que sí que el mirava, `renderRanking()` (`ranking.js`), pintava dins `#ranking-current-list`/`#p-ranking-current-list` — contenidors del panell "Ranking" que ja era **inabastable per navegació real** (`showParticipantClassificacio()`/`admin-tab-ranking`, comentat al propi codi com "vista interna antiga; ja no enllaçada"), la mateixa família que els `admin-tab-*` ja fitxats a `FEM-Foto_Unificacio_Pla-desenvolupament.md`. Galeria/Resultat Repte/Valoració Repte/Classificació General sempre han mostrat el nom real, per disseny, sense mirar mai el flag | No blocador — el flag no protegia res, ni abans ni després | **Eliminat del tot, el mateix dia, amb el vistiplau d'Enric**: la columna `objectives.names_revealed` i `photo_submissions.revealed` **es mantenen a la BD** (compartida amb FEM-Reptes; no se n'ha comprovat l'ús allà, així que no es toca l'esquema), però tota la lògica de client que les llegeix/escriu/pinta ha desaparegut — `renderRanking()`, `computeCurrentRanking()`, `computeGeneralRanking()`, `getDisplayName()`, `getPhotoScore()`, el bloc de "revelar noms" a `applyPhaseModes()` (`calendari.js`), el reset a `finalizeObjective()` (`tematiques.js`), les pantalles `#admin-tab-ranking`/`#participant-panel-ranking` i 6 claus mortes d'`i18n.js`. De pas s'ha completat la meitat de codi de la incidència 3.6 (les mateixes pantalles alimentaven el mirall `general_ranking`): `finalizeObjective()` ja no suma punts al mirall — **només queda pendent la fila `app_settings.general_ranking` en si**, deixada intacta pel mateix motiu (taula compartida). Verificat en local sense servidor (`node --check` als 11 fitxers tocats) i servint per HTTP: panell d'admin (5 seccions), canvi de fase (`applyPhaseModes`, tancant i reobrint «Repte de proves»), Classificació General, Galeria i canvi d'idioma — sense cap error de consola. **Trobat pel camí i NO tocat**: `rankingHidden` (punt 7.7) té exactament el mateix problema — només `renderRanking()` (ara eliminat) el mirava; la Classificació General real no en fa cas mai. Pendent decidir-ho a part |
+| 01/08/2026 | **7.7** | Seguiment de la nota anterior. `rankingHidden` tenia exactament el mateix problema que `names_revealed`: cap pantalla real el consultava i no hi havia cap control d'interfície per canviar-lo | No blocador | **Eliminat**, decisió d'Enric ("no hi ha cap ús real ni esperat, [...] la lògica del procés i de cada una de les pantalles ja fa la suposada funció d'aquest indicador"). Treta la plumbing de client: `state.js`, `config.js`, `data.js` (`parseSetting`/`saveSettings`), `router.js` (fora de les dues llistes de signatura del sondeig de 30 s, mantenint-les sincronitzades) i 2 claus mortes d'`i18n.js`. Verificat `node --check` als 5 fitxers tocats i servint per HTTP: panell d'admin (5 seccions) i Classificació General d'un participant, sense errors de consola. La fila `app_settings.ranking_hidden` no s'ha tocat (mateixa cautela que `names_revealed`, taula compartida) |
+| 01/08/2026 | **7.7 (correcció)** | Una primera versió d'aquesta fila deia que `ranking_hidden` "és viva a FEM-Reptes" perquè `ranking.js:314` la consulta. Enric ho va qüestionar (no la veia enlloc de la interfície) i tenia raó: aquell codi viu dins `showParticipantClassificacio()`, que el mateix comentari de FEM-Reptes marca com "vista interna antiga; ja no enllaçada, es manté per referència" — el mateix codi mort que ja teníem aquí abans de la incidència 4.9. La targeta real "Classificació General" de FEM-Reptes carrega un iframe amb l'app externa `fem-resultats.vercel.app`, que **no llegeix `ranking_hidden` enlloc del seu codi** | No blocador — error de documentació, no de codi | Corregit el mateix dia a `FEM-Foto_Unificacio_Pla-desenvolupament.md` i aquí. **Confirmat: `rankingHidden`/`ranking_hidden` no té cap consumidor real a cap de les tres apps** (FEM-Foto, FEM-Reptes, FEM-Resultats). La fila d'`app_settings` es deixa intacta de totes maneres — no calia tocar-la per fer la neteja de client, i esborrar-la seria una decisió separada |
 
 **Criteri de tancament de la Fase 4**: tots els punts amb casella marcada, i cap incidència
 blocadora oberta. Les no blocadores poden passar al backlog del pla amb el seu número de punt.
+
+### Dades de prova vives a Test (esborrar en tancar els blocs)
+
+- ~~Repte «ZZ Prova B3 (esborrable)», `obj_1785414100165`~~ — creat i **esborrat** el 30/07/2026, en
+  tancar el bloc 3 (0 fotos, 0 vots, 0 files de seguiment, comprovat abans d'esborrar).
+- **Un sol repte actiu a la vegada**, criteri adoptat el 30/07/2026: amb més d'un, quin surt a la
+  pantalla del soci és arbitrari i cap criteri és comprovable. Estat actual: **«Contrallums» actiu**
+  (pujada oberta per calendari, 0 fotos) per al bloc 4; **«Repte de proves» `inactive`**, a reactivar
+  per als blocs 5 i 6, que és on serveix (6 fotos publicades i votació en mode `obert`):
+  `update objectives set status='active' where id='obj_1785052808194';`
+- **`app_settings.general_ranking`**: restaurat el 30/07/2026 al valor previ al punt 3.6, després que
+  la finalització del repte l'inflés (incidència 3.6).
+- ~~Comptes d'un sol ús del bloc 4~~ — **esborrats l'01/08/2026**, en tancar el bloc: «TEST Bloc4 A»
+  (`u_1785520271213`) i «TEST Bloc4 B» (`u_1785520563655`), per SQL directe (`DELETE FROM
+  public.users` amb CASCADE cap a `photo_submissions`/`votes`, després `DELETE FROM auth.users`
+  amb el seu `auth_user_id` — la mateixa parella d'operacions que fa `fem_delete_account()`, cridada
+  a pèl perquè la RPC exigeix sessió d'admin i el MCP no en té cap). La foto de B ja s'havia esborrat
+  sola provant el 4.7; la de A (`photo_1785520442921`) ha caigut ara per CASCADE. Verificat:
+  0 files a `public.users`, `auth.users`, `photo_submissions` i `votes` per aquests dos ids.
+
+### Obert de la incidència 2.3: l'email de l'expert a Normal
+
+A Normal, «Jordi Farrus» segueix amb `email = 'Jordi'`. Com fer-ho, quan es decideixi:
+
+- **Pel panell** (Socis → editar soci → email), **mai** per l'editor de taules: la RPC
+  `fem_admin_set_email()` escriu `public.users`, `auth.users` i `auth.identities` dins la mateixa
+  transacció, i valida el format amb una expressió regular —per això `'Jordi'` no hi va poder entrar
+  mai per aquest camí.
+- **No donar-lo d'alta de nou**: un registre nou crea un `id` nou i els seus **23 vots**, la fila de
+  `seguiment_votacio` d'«Escales» i el que tingui a Zampa penjarien de l'id vell. És el cas del
+  duplicat a la Classificació General del 25/07/2026.
+- **Zampa no se'n ressent**: hi consta (`zampa_role = 'user'`), però les seves taules referencien el
+  soci per `user_id` (= `users.id`), no per email (`zampa_user_ranks.user_id`). L'única conseqüència
+  és d'identitat: si entra a Zampa escrivint «Jordi» al camp d'usuari, haurà de posar-hi l'adreça.
+- `email_confirmed_at` ja és cert i la RPC no el toca: no cal cap confirmació per correu.
+- A **Test** hi ha la seva adreça real. Mentre hi sigui, **no** provar-hi la recuperació per correu ni
+  l'enllaç màgic amb aquest compte: el correu li arribaria de debò.
 
 ---
 

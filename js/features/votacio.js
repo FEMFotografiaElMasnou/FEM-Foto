@@ -7,7 +7,6 @@ import { t } from '../core/i18n.js';
 import { showToast, showLoader, hideLoader } from '../ui/toast.js';
 import { confirmAction } from '../ui/modals.js';
 import { getActivePublishedPhotos, getParticipantNumber } from '../core/data.js';
-import { renderRanking } from './ranking.js';
 import { refreshAdminDashboard } from '../screens/admin.js';
 import { refreshParticipantDashboard } from '../screens/participant.js';
 import { openFullscreen } from '../ui/lightbox.js';
@@ -243,13 +242,11 @@ export async function saveAdminVotes() {
   await submitFinalVoting('btn-save-admin-votes', () => {
     refreshAdminDashboard();
     renderAdminVotingGrid();
-    renderRanking('ranking-current-list', 'ranking-general-list');
   });
 }
 
 export async function saveParticipantVotes() {
   await submitFinalVoting('btn-save-participant-votes', () => {
-    renderRanking('p-ranking-current-list', 'p-ranking-general-list');
     renderVotingGrid('participant-voting-grid');
     refreshParticipantDashboard();
   });

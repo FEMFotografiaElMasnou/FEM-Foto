@@ -105,7 +105,7 @@ export async function switchDbMode(newMode) {
   // sistemaPuntuacioNou (Fase 3): cada BD té el seu valor a app_settings, per
   // això es reinicia al defecte segur (antic) aquí i el torna a llegir el
   // loadAllData de l'entorn nou.
-  state.settings          = { uploads_enabled: false, voting_enabled: false, namesRevealed: false, rankingHidden: false, force_hide_upload: false, force_hide_vote: false, force_hide_resultats: false, force_hide_classificacio: false, sistemaPuntuacioNou: false };
+  state.settings          = { uploads_enabled: false, voting_enabled: false, force_hide_upload: false, force_hide_vote: false, force_hide_resultats: false, force_hide_classificacio: false, sistemaPuntuacioNou: false };
   state.generalRanking    = {};
   state.currentObjective  = null;
   state.currentUser       = null;

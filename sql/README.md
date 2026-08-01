@@ -27,6 +27,7 @@ s'ha executat a cada entorn.
 | `2026-07-27_fase3_commutador.sql` | ✅* | ✅ | Fase 3 Pas A: clau `sistema_puntuacio_nou` a `app_settings` (interruptor antic/nou) |
 | `2026-07-28_reset_admin_contrasenya_temporal.sql` | ✅ | ✅ | Reset de l'admin Part 1: `fem_admin_reset_password()` (contrasenya temporal a les dues taules) |
 | `2026-07-28_reset_admin_part2_tancament.sql` | ✅ | ✅ | Reset de l'admin Part 2: tanca `fem_set_new_password`, `fem_login` deixa de retornar `reset_required`, text del modal |
+| `2026-07-31_incidencia_4.2_rls_pujada_tancada.sql` | ✅ | ✅ | Incidència 4.2 (Fase 4): `photo_submissions_insert_own` exigeix `uploads_enabled=true` o admin — abans no comprovava res més enllà del `user_id`. Aplicada a Normal l'01/08/2026, comprovat abans que FEM-Reptes gateja el seu propi formulari amb la mateixa columna `objectives.uploads_enabled` i el mateix bypass d'admin, així que no li toca res |
 
 **\* `2026-07-27_fase3_commutador.sql` a Normal**: la fila no la va crear l'script, la va crear
 la pròpia app el 28/07/2026 en provar el commutador des del panell d'admin (l'`upsert` de
@@ -62,6 +63,7 @@ sempre amb `has_function_privilege('anon', ...)`, no donar el `REVOKE` per bo.
 | `2026-07-27_auth_migracio_pas4c_rollback.sql` | Pas 4c |
 | `2026-07-27_fase3_commutador_rollback.sql` | Fase 3 Pas A (esborra la fila; l'app torna al sistema antic per defecte) |
 | `2026-07-28_reset_admin_rollback.sql` | Les dues parts del Reset de l'admin. ⚠️ Torna a obrir el forat que tanquen |
+| `2026-07-31_incidencia_4.2_rls_pujada_tancada_rollback.sql` | Incidència 4.2. ⚠️ Torna a obrir el forat: cal desfer també la guarda de `uploadPhoto()` a `fotos.js` |
 
 Les migracions del Pas 4b i anteriors són additives (creen funcions o columnes sense tocar
 dades ni polítiques); desfer-les és un `DROP` de la funció, indicat al peu de cada fitxer.

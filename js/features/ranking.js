@@ -1,9 +1,8 @@
 // ═══════════════════════════════════
 // RANKING — cálculo client-side y render
 // ═══════════════════════════════════
-import { state, actingAsAdmin } from '../core/state.js';
+import { state } from '../core/state.js';
 import { t } from '../core/i18n.js';
-import { getActivePublishedPhotos, getDisplayName } from '../core/data.js';
 import { openFullscreen } from '../ui/lightbox.js';
 
 // ── Taula de punts per posició al rànquing global ───────────────
@@ -125,11 +124,6 @@ export function getPhotoScoreBreakdown(photoId, scope = 'all') {
   const composition = avgCriterion('composition');
 
   return { creativity, theme, composition, final: (creativity + theme + composition) / 3 };
-}
-
-export function getPhotoScore(photoId) {
-  // Puntuació final d'una fotografia dins del repte (mitja de les 3 mitges de criteri).
-  return getPhotoScoreBreakdown(photoId).final;
 }
 
 // Fotos que compten per a un repte concret:
@@ -507,10 +501,10 @@ window.openValoracioLightbox = openValoracioLightbox;
 // ═══════════════════════════════════
 // CLASSIFICACIÓ GENERAL (nativa, recàlcul en viu)
 // ═══════════════════════════════════
-// A diferència de computeGeneralRanking() de sota (punts acumulats a
-// state.generalRanking en finalitzar cada repte — mètode antic, encara usat
-// pel Ranking General de l'admin), aquesta versió recalcula TOTS els reptes
-// finalitzats cada cop, reutilitzant computeRankingForObjective()/
+// A diferència del vell mètode de punts acumulats a state.generalRanking en
+// finalitzar cada repte (retirat, pantalla morta — incidència 3.6/4.9 de
+// PROVES_Fase4.md), aquesta versió recalcula TOTS els reptes finalitzats cada
+// cop, reutilitzant computeRankingForObjective()/
 // assignPositionPoints() — no depèn de re-finalitzar un repte si es corregeix
 // un vot després. Decisió presa en portar Resultats a nadiu (Fase 2.2): es
 // manté així fins que la Fase 3 canviï el sistema de puntuació.
@@ -776,82 +770,3 @@ export function openTaulaClassificacioLightbox(index) {
   openFullscreen(photo.url, photo.fileName, [photo], 0);
 }
 window.openTaulaClassificacioLightbox = openTaulaClassificacioLightbox;
-
-export function computeCurrentRanking() {
-  // Solo fotos de la temática activa
-  return getActivePublishedPhotos().map(photo => ({
-    photo,
-    score: getPhotoScore(photo.id),
-  })).sort((a, b) => b.score - a.score);
-}
-
-export function computeGeneralRanking() {
-  // El rànquing global només mostra punts ja acumulats al finalitzar reptes.
-  return Object.entries(state.generalRanking)
-    .map(([userId, data]) => {
-      const user = state.users.find(u => u.id === userId);
-      return {
-        user: user || { name: t('unknown_user'), id: userId },
-        participations: data.participations || 0,
-        totalScore: data.totalScore || 0,
-      };
-    })
-    .filter(g => g.participations > 0)
-    .sort((a, b) => b.totalScore - a.totalScore);
-}
-
-export function renderRanking(currentListId, generalListId) {
-  const rankNums = ['gold','silver','bronze'];
-  const isAdmin = actingAsAdmin();
-
-  // Current
-  const ranked   = computeCurrentRanking();
-  const currentEl = document.getElementById(currentListId);
-  if (currentEl) {
-    if (!isAdmin && !state.settings.namesRevealed) {
-      currentEl.innerHTML = `<div class="empty-state"><div class="empty-icon">🔒</div><p>${t('ranking_locked_msg')}</p></div>`;
-    } else if (ranked.length === 0) {
-      currentEl.innerHTML = `<div class="empty-state"><div class="empty-icon">🏆</div><p>${t('no_data_voting')}</p></div>`;
-    } else {
-      currentEl.innerHTML = ranked.map(({ photo, score }, idx) => `
-        <div class="rank-item">
-          <div class="rank-num ${rankNums[idx]||''}">${idx+1}</div>
-          <img class="rank-thumb" src="${photo.url}" alt="">
-          <div class="rank-info">
-            <div class="rank-name">${getDisplayName(photo.userId)}</div>
-            <div class="rank-meta">${formatScore(score)} ${t('points_label')}</div>
-          </div>
-          <div class="rank-score">${formatScore(score)}</div>
-        </div>
-      `).join('');
-    }
-  }
-
-  // General — ocultar a participantes si rankingHidden está activo
-  const general   = computeGeneralRanking();
-  const generalEl = document.getElementById(generalListId);
-  if (generalEl) {
-    // Si no es admin y el ranking está oculto, mostrar mensaje
-    if (!isAdmin && state.settings.rankingHidden) {
-      generalEl.innerHTML = `<div class="empty-state"><div class="empty-icon">🔒</div><p>${t('general_ranking_hidden_msg')}</p></div>`;
-    } else {
-      const active = general.filter(g => g.participations > 0);
-      if (active.length === 0) {
-        generalEl.innerHTML = `<div class="empty-state"><div class="empty-icon">🏅</div><p>${t('no_participations')}</p></div>`;
-      } else {
-        generalEl.innerHTML = active.map(({ user, participations, totalScore }, idx) => `
-          <div class="rank-item">
-            <div class="rank-num ${rankNums[idx]||''}">${idx+1}</div>
-            <div class="rank-info">
-              <div class="rank-name">${user.name}</div>
-              <div class="rank-meta">${participations} ${t('participations')}</div>
-            </div>
-            <div class="rank-score">${Math.trunc(totalScore)}</div>
-          </div>
-        `).join('');
-      }
-    }
-  }
-}
-
-window.renderRanking = renderRanking;

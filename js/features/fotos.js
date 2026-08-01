@@ -47,8 +47,8 @@ export function _formatDateSlash(dateVal) {
   return `${dd}/${mm}/${yyyy}`;
 }
 
-// Nom real de l'autor. Només per al panell d'admin: aquí no s'aplica
-// l'anonimat de la votació (getDisplayName), l'admin gestiona i ha de saber qui és qui.
+// Nom real de l'autor. Només per al panell d'admin: l'admin gestiona i ha de
+// saber qui és qui, no li apliquen els límits d'anonimat de la votació.
 function _authorName(userId) {
   const u = state.users.find(x => x.id === userId);
   return (u && u.name) ? u.name : '—';
@@ -403,6 +403,13 @@ export function compressImage(file, maxWidth = 4800, maxHeight = 4800, quality =
 
 export async function uploadPhoto() {
   if (!state.pendingFile) { showToast(t('select_photo_first'), 'error'); return; }
+  // Guarda de fons (incidència 4.2, docs/PROVES_Fase4.md): la protecció real és
+  // la política RLS d'INSERT, que ara exigeix uploads_enabled=true o admin. Això
+  // només evita la crida de xarxa quan ja se sap que el servidor la rebutjarà.
+  if (!actingAsAdmin() && !state.settings.uploads_enabled) {
+    showToast(t('upload_closed_msg'), 'error');
+    return;
+  }
 
   const ctx = state.pendingCtx || '';
   const pfx = ctx ? ctx + '-' : '';
@@ -464,7 +471,6 @@ export async function uploadPhoto() {
       original_url: data.secure_url,
       file_size:    String(fileToUpload.size || ''),
       published:    false,
-      revealed:     false,
       submitted_at: new Date().toISOString(),
       caption:      caption,
     };

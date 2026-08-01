@@ -6,8 +6,9 @@ que arrossegar-les?** Sí — el codi mort es paga cada vegada que algú l'ha de
 importa. Però no totes són el mateix, i el que sembla codi mort de vegades és **funció a la qual no
 s'hi pot arribar**.
 
-> **Estat**: decisions preses (§Decisions). **L'inventari detallat és la primera feina del
-> 30/07/2026**, abans de tocar cap línia. Res esborrat encara.
+> **Estat**: decisions preses (§Decisions). **31/07/2026**: el panell de rànquing i el mirall
+> `general_ranking` (§3) ja s'han esborrat, avançats per la incidència 4.9 — no calia esperar que el
+> bloc B fos verd del tot. La resta de l'inventari (§1, §3 restant, §4) segueix pendent.
 
 ---
 
@@ -56,11 +57,20 @@ Funcions que existeixen però que no calen, perquè la manera de fer-les ja és 
   `admin-voting-grid`, `btn-save-admin-votes` i companyia, més `refreshAdminDashboard()` i les
   crides a `renderAdminVotingGrid()`): quan un admin vol pujar foto o votar, **adopta el rol de
   soci** i ho fa com qualsevol altre. No necessita una interfície pròpia per fer-ho.
-- **El panell de rànquing de l'admin** (`#admin-tab-ranking`, amb `ranking-current-list` i
-  `ranking-general-list`): mateixa lògica, i també sense entrada al menú. ⚠️ Per confirmar a
-  l'inventari: `renderRanking()` es crida amb aquests dos ids des de set llocs, i amb els ids
-  `p-ranking-*` per a les pantalles de participant, **que es queden**. Cal separar bé les dues
-  famílies abans d'esborrar res.
+- ~~**El panell de rànquing** (`#admin-tab-ranking` I `#participant-panel-ranking`, amb
+  `ranking-current-list`/`ranking-general-list` i `p-ranking-current-list`/`p-ranking-general-list`)~~
+  — **esborrat el 31/07/2026**, junt amb la incidència 4.9 (`names_revealed`, `PROVES_Fase4.md`).
+  Resulta que la família `p-ranking-*` **tampoc** es quedava: `showParticipantRanking()` només la
+  cridava `showParticipantClassificacio()`, que el propi codi ja marcava com "vista interna antiga;
+  ja no enllaçada" — cap `onclick` hi arribava enlloc. Les dues famílies eren mort, no calia
+  separar-les.
+
+- ~~**El mirall `app_settings.general_ranking` i el que l'escriu**~~ (incidència 3.6 de
+  `PROVES_Fase4.md`) — **codi esborrat el 31/07/2026**, de rebot en esborrar les pantalles de dalt
+  (eren la mateixa font): `computeGeneralRanking()` i el bloc de `finalizeObjective()` que hi sumava
+  punts ja no existeixen. `state.generalRanking` ara és inert. **Pendent només la fila
+  `app_settings.general_ranking` en si** (a Test i a Normal): no s'ha tocat perquè `app_settings` és
+  compartida amb FEM-Reptes i cal comprovar-ho abans, mateixa cautela de sempre.
 
 ⚠️ **Això no és una supressió de dues línies.** Esborrar el panell de l'admin arrossega
 `refreshAdminDashboard()`, `saveAdminVotes()`, els gestors `admin-upload-*` de `fotos.js`, claus
@@ -68,14 +78,29 @@ d'`i18n.js` i regles de CSS. D'aquí l'inventari abans de començar.
 
 ### 4 · Amb la base de dades compartida → **pendent de parlar (30/07/2026)**
 
-Queda pendent de repassar amb calma l'afirmació que el frontend d'aquesta app es pot esborrar sense
-mirar res més. La distinció que jo proposava, per tornar-hi:
+La distinció de fons, per no tornar-hi cada cop:
 
 - **Frontend d'aquesta app** (HTML, CSS, JS de FEM-Foto): FEM-Reptes és un altre repositori i un
-  altre desplegament, i no en depèn.
-- **El que viu a la base compartida** (files d'`app_settings`, les taules mortes `settings` i
-  `reptes_calendari`, `users.password`, RPC, RLS): aquí sí que cal comprovar les dues apps, i
-  Zampa quan toqui `users`. És la regla que ve del 26→28/07/2026.
+  altre desplegament, i no en depèn. Es pot esborrar sense mirar res més — és el que s'ha fet a la
+  incidència 4.9 (31/07/2026).
+- **El que viu a la base compartida** (columnes i files d'`app_settings`/`objectives`/
+  `photo_submissions`, les taules mortes `settings` i `reptes_calendari`, `users.password`, RPC,
+  RLS): aquí sí que cal comprovar les dues apps (i Zampa quan toqui `users`) abans de tocar
+  l'esquema o esborrar files — regla que ve del 26→28/07/2026, quan un canvi fet només pensant en
+  aquesta app va deixar FEM-Reptes caiguda dos dies.
+
+**Llista concreta pendent** (tot descobert fent net de la incidència 4.9, 31/07/2026 — cap d'aquests
+punts fa mal avui, cap camí de codi hi arriba):
+
+| Què | On | Per què no s'ha tocat avui |
+|---|---|---|
+| Columna `objectives.names_revealed` | Test i Normal | `objectives` la llegeix/escriu també FEM-Reptes; no se n'ha comprovat l'ús allà |
+| Columna `photo_submissions.revealed` | Test i Normal | Mateixa taula compartida; mai s'ha llegit des de FEM-Foto, però no consta si FEM-Reptes ho fa |
+| Fila `app_settings.names_revealed` | Test i Normal | Ja era residu abans del 31/07 (el comentari de `data.js` ho deia); FEM-Foto ha deixat d'escriure-la avui, però la fila hi segueix. Comprovar FEM-Reptes abans d'esborrar-la |
+| Fila `app_settings.general_ranking` | Test i Normal | Incidència 3.6: el codi que hi escrivia ja no existeix (31/07), la fila sí. Mateixa comprovació pendent |
+
+Criteri per quan es pugui tocar: quan es confirmi que FEM-Reptes no les usa (repte a part, cal el
+seu repositori), **o** directament a la Fase 7 (retirada de FEM-Reptes), quan deixi d'importar.
 
 ---
 

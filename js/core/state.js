@@ -17,7 +17,7 @@ export const state = {
   votes:           [],          // raw vote rows from sheet
   // sistemaPuntuacioNou (Fase 3): false = 3 criteris 0-5, true = 1 nota 0-10.
   // Valor real a app_settings.sistema_puntuacio_nou, llegit a loadAllData().
-  settings:        { uploads_enabled: false, voting_enabled: false, namesRevealed: false, rankingHidden: false, force_hide_upload: false, force_hide_vote: false, force_hide_resultats: false, force_hide_classificacio: false, sistemaPuntuacioNou: false },
+  settings:        { uploads_enabled: false, voting_enabled: false, force_hide_upload: false, force_hide_vote: false, force_hide_resultats: false, force_hide_classificacio: false, sistemaPuntuacioNou: false },
   generalRanking:  {},          // { odorI : { odorScore: 0, participations: 0 }, ... }
   selectedPhotos:  new Set(),
   selectMode:      false,

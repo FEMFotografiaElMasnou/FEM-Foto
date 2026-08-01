@@ -7,7 +7,6 @@ import { t, applyTranslations } from '../core/i18n.js';
 import { showToast, showLoader, hideLoader } from '../ui/toast.js';
 import { confirmAction, openModal, closeModal } from '../ui/modals.js';
 import { saveObjectives, saveSettings, getActiveAllPhotos, getVotingProgress } from '../core/data.js';
-import { getPhotoScore, assignPositionPoints, renderRanking } from './ranking.js';
 import { renderAdminGallery, compressImage } from './fotos.js';
 import { updateVoteButtonsState } from './votacio.js';
 import { refreshAdminDashboard } from '../screens/admin.js';
@@ -137,22 +136,7 @@ export async function finalizeObjective(id) {
       const obj = state.objectives.find(o => o.id === id);
       if (!obj) { hideLoader(); return; }
 
-      // 1. CALCULAR POSICIONS I GUARDAR PUNTS AL RÀNQUING GLOBAL
-      const rankedPhotos = state.publishedPhotos
-        .map(photo => ({ photo, score: getPhotoScore(photo.id) }))
-        .sort((a, b) => b.score - a.score);
-      const withPoints = assignPositionPoints(rankedPhotos);
-
-      for (const { photo, points } of withPoints) {
-        const userId = photo.userId;
-        if (!state.generalRanking[userId]) {
-          state.generalRanking[userId] = { totalScore: 0, participations: 0 };
-        }
-        state.generalRanking[userId].totalScore += points;
-        state.generalRanking[userId].participations += 1;
-      }
-
-      // 2. Marcar temática como finalizada
+      // 1. Marcar temática como finalizada
       obj.status = 'finished';
       obj.end_date = new Date().toISOString().split('T')[0];
       // FASE 2: el repte finalitzat també tanca els seus propis flags (font de
@@ -162,28 +146,26 @@ export async function finalizeObjective(id) {
       state.currentObjective = null;
       await saveObjectives();
 
-      // 3. Desactivar uploads y voting (mirall global — la resta de pantalles
+      // 2. Desactivar uploads y voting (mirall global — la resta de pantalles
       // encara el llegeixen; sense repte actiu, tot false és correcte)
       state.settings.uploads_enabled = false;
       state.settings.voting_enabled  = false;
-      state.settings.namesRevealed   = false;
-      await saveSettings(); // Esto también guarda el generalRanking
+      await saveSettings();
       // FASE 4/5: els vells checkboxes globals #toggle-upload/#toggle-voting
       // ja no existeixen (retirats amb la card "Controls" del Panell de
       // Control) — l'estat es reflecteix ara als desplegables de cada
       // targeta de repte, repintats per renderObjectivesList() més avall.
 
-      // 4. Limpiar estado local (els registres es conserven a Supabase per historial)
+      // 3. Limpiar estado local (els registres es conserven a Supabase per historial)
       state.photos = [];
       state.publishedPhotos = [];
       state.votes = [];
       state.selectedPhotos = new Set();
 
-      // 6. Refrescar UI
+      // 4. Refrescar UI
       renderObjectivesList();
       renderAdminGallery();
       refreshAdminDashboard();
-      renderRanking('ranking-current-list', 'ranking-general-list');
       updateVoteButtonsState();
       hideLoader();
       showToast(t("objective_finalized"), "success");

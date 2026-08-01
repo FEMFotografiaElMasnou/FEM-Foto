@@ -8,7 +8,6 @@ import { applyTranslations, t } from './i18n.js';
 import { loadAllData } from './data.js';
 import { showToast } from '../ui/toast.js';
 import { openModal, closeModal } from '../ui/modals.js';
-import { renderRanking } from '../features/ranking.js';
 import { renderAdminVotingGrid, renderVotingGrid } from '../features/votacio.js';
 import { renderAdminGallery } from '../features/fotos.js';
 import { renderMembersTable } from '../features/socis.js';
@@ -51,7 +50,6 @@ export function showAdminScreen() {
   renderAdminVotingGrid();
   renderObjectivesList();
   renderMembersTable();
-  renderRanking('ranking-current-list', 'ranking-general-list');
   if (typeof window.renderTextsList === 'function') window.renderTextsList();
 }
 
@@ -207,8 +205,6 @@ export function startAutoRefresh() {
       const newSig = [
         getSetting('uploads_enabled'),
         getSetting('voting_enabled'),
-        getSetting('names_revealed'),
-        getSetting('ranking_hidden'),
         getSetting('force_hide_upload'),
         getSetting('force_hide_vote'),
         getSetting('force_hide_resultats'),
@@ -239,8 +235,6 @@ function _buildSignature() {
   return [
     String(state.settings.uploads_enabled),
     String(state.settings.voting_enabled),
-    String(state.settings.namesRevealed),
-    String(state.settings.rankingHidden),
     String(state.settings.force_hide_upload),
     String(state.settings.force_hide_vote),
     String(state.settings.force_hide_resultats),
@@ -260,7 +254,6 @@ function _refreshUI() {
     refreshAdminDashboard();
     renderAdminGallery();
     if (!window._hasUnsavedVotes) renderAdminVotingGrid();
-    renderRanking('ranking-current-list', 'ranking-general-list');
     renderMembersTable();
   } else {
     // Mateix fix que a showParticipantScreen(): recalcular abans de repintar,
@@ -273,10 +266,6 @@ function _refreshUI() {
       if (votingPanel && !votingPanel.classList.contains('hidden')) {
         renderVotingGrid('participant-voting-grid');
       }
-    }
-    const rankingPanel = document.getElementById('participant-panel-ranking');
-    if (rankingPanel && !rankingPanel.classList.contains('hidden')) {
-      renderRanking('p-ranking-current-list', 'p-ranking-general-list');
     }
     const mainPanel = document.getElementById('participant-panel-main');
     if (mainPanel && !mainPanel.classList.contains('hidden')) {
