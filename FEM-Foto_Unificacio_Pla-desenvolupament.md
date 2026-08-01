@@ -150,34 +150,15 @@ Coses menors, sense data, que no justifiquen una fase pròpia:
   la Fase 4; cap d'elles fa mal, totes enganyen qui llegeixi el codi):
   - El contenidor `admin-tab-ranking` (i tot el que hi pintava: `renderRanking()`,
     `computeCurrentRanking()`, `computeGeneralRanking()`, `getDisplayName()`) **ja no hi és** —
-    esborrat el 31/07/2026 junt amb la incidència 4.9 (`names_revealed`), vegeu
-    `docs/PROVES_Fase4.md`. **Encara pendent**: `admin-tab-voting` (`admin-upload-section`,
-    `admin-voting-grid`, `btn-save-admin-votes`), que segueix a `index.html` sense entrada al
-    sidebar, i la barra antiga de 6 pestanyes (`display:none`).
+    esborrat el 31/07/2026, vegeu `docs/PROVES_Fase4.md`. **Encara pendent**: `admin-tab-voting`
+    (`admin-upload-section`, `admin-voting-grid`, `btn-save-admin-votes`), que segueix a
+    `index.html` sense entrada al sidebar, i la barra antiga de 6 pestanyes (`display:none`).
   - Els quatre `force_hide_*` **ja no tenen cap control a la interfície**; el codi que els llegeix
     sí que hi és. Avui només es poden canviar per SQL, i tots quatre són `false` a les dues bases.
   - `getButtonVisibility()` calcula un `showUpload` que ningú no fa servir.
   - `window.showAdminScreen` no comprova el rol: des de la consola del navegador se'n pot pintar
     la carcassa. No exposa dades ni deixa escriure (RLS + `fem_is_admin()`), però convindria
     posar-hi la mateixa comprovació que ja té `toggleAdminParticipantView()`.
-- **`rankingHidden`** (detectat el 31/07/2026, provant el punt 4.9 de la Fase 4; decidit i tancat
-  l'01/08/2026) — **Eliminat.** L'únic lloc del codi que el consultava era `renderRanking()`, la
-  pantalla morta esborrada amb la incidència 4.9 — la Classificació General real
-  (`renderClassificacioGeneral()`) no l'ha mirat mai, i no hi havia cap control d'interfície per
-  canviar-lo. Enric va confirmar que mai s'ha volgut ni s'espera aquest ús (cada pantalla ja fa la
-  seva pròpia funció de mostrar/amagar sense necessitar-lo). Treta tota la plumbing de client
-  (`state.js`, `config.js`, `data.js`, `router.js` —signatura del sondeig de 30 s—, dues claus
-  d'`i18n.js`). **La fila `app_settings.ranking_hidden` no s'ha tocat**, per la mateixa cautela que
-  `names_revealed` (taula compartida) — ⚠️ però aquí cal corregir una afirmació errònia d'una
-  primera versió d'aquesta entrada: es va dir que la fila era "viva a FEM-Reptes" perquè
-  `ranking.js:314` la consulta; comprovat més a fons (Enric va preguntar-ho, amb raó), **tampoc no
-  ho és**. Aquell codi viu dins `showParticipantClassificacio()`, que el propi comentari de
-  FEM-Reptes etiqueta com "vista interna antiga; ja no enllaçada" — el mateix patró de codi mort
-  que teníem aquí. La targeta real "Classificació General" de FEM-Reptes no hi passa: carrega un
-  iframe amb l'app externa `fem-resultats.vercel.app`, que no llegeix `ranking_hidden` enlloc. La
-  fila queda igualment intacta a la BD (no calia tocar-la per fer la neteja, i esborrar-la seria un
-  pas nou i separat), però **no hi ha cap consumidor real, a cap de les tres apps**. Detall a la
-  incidència 4.9/7.7 de `docs/PROVES_Fase4.md`.
 - **Durant la votació, el soci perd de vista el repte** (detectat el 30/07/2026 provant el punt 3.5
   de la Fase 4). Quan la votació és oberta, `updateUploadSection()` amaga **tota** la targeta
   «Repte + La meva foto» i la substitueix per la de «Votar el repte». Com que la capçalera del

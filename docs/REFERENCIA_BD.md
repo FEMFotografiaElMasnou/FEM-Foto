@@ -15,8 +15,8 @@ estructura; on hi hagi diferències, es diu explícitament.
 
 | Taula | Columnes | Contingut |
 |---|---|---|
-| `objectives` | 17 | El **repte**. Font única de veritat, calendari inclòs (des del 24/07/2026) |
-| `photo_submissions` | 11 | Fotos pujades (`published`, `revealed`, `caption`) |
+| `objectives` | 16 | El **repte**. Font única de veritat, calendari inclòs (des del 24/07/2026) |
+| `photo_submissions` | 10 | Fotos pujades (`published`, `caption`) |
 | `votes` | 9 | Un vot per usuari+foto+repte |
 | `seguiment_votacio` | 5 | Marca si un usuari ha enviat el vot definitiu d'un repte (`es_esborrany`) |
 | `users` | 9 | Socis. **Compartida amb l'app Zampa** — vegeu l'avís de sota |
@@ -25,7 +25,7 @@ estructura; on hi hagi diferències, es diu explícitament.
 
 **`objectives`** — `id`, `name`, `description`, `status` (`active`/`finished`/`inactive`),
 `created_by`, `start_date`/`end_date` (creació i finalització del repte, **no** el calendari),
-`uploads_enabled`/`voting_enabled`/`names_revealed` (estat efectiu d'avui, el que llegeix la
+`uploads_enabled`/`voting_enabled` (estat efectiu d'avui, el que llegeix la
 resta de l'app), `cal_upload_start`/`cal_upload_end`/`cal_voting_start`/`cal_voting_end`
 (finestres), `upload_mode`/`voting_mode` (`calendari`/`obert`/`tancat`, per fase),
 `cover_image_url`.

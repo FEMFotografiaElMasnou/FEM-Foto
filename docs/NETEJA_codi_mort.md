@@ -8,7 +8,9 @@ s'hi pot arribar**.
 
 > **Estat**: decisions preses (§Decisions). **31/07/2026**: el panell de rànquing i el mirall
 > `general_ranking` (§3) ja s'han esborrat, avançats per la incidència 4.9 — no calia esperar que el
-> bloc B fos verd del tot. La resta de l'inventari (§1, §3 restant, §4) segueix pendent.
+> bloc B fos verd del tot. **01/08/2026**: `names_revealed`/`ranking_hidden` (columnes i files),
+> resoltes del tot, a les dues apps i les dues bases. Només queda pendent la fila
+> `app_settings.general_ranking` (§3) i la resta de l'inventari (§1, §4).
 
 ---
 
@@ -59,7 +61,7 @@ Funcions que existeixen però que no calen, perquè la manera de fer-les ja és 
   soci** i ho fa com qualsevol altre. No necessita una interfície pròpia per fer-ho.
 - ~~**El panell de rànquing** (`#admin-tab-ranking` I `#participant-panel-ranking`, amb
   `ranking-current-list`/`ranking-general-list` i `p-ranking-current-list`/`p-ranking-general-list`)~~
-  — **esborrat el 31/07/2026**, junt amb la incidència 4.9 (`names_revealed`, `PROVES_Fase4.md`).
+  — **esborrat el 31/07/2026**, junt amb la incidència 4.9 (`PROVES_Fase4.md`).
   Resulta que la família `p-ranking-*` **tampoc** es quedava: `showParticipantRanking()` només la
   cridava `showParticipantClassificacio()`, que el propi codi ja marcava com "vista interna antiga;
   ja no enllaçada" — cap `onclick` hi arribava enlloc. Les dues famílies eren mort, no calia
@@ -94,13 +96,16 @@ punts fa mal avui, cap camí de codi hi arriba):
 
 | Què | On | Per què no s'ha tocat avui |
 |---|---|---|
-| Columna `objectives.names_revealed` | Test i Normal | `objectives` la llegeix/escriu també FEM-Reptes; no se n'ha comprovat l'ús allà |
-| Columna `photo_submissions.revealed` | Test i Normal | Mateixa taula compartida; mai s'ha llegit des de FEM-Foto, però no consta si FEM-Reptes ho fa |
-| Fila `app_settings.names_revealed` | Test i Normal | Ja era residu abans del 31/07 (el comentari de `data.js` ho deia); FEM-Foto ha deixat d'escriure-la avui, però la fila hi segueix. Comprovar FEM-Reptes abans d'esborrar-la |
 | Fila `app_settings.general_ranking` | Test i Normal | Incidència 3.6: el codi que hi escrivia ja no existeix (31/07), la fila sí. Mateixa comprovació pendent |
 
 Criteri per quan es pugui tocar: quan es confirmi que FEM-Reptes no les usa (repte a part, cal el
 seu repositori), **o** directament a la Fase 7 (retirada de FEM-Reptes), quan deixi d'importar.
+
+> `objectives.names_revealed`, `photo_submissions.revealed` i les files `app_settings.names_revealed`/
+> `ranking_hidden` **ja no hi són** (01/08/2026): es va comprovar FEM-Reptes a fons —el codi que els
+> llegia hi era, però mort igual que aquí— i es van treure de les dues apps i de les dues bases.
+> Vegeu `sql/2026-08-01_neteja_names_revealed_ranking_hidden.sql` i la incidència 4.9/7.7 de
+> `docs/PROVES_Fase4.md`.
 
 ---
 
