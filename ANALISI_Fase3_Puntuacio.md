@@ -411,15 +411,23 @@ servida en local, mai `file://`) abans de tocar la pantalla real:
   contínua d'un sol `<div>` per **10 blocs** (un per punt sencer), amplada flexible
   (`flex:1 1 0`) i 2px de separació.
 - Tots els blocs comparteixen el to del `--gold` actual (~37°); només varia la
-  intensitat (saturació 50%→100%, lluminositat 32%→55%) del primer bloc (0-1) al
-  darrer (9-10) — més "vistós" que la primera versió (35%→91%), a petició d'Enric.
+  intensitat, del primer bloc (0-1) al darrer (9-10). Lluminositat contínua
+  32%→55%. Saturació en **esglaons fixos de 5 en 5, 55%→100%** (una xifra
+  exacta per bloc: 55, 60, 65... 100) — dues rondes d'ajust amb Enric sobre
+  una mostra HTML aïllada sense tocar la pantalla real: primer 35%→91%
+  continu, després 50%→100% continu, i finalment aquest, "més vistós" i
+  "més lluminós" a petició seva.
 - El bloc que conté la puntuació es reparteix amb un **tall net** (no degradat) entre
-  el seu color i `var(--border)` (blau apagat, ja fet servir a la resta de l'app per a
+  el seu color i el fons "buit" (blau apagat, ja fet servir a la resta de l'app per a
   "no activat"); p. ex. una nota de 9,5 deixa el bloc 9 mig ple d'intensitat màxima i
-  mig blau. Els blocs posteriors a la puntuació queden sencers en blau.
+  mig buit. Els blocs posteriors a la puntuació queden sencers amb el fons buit.
+- El fons "buit" **no és `var(--border)` pla**: és `var(--border)` barrejat amb un
+  10% de `--gold` (`rgb(48,64,95)`, calculat, no inventat), perquè les càpsules no
+  assolides tinguin un lleu punt de tonalitat en lloc de ser d'un blau net —
+  demanat per Enric després de veure la primera versió amb `--border` sol.
 - Perfil fi (`box-shadow: inset 0 0 0 1px`, `rgba(245,166,35,0.5)` — gold al 50%) als
   blocs no assolits (inclosa la part no assolida del bloc parcial), perquè no quedin
-  invisibles fosos amb `--border`. Primera prova amb un blau (`--accent2` al 50%) es
+  invisibles fosos amb el fons buit. Primera prova amb un blau (`--accent2` al 50%) es
   va descartar a favor del gold, més coherent amb la resta de la barra.
 - `box-shadow` en lloc de `border` perquè no consumeix espai de layout (els blocs
   són `flex`, un `border` real n'hauria alterat l'amplada calculada).

@@ -444,11 +444,13 @@ export function getPhotoValoracioBreakdown(photoId) {
 // posició (0=primer bloc, puntuació 0-1; 9=últim, puntuació 9-10). Mateix to
 // (hue del --gold) per a tots els blocs: només varia la intensitat, de molt
 // apagada al principi (però ja prou saturada per ser vistosa) a la
-// intensitat plena de --gold al final.
+// intensitat plena de --gold al final. Saturació en esglaons de 5 en 5
+// (55%, 60%... 100%, un per bloc) en lloc de continua, per donar-hi un to
+// una mica més lluminós que la primera versió (50%→100%).
 function _valoracioSegColor(i) {
-  const s = 50 + (50 * i) / 9;
+  const s = 55 + 5 * i;
   const l = 32 + (23 * i) / 9;
-  return `hsl(37, ${s.toFixed(0)}%, ${l.toFixed(0)}%)`;
+  return `hsl(37, ${s}%, ${l.toFixed(0)}%)`;
 }
 
 // Perfil fi (1px, 50% opacitat) que marca lleument la forma dels blocs
@@ -456,11 +458,18 @@ function _valoracioSegColor(i) {
 // quedarien gairebé invisibles fosos amb --border.
 const _VALORACIO_SEG_PROFILE = 'box-shadow:inset 0 0 0 1px rgba(245,166,35,0.5)';
 
+// Fons dels blocs "buits" (no assolits): --border (#1a3566) barrejat amb un
+// 10% de --gold (#f5a623), perquè no quedin d'un blau pla sinó amb un lleu
+// punt de tonalitat. Calculat, no un color inventat: rgb(26,53,102)*0.9 +
+// rgb(245,166,35)*0.1.
+const _VALORACIO_SEG_EMPTY_BG = 'rgb(48,64,95)';
+
 // 10 blocs (un per punt sencer 0-10). Els blocs anteriors al de la
 // puntuació es pinten sencers amb la intensitat que els toca; el bloc de la
 // puntuació es reparteix entre la intensitat que li toca (proporció exacta,
-// p. ex. 9,5 -> el bloc 9 queda mig taronja ple) i --border (blau apagat,
-// "no activat"); els blocs posteriors queden sencers en --border.
+// p. ex. 9,5 -> el bloc 9 queda mig taronja ple) i el fons "buit" (blau amb
+// un punt de gold, "no activat"); els blocs posteriors queden sencers amb
+// aquest mateix fons buit.
 function _valoracioBarHtml(valoracio) {
   const score = Math.max(0, Math.min(10, valoracio));
   const segIndex = Math.min(9, Math.floor(score));
@@ -477,11 +486,11 @@ function _valoracioBarHtml(valoracio) {
       } else {
         profile = _VALORACIO_SEG_PROFILE;
         bg = fraction <= 0
-          ? 'var(--border)'
-          : `linear-gradient(to right, ${_valoracioSegColor(i)} ${fraction}%, var(--border) ${fraction}%)`;
+          ? _VALORACIO_SEG_EMPTY_BG
+          : `linear-gradient(to right, ${_valoracioSegColor(i)} ${fraction}%, ${_VALORACIO_SEG_EMPTY_BG} ${fraction}%)`;
       }
     } else {
-      bg = 'var(--border)';
+      bg = _VALORACIO_SEG_EMPTY_BG;
       profile = _VALORACIO_SEG_PROFILE;
     }
     segs.push(`<div class="valoracio-seg" style="background:${bg};${profile}"></div>`);
