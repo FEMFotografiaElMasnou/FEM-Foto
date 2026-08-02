@@ -347,11 +347,25 @@ export function onTaulaClassificacioVoteFilterChange() {
   renderTaulaClassificacio('taula-classificacio-list', _taulaClassificacioScope());
 }
 
+// Exposada perquè applyTranslations() (i18n.js) repinti les capçaleres de la
+// Classificació General i la Taula de Classificació en canviar d'idioma
+// (generades amb t(), no amb data-i18n — incidència 8.3 de PROVES_Fase4.md).
+// Repintar-les encara que el panell no sigui visible és inofensiu: mateix
+// patró que _refreshGalleryGrid (galeria.js), cada render mira el seu propi
+// contenidor per id i no fa res si no hi és.
+window._refreshClassificacioTables = function () {
+  renderClassificacioGeneral('classificacio-list', _classificacioScope());
+  renderTaulaClassificacio('taula-classificacio-list', _taulaClassificacioScope());
+};
+
 // ═══════════════════════════════════
 // PARTICIPANT DASHBOARD
 // ═══════════════════════════════════
-export function refreshParticipantDashboard() {
-  // Set role badge — skip if admin is using the pill as a toggle
+// Separada de refreshParticipantDashboard() perquè applyTranslations() (i18n.js)
+// la pugui cridar sola en canviar d'idioma (contingut generat amb t(), igual que
+// _refreshVotingGrids a votacio.js). No crida applyTranslations() ella mateixa,
+// així que exposar-la aquí no crea la recursió que evita refreshParticipantDashboard.
+function _refreshRoleBadge() {
   const roleBadge = document.getElementById('participant-role-badge');
   if (roleBadge && state.currentUser && !state.adminViewingAsParticipant) {
     roleBadge.textContent = state.currentUser.role === 'admin'
@@ -360,6 +374,12 @@ export function refreshParticipantDashboard() {
         ? t('expert_role_name')
         : t('member_role_name');
   }
+}
+window._refreshParticipantRoleBadge = _refreshRoleBadge;
+
+export function refreshParticipantDashboard() {
+  // Set role badge — skip if admin is using the pill as a toggle
+  _refreshRoleBadge();
 
   const obj = state.currentObjective;
   document.getElementById('participant-objective-name').textContent = obj ? obj.title : '—';

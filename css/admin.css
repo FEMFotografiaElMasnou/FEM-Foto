@@ -160,6 +160,28 @@
 .obj-mode-select.eff-open   { color: var(--success); }
 .obj-mode-select.eff-closed { color: var(--danger); }
 
+/* Camp compacte genèric (select/input dins d'una taula o fila inline):
+   mateix aspecte que .obj-date-field de Reptes (fons fosc, vora, cantons
+   arrodonits), però sense l'etiqueta al damunt. `color-scheme: dark` és el
+   que evita el desplegable amb fons blanc dels <select> nadius — sense això
+   el navegador el pinta amb els colors clars del sistema operatiu encara
+   que el `<select>` en si estigui fosc. */
+.field-compact {
+  background: rgba(4,9,30,0.5);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 0 10px;
+  height: 36px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text);
+  color-scheme: dark;
+  outline: none;
+}
+select.field-compact { cursor: pointer; }
+select.field-compact option { background: var(--surface2); }
+.field-compact:focus { border-color: var(--accent); }
+
 /* ── TABS (admin, desktop) ── */
 .tab-nav {
   display: flex;
@@ -197,6 +219,13 @@
 
 .tab-content { display: none; }
 .tab-content.active { display: block; }
+
+/* Subpestanyes dins d'un .tab-content (p.ex. Socis: Usuaris app / Socis FEM).
+   Classe a part perquè switchTab() cerca .tab-content per descendents: si
+   reutilitzéssim la mateixa classe, canviar de pestanya principal desactivaria
+   totes dues subpestanyes sense reactivar-ne cap. */
+.subtab-content { display: none; }
+.subtab-content.active { display: block; }
 
 /* Utilitat: només visible en mòbil (a l'escriptori els badges ja són a la topbar) */
 .only-mobile { display: none; }

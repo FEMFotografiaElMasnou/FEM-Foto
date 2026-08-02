@@ -284,28 +284,71 @@
 
     <!-- TAB: SOCIS -->
     <div id="admin-tab-members" class="tab-content">
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title" data-i18n="members_title">Gestió de socis</div>
-          <button type="button" class="btn btn-primary btn-sm" onclick="openMemberModal()" data-i18n="new_member_btn">+ Nou Soci</button>
+      <div class="tab-nav">
+        <button type="button" class="tab-btn active" id="members-subtab-btn-appusers" onclick="showMembersSubTab('appusers')" data-i18n="members_tab_appusers">Usuaris app</button>
+        <button type="button" class="tab-btn" id="members-subtab-btn-fem" onclick="showMembersSubTab('fem')" data-i18n="members_tab_fem">Socis FEM</button>
+      </div>
+
+      <!-- SUBTAB: USUARIS APP (gestió de comptes existents, com fins ara) -->
+      <div id="members-subtab-appusers" class="subtab-content active">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title" data-i18n="members_title">Gestió de socis</div>
+            <button type="button" class="btn btn-primary btn-sm" onclick="openMemberModal()" data-i18n="new_member_btn">+ Nou Soci</button>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="participant-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th data-i18n="member_name">Nom</th>
+                  <th data-i18n="table_username_header">Usuari</th>
+                  <th data-i18n="member_role">Rol</th>
+                  <th data-i18n="member_zampa_role">Zampa</th>
+                  <th data-i18n="member_actions">Accions</th>
+                </tr>
+              </thead>
+              <tbody id="members-tbody">
+                <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted);" data-i18n="loading">Carregant...</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
-        <div style="overflow-x:auto;">
-          <table class="participant-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th data-i18n="member_name">Nom</th>
-                <th data-i18n="table_username_header">Usuari</th>
-                <th data-i18n="member_role">Rol</th>
-                <th data-i18n="member_uploaded">Foto pujada</th>
-                <th data-i18n="member_voted_h">Ha Votat</th>
-                <th data-i18n="member_actions">Accions</th>
-              </tr>
-            </thead>
-            <tbody id="members-tbody">
-              <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted);" data-i18n="loading">Carregant...</td></tr>
-            </tbody>
-          </table>
+      </div>
+
+      <!-- SUBTAB: SOCIS FEM (cens que filtra l'auto-registre, sql/2026-08-02_socis_fem_autoritzats.sql) -->
+      <div id="members-subtab-fem" class="subtab-content">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title" data-i18n="socis_fem_title">Cens de socis FEM autoritzats</div>
+              <div class="card-subtitle" data-i18n="socis_fem_subtitle">Només els emails d'aquesta llista es poden donar d'alta a l'app.</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
+            <input type="email" id="socis-fem-new-email" class="field-compact" data-i18n-placeholder="socis_fem_email_placeholder" placeholder="nou.email@exemple.cat" style="flex:1 1 240px;min-width:200px;">
+            <select id="socis-fem-new-role" class="field-compact">
+              <option value="participant" data-i18n="member_role_option">Participant/Soci</option>
+              <option value="expert" data-i18n="expert_role_option">Expert</option>
+              <option value="admin" data-i18n="admin_role_option">Administrador</option>
+            </select>
+            <button type="button" class="btn btn-primary btn-sm" onclick="addSociFemAutoritzat()" data-i18n="socis_fem_add_btn">+ Afegir</button>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="participant-table">
+              <thead>
+                <tr>
+                  <th data-i18n="socis_fem_email_header">Email</th>
+                  <th data-i18n="socis_fem_role_header">Rol per defecte</th>
+                  <th data-i18n="socis_fem_created_header">Data alta</th>
+                  <th data-i18n="socis_fem_actions_header">Accions</th>
+                </tr>
+              </thead>
+              <tbody id="socis-fem-tbody">
+                <tr><td colspan="4" style="text-align:center;padding:40px;color:var(--text-muted);" data-i18n="loading">Carregant...</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

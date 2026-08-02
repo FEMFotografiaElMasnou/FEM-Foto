@@ -11,6 +11,9 @@
 export const state = {
   currentUser:     null,
   users:           [],
+  // Cens de socis FEM autoritzats a donar-se d'alta (només admin, es carrega
+  // a demanda en obrir la subpestanya "Socis FEM", no dins loadAllData()).
+  socisAutoritzats: [],
   objectives:      [],
   photos:          [],          // not yet published
   publishedPhotos: [],

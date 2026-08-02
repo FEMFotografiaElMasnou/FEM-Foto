@@ -6,24 +6,27 @@ import { sb } from '../core/config.js';
 import { t } from '../core/i18n.js';
 import { showToast } from '../ui/toast.js';
 import { openModal, closeModal, confirmAction } from '../ui/modals.js';
-import { updateUser, loadAllData, hasUserVoted, getActiveAllPhotos } from '../core/data.js';
+import { updateUser, loadAllData } from '../core/data.js';
 import { renderAdminGallery } from './fotos.js';
 import { refreshAdminDashboard } from '../screens/admin.js';
 
 // ── INLINE MEMBER EDITS ──
-export async function toggleRole(userId) {
+export async function changeRole(userId, newRole) {
   const user = state.users.find(u => u.id === userId);
   if (!user) return;
-  if (user.id === state.currentUser.id) { showToast(t('no_change_own_role'), 'error'); return; }
-  // El badge només alterna Admin↔Soci (com sempre). Els Experts no es toquen des
-  // d'aquí — canviar el rol d'un Expert (o convertir algú en Expert) es fa només
-  // des del modal "Editar soci" (openMemberModal), per evitar que un clic ràpid
-  // al badge faci saltar un Expert a Admin per accident.
-  if (user.role === 'expert') return;
-  user.role = user.role === 'admin' ? 'participant' : 'admin';
-  await updateUser(userId, { role: user.role });
+  user.role = newRole;
+  await updateUser(userId, { role: newRole });
   renderMembersTable();
-  showToast(t('role_changed') + ' ' + (user.role === 'admin' ? 'Admin' : t('member_role_name')) + ' ✅', 'success');
+  showToast(t('role_changed') + ' ✅', 'success');
+}
+
+export async function changeZampaRole(userId, newZampaRole) {
+  const user = state.users.find(u => u.id === userId);
+  if (!user) return;
+  user.zampa_role = newZampaRole;
+  await updateUser(userId, { zampa_role: newZampaRole });
+  renderMembersTable();
+  showToast(t('zampa_role_changed'), 'success');
 }
 
 export function inlineEditName(userId, el) {
@@ -139,16 +142,11 @@ export async function copyTempPassword() {
 export function renderMembersTable() {
   const tbody = document.getElementById('members-tbody');
   if (state.users.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted);">${t('no_members')}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted);">${t('no_members')}</td></tr>`;
     return;
   }
-  // Build a Set of userIds that have uploaded a photo to the ACTIVE objective
-  const uploaderIds = new Set(
-    getActiveAllPhotos().map(p => p.userId)
-  );
   tbody.innerHTML = state.users.map((u, idx) => {
-    const voted    = hasUserVoted(u.id);
-    const uploaded = uploaderIds.has(u.id);
+    const isSelf = u.id === state.currentUser.id;
     return `
       <tr>
         <td style="color:var(--text-muted);font-family:var(--font-mono);">${idx+1}</td>
@@ -161,18 +159,24 @@ export function renderMembersTable() {
         </td>
         <td style="font-family:var(--font-mono);font-size:12px;">${u.email || u.username}</td>
         <td>
-          ${u.role === 'expert'
-            ? `<span class="badge badge-blue" title="${t('edit_member_tooltip')}">${t('expert_role_name')}</span>`
-            : `<span
-                class="badge ${u.role==='admin'?'badge-red':'badge-yellow'}"
-                style="cursor:pointer;user-select:none;"
-                onclick="toggleRole('${u.id}')"
-                title="${t('edit_role_tooltip')}"
-              >${u.role==='admin'?'Admin':t('member_role_name')}</span>`
-          }
+          <select
+            class="field-compact"
+            onchange="changeRole('${u.id}', this.value)"
+            title="${isSelf ? t('no_change_own_role') : t('edit_role_tooltip')}"
+            ${isSelf ? 'disabled' : ''}
+          >
+            <option value="participant" ${u.role==='participant'?'selected':''}>${t('member_role_option')}</option>
+            <option value="expert" ${u.role==='expert'?'selected':''}>${t('expert_role_option')}</option>
+            <option value="admin" ${u.role==='admin'?'selected':''}>${t('admin_role_option')}</option>
+          </select>
         </td>
-        <td>${uploaded?'<span class="badge badge-green">✓ Sí</span>':'<span class="badge badge-gray">No</span>'}</td>
-        <td>${voted?'<span class="badge badge-green">✓ Sí</span>':'<span class="badge badge-gray">No</span>'}</td>
+        <td>
+          <select class="field-compact" onchange="changeZampaRole('${u.id}', this.value)" title="${t('edit_zampa_role_tooltip')}">
+            <option value="user" ${u.zampa_role==='user'?'selected':''}>${t('zampa_role_user_option')}</option>
+            <option value="editor" ${u.zampa_role==='editor'?'selected':''}>${t('zampa_role_editor_option')}</option>
+            <option value="admin" ${u.zampa_role==='admin'?'selected':''}>${t('zampa_role_admin_option')}</option>
+          </select>
+        </td>
         <td style="display:flex;gap:6px;align-items:center;">
           <button type="button" class="btn btn-secondary btn-sm" onclick="openMemberModal('${u.id}')" title="${t('edit_member_tooltip')}" style="padding:4px 10px;font-size:13px;">✏️</button>
           <button type="button" class="btn btn-secondary btn-sm" onclick="resetMemberPassword('${u.id}')" title="${t('reset_pwd_tooltip')}" style="padding:4px 10px;font-size:13px;">🔄 ${t('member_reset_pwd')}</button>
@@ -306,8 +310,130 @@ export async function deleteMember(id) {
   });
 }
 
+// ═══════════════════════════════════
+// SOCIS FEM AUTORITZATS — cens que filtra l'auto-registre
+// (sql/2026-08-02_socis_fem_autoritzats.sql)
+// ═══════════════════════════════════
+// Subpestanya dins "Socis". Els botons commuten .subtab-content (no
+// .tab-content: switchTab() de router.js cerca .tab-content per descendents,
+// i reutilitzar la mateixa classe aquí faria que canviar de pestanya
+// principal desactivés totes dues subpestanyes sense reactivar-ne cap).
+export function showMembersSubTab(tab) {
+  document.querySelectorAll('#admin-tab-members .subtab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('#admin-tab-members .tab-nav .tab-btn').forEach(btn => btn.classList.remove('active'));
+  const content = document.getElementById(`members-subtab-${tab}`);
+  const btn     = document.getElementById(`members-subtab-btn-${tab}`);
+  if (content) content.classList.add('active');
+  if (btn) btn.classList.add('active');
+  // Es carrega a demanda, no dins loadAllData(): la RLS només la deixa
+  // llegir a un admin, així que per a qualsevol participant seria una
+  // consulta buida i inútil en cada auto-refresh.
+  if (tab === 'fem') loadSocisFemAutoritzats();
+}
+
+export async function loadSocisFemAutoritzats() {
+  const { data, error } = await sb.from('socis_fem_autoritzats')
+    .select('email,rol_per_defecte,created_at')
+    .order('created_at', { ascending: true });
+  if (error) {
+    console.error('loadSocisFemAutoritzats error', error);
+    showToast(t('socis_fem_generic_error'), 'error');
+    return;
+  }
+  state.socisAutoritzats = data || [];
+  renderSocisFemTable();
+}
+
+export function renderSocisFemTable() {
+  const tbody = document.getElementById('socis-fem-tbody');
+  if (!tbody) return;
+  if (state.socisAutoritzats.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--text-muted);">${t('socis_fem_empty')}</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = state.socisAutoritzats.map(s => `
+    <tr>
+      <td style="font-family:var(--font-mono);font-size:12px;">${s.email}</td>
+      <td>
+        <select class="field-compact" onchange="changeSociFemRole('${s.email}', this.value)">
+          <option value="participant" ${s.rol_per_defecte==='participant'?'selected':''}>${t('member_role_option')}</option>
+          <option value="expert" ${s.rol_per_defecte==='expert'?'selected':''}>${t('expert_role_option')}</option>
+          <option value="admin" ${s.rol_per_defecte==='admin'?'selected':''}>${t('admin_role_option')}</option>
+        </select>
+      </td>
+      <td style="color:var(--text-muted);font-size:12px;">${s.created_at ? new Date(s.created_at).toLocaleDateString() : ''}</td>
+      <td><button type="button" class="btn btn-danger btn-sm" onclick="removeSociFemAutoritzat('${s.email}')">${t('delete_btn')}</button></td>
+    </tr>
+  `).join('');
+}
+
+export async function addSociFemAutoritzat() {
+  const emailInput = document.getElementById('socis-fem-new-email');
+  const roleSelect = document.getElementById('socis-fem-new-role');
+  const email = emailInput.value.trim().toLowerCase();
+  const role  = roleSelect.value;
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showToast(t('socis_fem_invalid_email'), 'error');
+    return;
+  }
+  if (state.socisAutoritzats.some(s => s.email === email)) {
+    showToast(t('socis_fem_duplicate'), 'error');
+    return;
+  }
+
+  const { error } = await sb.from('socis_fem_autoritzats').insert({ email, rol_per_defecte: role });
+  if (error) {
+    console.error('addSociFemAutoritzat error', error);
+    showToast(t('socis_fem_generic_error'), 'error');
+    return;
+  }
+
+  emailInput.value = '';
+  roleSelect.value = 'participant';
+  await loadSocisFemAutoritzats();
+  showToast(t('socis_fem_added_toast'), 'success');
+}
+
+export async function changeSociFemRole(email, newRole) {
+  const { error } = await sb.from('socis_fem_autoritzats').update({ rol_per_defecte: newRole }).eq('email', email);
+  if (error) {
+    console.error('changeSociFemRole error', error);
+    showToast(t('socis_fem_generic_error'), 'error');
+    return;
+  }
+  const row = state.socisAutoritzats.find(s => s.email === email);
+  if (row) row.rol_per_defecte = newRole;
+  showToast(t('socis_fem_role_changed_toast'), 'success');
+}
+
+export function removeSociFemAutoritzat(email) {
+  confirmAction(
+    t('socis_fem_remove_confirm_title'),
+    t('socis_fem_remove_confirm_msg').replace('{email}', email),
+    async () => {
+      const { error } = await sb.from('socis_fem_autoritzats').delete().eq('email', email);
+      if (error) {
+        console.error('removeSociFemAutoritzat error', error);
+        showToast(t('socis_fem_generic_error'), 'error');
+        return;
+      }
+      await loadSocisFemAutoritzats();
+      showToast(t('socis_fem_removed_toast'), 'success');
+    }
+  );
+}
+
 // Exponer en window las funciones usadas desde onclick del HTML
-window.toggleRole = toggleRole;
+window.showMembersSubTab = showMembersSubTab;
+// Exposada perquè applyTranslations() (i18n.js) repinti aquesta taula en
+// canviar d'idioma (el select de rol es genera amb t(), no amb data-i18n).
+window._refreshSocisFemTable = renderSocisFemTable;
+window.addSociFemAutoritzat = addSociFemAutoritzat;
+window.changeSociFemRole = changeSociFemRole;
+window.removeSociFemAutoritzat = removeSociFemAutoritzat;
+window.changeRole = changeRole;
+window.changeZampaRole = changeZampaRole;
 window.inlineEditName = inlineEditName;
 window.resetMemberPassword = resetMemberPassword;
 window.copyTempPassword = copyTempPassword;

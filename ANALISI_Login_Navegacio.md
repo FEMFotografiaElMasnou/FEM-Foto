@@ -12,7 +12,7 @@
 
 ---
 
-## §A Estat actual (27/07/2026)
+## §A Estat actual (actualitzat 02/08/2026)
 
 ### Autenticació — migració a Supabase Auth
 
@@ -43,6 +43,18 @@ i podria estar comparant la contrasenya en clar des del seu client, o donant alt
 compte. Hi ha una nota de traspàs autònoma escrita al final de §1.4 — **llegir-la sencera
 abans de tocar res de Zampa**, no re-derivar el context.
 
+### Filtre d'alta — cens de socis FEM
+
+✅ **Fet i verificat a Test (02/08/2026).** ⬜ **Pendent aplicar a Normal.**
+
+Ningú pot crear-se un compte si el seu email no és a `socis_fem_autoritzats` (taula nova,
+admin-only per RLS, independent de `users`). `fem_register_account()` ho comprova abans de
+crear cap fila i, si l'email hi és, en pren també el rol per defecte — ja no és sempre
+`participant`, es pot pre-autoritzar un Expert abans que s'hagi registrat mai. Gestió
+d'altes/baixes/canvi de rol del cens des d'una subpestanya nova, Admin → Socis → **Socis FEM**,
+sense RPC pròpia (la mateixa RLS admin-only ja n'hi ha prou). Detall complet, la decisió taula
+a part vs. columna a `users`, i la verificació, a §1.6.
+
 ### Navegació
 
 ⬜ **Sense començar.** Verificat per `grep` a tot `js/` i `index.html`: cap ús de
@@ -67,7 +79,10 @@ tercer camp compartit, mateix patró.
 **Les contrasenyes existents es preserven; mai un reset massiu forçat.** Pel perfil d'usuari
 del club (~65 anys de mitjana), la fricció d'obligar tothom a canviar pesa més que el guany.
 
-**L'auto-registre és obert i immediat**: sense confirmació per correu ni aprovació d'admin.
+**L'auto-registre és obert i immediat**: sense confirmació per correu ni aprovació d'admin
+**per a qui ja és al cens de socis FEM** (02/08/2026, §1.6). L'aprovació és prèvia i
+col·lectiva —mantenir el cens al dia— no una cua de sol·licituds per revisar una a una; qui no
+hi és, no progressa, sense excepcions des de l'RPC.
 
 **Els comptes es creen per RPC, no amb `supabase.auth.signUp()`**: `signUp()` substituiria la
 sessió de l'admin per la del soci acabat de crear i forçaria confirmació per correu.
@@ -1249,6 +1264,97 @@ aquell dia fallava en silenci.
 
 Comptes d'un sol ús esborrats de les tres taules. Normal a 41/41 i Test a 50/50, 0 orfes, 0
 contrasenyes buides, 1059 vots i 86 fotos intactes.
+
+---
+
+## 1.6 Filtre d'alta — cens de socis FEM autoritzats (02/08/2026)
+
+Fora de la numeració dels passos, com §1.5: no és migració d'Auth pròpiament dita, però hi
+encaixa perquè toca la mateixa RPC (`fem_register_account`). Petició d'Enric: l'app no tenia
+cap filtre per registrar-se — qualsevol email podia crear-se un compte. Calia restringir-ho al
+cens real de socis de la FEM.
+
+### La decisió: taula a part, no columna a `users`
+
+Enric va proposar dues opcions:
+
+- **A — taula separada** (`email` + `rol_per_defecte`).
+- **B — columna nova a `users`** (la seva preferència inicial), pre-carregant-hi files per als
+  socis de la FEM encara no usuaris de l'app.
+
+Es va descartar B per dos motius, tots dos ja documentats a altres punts d'aquest projecte:
+
+1. **`users` és compartida amb Zampa** (§B, i l'incident del 28/07 — vegeu
+   `docs/REFERENCIA_BD.md`). Qualsevol canvi d'esquema aquí s'ha de comprovar contra les dues
+   apps.
+2. **El propi requisit trenca la invariant de la taula.** El cens ha d'incloure socis que
+   *encara no són usuaris de l'app*. Avui una fila de `users` vol dir "compte real":
+   `fem_register_account()` en crea l'`auth.users` corresponent a la mateixa transacció
+   (§1.4, Pas 4a). Pre-carregar-hi files sense compte real hauria convertit el registre en
+   "busca la fila pre-existent i completa-la" en lloc d'un `INSERT` net, i hauria barrejat
+   comptes reals amb pendents a la pantalla d'admin de Socis i a qualsevol lectura de Zampa.
+
+Enric hi va estar d'acord i es va tirar per l'opció A.
+
+### El que es va construir
+
+- **Taula `public.socis_fem_autoritzats`** (`sql/2026-08-02_socis_fem_autoritzats.sql`):
+  `email` (PK), `rol_per_defecte` (`participant`/`expert`/`admin`), `created_at`. RLS activada,
+  4 polítiques, totes `fem_is_admin()` — ni `anon` ni `authenticated` normal hi tenen cap accés
+  (ni tan sols lectura: així no es pot fer servir per confirmar si un email concret hi és abans
+  de provar-lo a l'auto-registre).
+- **Càrrega inicial**: tots els emails que ja tenien compte, amb el seu rol d'avui (52 a Test,
+  41 pendents a Normal quan s'apliqui).
+- **`fem_register_account()` actualitzada**: abans de crear res, `SELECT rol_per_defecte FROM
+  socis_fem_autoritzats WHERE email = v_email`; si no hi és, `RETURN 'not_authorized'`. Si hi
+  és, el rol del compte nou surt d'aquí (abans sempre `'participant'`, forçat pel servidor).
+  Segueix sense ser un paràmetre de la crida — només un admin pot escriure al cens (RLS de
+  dalt), així que no es pot escalar privilegis cridant l'RPC directament per API.
+- **Gestió des de l'admin**: subpestanya nova, Admin → Socis → **Socis FEM** (al costat de la
+  gestió d'usuaris existent, ara **Usuaris app**). Alta (email + rol), canvi de rol per
+  defecte inline, baixa amb confirmació. Sense RPC pròpia: `sb.from('socis_fem_autoritzats')`
+  directe des del client, gated només per la RLS admin-only — el mateix patró que ja fan
+  servir `objectives`/`photo_submissions` (a diferència de `users`, aquesta taula no necessita
+  escriure enlloc més, així que no calia el patró RPC+doble-escriptura de §B).
+- **Estil**: els selects de rol (aquí i als d'Usuaris app, `changeRole`/`changeZampaRole`) no
+  portaven cap classe i el navegador els pintava amb el desplegable blanc del sistema —
+  inconsistent amb la resta de l'app. Classe nova `.field-compact` (`css/admin.css`), mateixa
+  recepta que `.obj-mode-select` de Reptes (`color-scheme: dark` + fons fosc + vora): és
+  `color-scheme: dark` el que evita el desplegable blanc, no només el color del `<select>`
+  tancat.
+
+### Bug trobat i corregit pel camí
+
+`email` és ambigu dins la funció: `RETURNS TABLE (..., email text, ...)` declara una columna de
+sortida amb aquest nom, i `WHERE email = v_email` dins el cos xoca amb ella
+(`42702: column reference "email" is ambiguous`). Calia qualificar-ho amb un àlies de taula
+(`sfa.email`). Trobat perquè es va provar la funció de veritat abans de donar-la per bona, no
+donant per fet que compilava (sí que ho fa, `CREATE OR REPLACE` no valida els cossos de les
+funcions PL/pgSQL fins que s'executen).
+
+### Verificació (Test, 02/08/2026)
+
+Amb comptes i emails d'un sol ús, esborrats després:
+
+| Comprovació | Resultat |
+|---|---|
+| Email fora del cens → `fem_register_account` | `not_authorized`, cap fila creada |
+| Email al cens amb `rol_per_defecte='expert'` → `fem_register_account` | `ok`, compte creat amb `role='expert'` (no `participant`), `auth_user_id` enllaçat |
+| Alta des del panell (Admin → Socis FEM → + Afegir) | Fila nova, toast, reflectida a la taula |
+| Canvi de rol per defecte des del panell | `UPDATE` confirmat per SQL |
+| Baixa des del panell, amb confirmació | Fila esborrada, toast |
+| Canvi d'idioma CA↔ES amb la pestanya oberta | Selects de rol i taula es repinten (calia enganxar `renderSocisFemTable` a `applyTranslations()`, com ja fa `renderMembersTable`) |
+| `color-scheme: dark` aplicat de veritat | Confirmat per `getComputedStyle()`, no només visualment |
+
+### Estat: Test tancat, Normal pendent
+
+Migració i codi de client aplicats i verificats només a **Test**. Falta: aplicar
+`sql/2026-08-02_socis_fem_autoritzats.sql` a Normal (carregarà els 41 emails actuals amb el
+seu rol), i carregar-hi els socis de la FEM encara no usuaris de l'app quan Enric passi la
+llista — es pot fer per SQL directe, sense esperar cap pantalla, com ja es va fer amb la
+càrrega inicial. `fem_admin_create_member` (l'alta feta per l'admin des del panell) es queda
+**sense aquest filtre a propòsit** — decisió d'Enric: l'admin ja és una barrera de confiança i
+ha de poder donar d'alta algú puntualment encara que hi hagi un despistat al cens.
 
 ---
 

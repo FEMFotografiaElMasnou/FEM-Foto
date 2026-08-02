@@ -93,11 +93,34 @@ què el domini pot donar error.
 
 No hi ha `manifest.json` ni service worker al projecte, així que tampoc no hi ha cap app
 instal·lada al mòbil dels socis amb recursos cachejats que pugui quedar enganxada a la versió
-antiga.
+antiga. ⚠️ Això **no** vol dir que no hi hagi risc de cache: sense build step ni bundler, els
+fitxers JS/CSS es diuen sempre igual d'un desplegament a l'altre (`js/screens/login.js` no porta
+mai un hash al nom), així que el navegador els pot servir de la seva pròpia cache HTTP encara que
+n'hi hagi una versió nova al servidor — sense cap app instal·lada de per mig. Trobat de debò el
+02/08/2026 (Enric, provant Fase 4): una pestanya amb l'app carregada d'abans d'un desplegament
+mostrava un rètol ja retirat del codi ("Primera configuració"); una recàrrega forçada ho va
+resoldre. Ja ha generat consultes reals dels socis abans d'ara — vegeu el punt següent.
 
 ### Abans
 
 - [ ] Fase 4 (proves internes) i Fase 5 (validació amb socis) tancades.
+- [ ] **Fer que cada desplegament nou refresqui l'app sola a qui la tingui oberta**, en lloc de
+      deixar que cadascú topi amb codi vell fins que recarrega a mà. Decisió d'Enric el 02/08/2026:
+      ja ha causat consultes reals de socis abans d'aquesta fase, i amb ~50 persones entrant pel
+      domini del club (no per `fem-foto.vercel.app` triat expressament) el problema es multiplica.
+      Dues maneres raonables de resoldre-ho, a triar abans del tall (no fetes, no decidides):
+      1. **Capçaleres `Cache-Control` a `vercel.json`** perquè el navegador mai serveixi `index.html`
+         ni els mòduls `js/**`/`css/**` de la seva pròpia cache sense revalidar amb el servidor
+         (`no-cache` o `max-age=0, must-revalidate`). Més senzill, cap canvi de codi de l'app.
+      2. **Detecció de versió en calent**: `router.js` ja fa un sondeig cada 30 s
+         (`startAutoRefresh()`); s'hi podria afegir la comprovació d'un número de versió i mostrar
+         un avís de "Hi ha una versió nova, recarrega" (o recarregar sol). Més feina, però resol
+         també el cas d'una pestanya oberta durant hores, que les capçaleres de cache soles no cobreixen.
+      Probablement calguin totes dues: la 1 talla el problema de soca-rel per a qui carrega de nou,
+      la 2 cobreix qui ja el tenia obert. Vegeu la nota tècnica més amunt.
+- [x] **Panell de Socis afinat** — **FET el 02/08/2026**. Els tres punts detallats a
+      `FEM-Foto_Unificacio_Pla-desenvolupament.md` §8: badge de rol → desplegable de 3 opcions a
+      la taula, columna nova de rol Zampa (3 opcions), i "Foto pujada"/"Ha Votat" eliminades.
 - [ ] Tall 1 fet i estable, o decidit explícitament que es fan alhora.
 - [ ] Pas 4d de la migració d'Auth tancat (o decidit que pot esperar).
 - [x] **Redirect URLs de Supabase, als dos projectes** — **FET el 29/07/2026**. Hi ha les 4

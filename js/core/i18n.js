@@ -77,7 +77,23 @@ export const TRANSLATIONS = {
     members_title: 'Gestió de socis', new_member_btn: 'Nou Soci',
     member_name: 'Nom', member_email: 'Email / Usuari', member_role: 'Rol',
     member_photo: 'Foto', member_voted: 'Votat', member_actions: 'Contrasenya',
-    member_uploaded: 'Foto pujada', member_voted_h: 'Ha Votat',
+    member_zampa_role: 'Zampa',
+    // Socis FEM autoritzats (cens que filtra l'auto-registre)
+    members_tab_appusers: 'Usuaris app', members_tab_fem: 'Socis FEM',
+    socis_fem_title: 'Cens de socis FEM autoritzats',
+    socis_fem_subtitle: "Només els emails d'aquesta llista es poden donar d'alta a l'app.",
+    socis_fem_email_placeholder: 'nou.email@exemple.cat',
+    socis_fem_email_header: 'Email', socis_fem_role_header: 'Rol per defecte',
+    socis_fem_created_header: 'Data alta', socis_fem_actions_header: 'Accions',
+    socis_fem_add_btn: '+ Afegir', socis_fem_empty: 'No hi ha cap soci autoritzat.',
+    socis_fem_added_toast: 'Email afegit al cens ✅',
+    socis_fem_removed_toast: 'Email tret del cens ✅',
+    socis_fem_role_changed_toast: 'Rol per defecte actualitzat ✅',
+    socis_fem_invalid_email: 'Introdueix un email vàlid',
+    socis_fem_duplicate: 'Aquest email ja és al cens',
+    socis_fem_remove_confirm_title: 'Treure del cens',
+    socis_fem_remove_confirm_msg: "Treure {email} del cens de socis FEM? Si encara no té compte a l'app, no es podrà donar d'alta fins que el tornis a afegir.",
+    socis_fem_generic_error: '❌ Error',
     member_reset_pwd: 'Reset', member_reset_confirm_title: 'Resetejar contrasenya',
     member_reset_confirm_msg: 'Segur que vols resetejar la contrasenya de {name}? Se li assignarà una contrasenya temporal que li hauràs de fer arribar, i deixarà de poder entrar amb la que tenia. Les seves puntuacions i fotos NO es perden.',
     member_reset_done: '✓ Contrasenya resetejada',
@@ -318,6 +334,7 @@ export const TRANSLATIONS = {
     voting_not_open_msg: 'Votacions no obertes — pots veure les fotos però encara no pots votar',
     voting_closed_error: '🔒 Les votacions estan tancades',
     already_voted_error: '🔒 Ja vas enviar la teva votació',
+    own_photo_vote_error: '🔒 No pots votar la teva pròpia foto',
     confirm_send_vote_title: 'Enviar Votació Definitiva',
     confirm_send_vote_msg: 'Enviar votació definitiva? Un cop enviada NO podràs canviar cap vot.',
     confirm_send_vote_btn: 'Enviar',
@@ -367,7 +384,8 @@ export const TRANSLATIONS = {
     // Ronda 2 — bugs funcionals reportats + sweep de textos estàtics d'index.html
     no_members: 'No hi ha socis.',
     edit_name_tooltip: 'Clica per editar el nom',
-    edit_role_tooltip: 'Clica per alternar Admin/Soci',
+    edit_role_tooltip: 'Canvia el rol',
+    edit_zampa_role_tooltip: 'Canvia el rol a Zampa',
     edit_member_tooltip: 'Editar soci (nom, email, contrasenya, rol)',
     reset_pwd_tooltip: 'Resetejar contrasenya',
     test_mode_banner: '🔴 MODE TEST — Base de dades de proves',
@@ -408,6 +426,8 @@ export const TRANSLATIONS = {
     member_role_option: 'Participant/Soci',
     expert_role_option: 'Expert',
     admin_role_option: 'Administrador',
+    zampa_role_user_option: 'Soci', zampa_role_editor_option: 'Editor', zampa_role_admin_option: 'Admin',
+    zampa_role_changed: 'Rol de Zampa canviat ✅',
     setup_banner_msg: "No s'han trobat usuaris a la base de dades. Inicialitza per crear l'administrador per defecte.",
     table_username_header: 'Usuari',
     username_field_label: "Nom d'Usuari",
@@ -489,7 +509,23 @@ export const TRANSLATIONS = {
     members_title: 'Gestión de socios', new_member_btn: 'Nuevo Socio',
     member_name: 'Nombre', member_email: 'Email / Usuario', member_role: 'Rol',
     member_photo: 'Foto', member_voted: 'Votado', member_actions: 'Contraseña',
-    member_uploaded: 'Foto subida', member_voted_h: 'Ha Votado',
+    member_zampa_role: 'Zampa',
+    // Socios FEM autorizados (censo que filtra el auto-registro)
+    members_tab_appusers: 'Usuarios app', members_tab_fem: 'Socios FEM',
+    socis_fem_title: 'Censo de socios FEM autorizados',
+    socis_fem_subtitle: 'Solo los emails de esta lista pueden darse de alta en la app.',
+    socis_fem_email_placeholder: 'nuevo.email@ejemplo.cat',
+    socis_fem_email_header: 'Email', socis_fem_role_header: 'Rol por defecto',
+    socis_fem_created_header: 'Fecha alta', socis_fem_actions_header: 'Acciones',
+    socis_fem_add_btn: '+ Añadir', socis_fem_empty: 'No hay ningún socio autorizado.',
+    socis_fem_added_toast: 'Email añadido al censo ✅',
+    socis_fem_removed_toast: 'Email retirado del censo ✅',
+    socis_fem_role_changed_toast: 'Rol por defecto actualizado ✅',
+    socis_fem_invalid_email: 'Introduce un email válido',
+    socis_fem_duplicate: 'Este email ya está en el censo',
+    socis_fem_remove_confirm_title: 'Retirar del censo',
+    socis_fem_remove_confirm_msg: '¿Retirar {email} del censo de socios FEM? Si todavía no tiene cuenta en la app, no podrá darse de alta hasta que lo vuelvas a añadir.',
+    socis_fem_generic_error: '❌ Error',
     member_reset_pwd: 'Reset', member_reset_confirm_title: 'Resetear contraseña',
     member_reset_confirm_msg: '¿Seguro que quieres resetear la contraseña de {name}? Se le asignará una contraseña temporal que tendrás que hacerle llegar, y dejará de poder entrar con la que tenía. Sus puntuaciones y fotos NO se pierden.',
     member_reset_done: '✓ Contraseña reseteada',
@@ -725,6 +761,7 @@ export const TRANSLATIONS = {
     voting_not_open_msg: 'Votaciones no abiertas — puedes ver las fotos pero aún no puedes votar',
     voting_closed_error: '🔒 Las votaciones están cerradas',
     already_voted_error: '🔒 Ya enviaste tu votación',
+    own_photo_vote_error: '🔒 No puedes votar tu propia foto',
     confirm_send_vote_title: 'Enviar Votación Definitiva',
     confirm_send_vote_msg: '¿Enviar votación definitiva? Una vez enviada NO podrás cambiar ningún voto.',
     confirm_send_vote_btn: 'Enviar',
@@ -774,7 +811,8 @@ export const TRANSLATIONS = {
     // Ronda 2 — bugs funcionales reportados + sweep de textos estáticos de index.html
     no_members: 'No hay socios.',
     edit_name_tooltip: 'Haz clic para editar el nombre',
-    edit_role_tooltip: 'Haz clic para alternar Admin/Socio',
+    edit_role_tooltip: 'Cambia el rol',
+    edit_zampa_role_tooltip: 'Cambia el rol en Zampa',
     edit_member_tooltip: 'Editar socio (nombre, email, contraseña, rol)',
     reset_pwd_tooltip: 'Resetear contraseña',
     test_mode_banner: '🔴 MODO TEST — Base de datos de pruebas',
@@ -808,6 +846,8 @@ export const TRANSLATIONS = {
     member_role_option: 'Participante/Socio',
     expert_role_option: 'Experto',
     admin_role_option: 'Administrador',
+    zampa_role_user_option: 'Socio', zampa_role_editor_option: 'Editor', zampa_role_admin_option: 'Admin',
+    zampa_role_changed: 'Rol de Zampa cambiado ✅',
     setup_banner_msg: 'No se han encontrado usuarios en la base de datos. Inicializa para crear el administrador por defecto.',
     table_username_header: 'Usuario',
     username_field_label: 'Nombre de Usuario',
@@ -886,9 +926,12 @@ export function applyTranslations() {
   if (typeof window._refreshGalleryFilters === 'function') _safeCall(window._refreshGalleryFilters);
   if (typeof window._refreshGalleryGrid    === 'function') _safeCall(window._refreshGalleryGrid);
   if (typeof window._refreshMembersTable   === 'function') _safeCall(window._refreshMembersTable);
+  if (typeof window._refreshSocisFemTable  === 'function') _safeCall(window._refreshSocisFemTable);
   if (typeof window._refreshAdminGallery   === 'function') _safeCall(window._refreshAdminGallery);
   if (typeof window._refreshUploadSection  === 'function') _safeCall(window._refreshUploadSection);
   if (typeof window._refreshVotingGrids    === 'function') _safeCall(window._refreshVotingGrids);
+  if (typeof window._refreshClassificacioTables    === 'function') _safeCall(window._refreshClassificacioTables);
+  if (typeof window._refreshParticipantRoleBadge   === 'function') _safeCall(window._refreshParticipantRoleBadge);
   // NOTA: NO cridar window.refreshParticipantDashboard() ni window.renderObjectivesList()
   // aquí — totes dues ja criden applyTranslations() internament (refreshParticipantDashboard
   // a participant.js, renderObjectivesList a tematiques.js), i fer-ho des d'aquí crearia una

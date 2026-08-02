@@ -8,13 +8,18 @@ import { showToast, showLoader, hideLoader } from '../ui/toast.js';
 import { confirmAction } from '../ui/modals.js';
 import { getActivePublishedPhotos, getParticipantNumber } from '../core/data.js';
 import { refreshAdminDashboard } from '../screens/admin.js';
-import { refreshParticipantDashboard } from '../screens/participant.js';
+import { refreshParticipantDashboard, renderVotingHeader } from '../screens/participant.js';
 import { openFullscreen } from '../ui/lightbox.js';
 
 // ── VOTE HELPERS ──
 export function getMyVote(photoId) {
   if (!state.currentUser) return null;
   return state.votes.find(v => v.photoId === photoId && v.userId === state.currentUser.id) || null;
+}
+
+function isOwnPhoto(photoId, uid) {
+  const photo = [...state.photos, ...state.publishedPhotos].find(p => p.id === photoId);
+  return !!photo && photo.userId === uid;
 }
 
 export function setVoteCriteria(photoId, criteria, value) {
@@ -61,6 +66,33 @@ export async function saveVoteOnClick(photoId, criteria, value) {
   const objId = state.currentObjective ? state.currentObjective.id : null;
   if (!objId) {
     console.warn('saveVoteOnClick: no active objective');
+    return false;
+  }
+
+  // Guarda de fons (incidència 5.5, docs/PROVES_Fase4.md): la protecció real
+  // és la política RLS d'INSERT/UPDATE, que ara exigeix que la foto votada no
+  // sigui del mateix votant. Això només evita la crida de xarxa quan ja se
+  // sap que el servidor la rebutjarà.
+  if (isOwnPhoto(photoId, uid)) {
+    showToast(t('own_photo_vote_error'), 'error');
+    return false;
+  }
+
+  // Guarda de fons (incidència 5.4, docs/PROVES_Fase4.md): mateix motiu, ara
+  // per a "no es pot tornar a votar un cop enviat" — la protecció real és la
+  // política RLS, que ara exigeix que no existeixi seguiment_votacio amb
+  // es_esborrany=false per a aquest user_id/objective_id.
+  if (isVotingSubmitted(uid, objId)) {
+    showToast(t('already_voted_error'), 'error');
+    return false;
+  }
+
+  // Guarda de fons (incidència 5.6, docs/PROVES_Fase4.md): mateix motiu, ara
+  // per a "votació tancada" — la protecció real és la política RLS, que ara
+  // exigeix que el repte estigui actiu i voting_enabled=true.
+  const hasActiveObj = state.objectives.some(o => o.status === 'active');
+  if (!hasActiveObj || !state.settings.voting_enabled) {
+    showToast(t('voting_closed_error'), 'error');
     return false;
   }
 
@@ -206,6 +238,14 @@ export async function handleStar(photoId, criteria, value, containerId) {
     return;
   }
 
+  // Block self-votes here too (incidència 5.5): sense això, l'actualització
+  // optimista de memòria de sota deixaria "✓ Votat" a la pròpia foto encara
+  // que saveVoteOnClick() rebutgi l'escriptura tot seguit.
+  if (isOwnPhoto(photoId, uid)) {
+    showToast(t('own_photo_vote_error'), 'error');
+    return;
+  }
+
   const myVote = getMyVote(photoId);
   const newVal = (myVote && myVote[criteria] === value) ? 0 : value;
 
@@ -242,6 +282,7 @@ export async function saveAdminVotes() {
   await submitFinalVoting('btn-save-admin-votes', () => {
     refreshAdminDashboard();
     renderAdminVotingGrid();
+    renderVotingHeader();
   });
 }
 
@@ -249,6 +290,7 @@ export async function saveParticipantVotes() {
   await submitFinalVoting('btn-save-participant-votes', () => {
     renderVotingGrid('participant-voting-grid');
     refreshParticipantDashboard();
+    renderVotingHeader();
   });
 }
 
@@ -471,6 +513,28 @@ async function saveVoteOnClickPuntuacio(photoId, value) {
     return false;
   }
 
+  // Guarda de fons (incidència 5.5, docs/PROVES_Fase4.md): mateixa protecció
+  // que saveVoteOnClick(), vegeu el comentari allà.
+  if (isOwnPhoto(photoId, uid)) {
+    showToast(t('own_photo_vote_error'), 'error');
+    return false;
+  }
+
+  // Guarda de fons (incidència 5.4, docs/PROVES_Fase4.md): mateixa protecció
+  // que saveVoteOnClick(), vegeu el comentari allà.
+  if (isVotingSubmitted(uid, objId)) {
+    showToast(t('already_voted_error'), 'error');
+    return false;
+  }
+
+  // Guarda de fons (incidència 5.6, docs/PROVES_Fase4.md): mateixa protecció
+  // que saveVoteOnClick(), vegeu el comentari allà.
+  const hasActiveObj = state.objectives.some(o => o.status === 'active');
+  if (!hasActiveObj || !state.settings.voting_enabled) {
+    showToast(t('voting_closed_error'), 'error');
+    return false;
+  }
+
   const half = Math.round((value / 2) * 100) / 100;
   const row = {
     user_id:      uid,
@@ -606,6 +670,12 @@ async function _applyPuntuacio(photoId, value, containerId) {
     return;
   }
 
+  // Bloquejar autovot també aquí (incidència 5.5), vegeu el comentari a handleStar().
+  if (isOwnPhoto(photoId, uid)) {
+    showToast(t('own_photo_vote_error'), 'error');
+    return;
+  }
+
   setVotePuntuacio(photoId, value);
   window._hasUnsavedVotes = true;
   renderPuntuacioGrid(containerId);
@@ -629,6 +699,7 @@ export async function handlePuntuacioSelect(photoId, value, containerId) {
 export async function saveVotsPuntuacio() {
   await submitFinalVoting('btn-save-puntuacio-votes', () => {
     renderPuntuacioGrid('puntuacio-voting-grid');
+    renderVotingHeader();
   });
 }
 

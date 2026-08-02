@@ -298,6 +298,11 @@
 }
 .voting-status-line.is-submitted { color: var(--gold); }
 
+/* Un cop enviada la votació, la instrucció de com puntuar ja no aplica —
+   explicar com votar quan ja no es pot votar només confon el missatge de
+   bloqueig (petició Enric, 01/08/2026). */
+.voting-status-line.is-submitted + .voting-instructions { display: none; }
+
 /* .card-subtitle genèric és 13px — aquí es puja mida i contrast (deixa de ser
    "text-muted" pur) perquè la instrucció es llegeixi bé. */
 .voting-instructions {

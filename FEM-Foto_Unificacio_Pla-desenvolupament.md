@@ -102,7 +102,7 @@ desplegament. Les pantalles noves han adoptat els noms de sempre, així que el s
 cap nom nou. Detall tècnic i decisions a `ANALISI_Fase3_Puntuacio.md` §7; qui veu cada
 pantalla, a `docs/PANTALLES.md`.
 
-### Treball transversal — autenticació i navegació
+### Treball transversal — autenticació, navegació i seguretat
 
 Fora de la numeració de fases. Anàlisi completa a `ANALISI_Login_Navegacio.md`.
 
@@ -110,10 +110,23 @@ Fora de la numeració de fases. Anàlisi completa a `ANALISI_Login_Navegacio.md`
 |---|---|
 | **Autenticació** — migració a Supabase Auth | 🔄 Passos 1, 2, 3a-3c i 4a-4c fets, verificats als dos entorns i desplegats, més el **Reset de contrasenya de l'admin** (28/07, contrasenya temporal en lloc de buida — `ANALISI_Login_Navegacio.md` §1.5). Falta **4d** (retirar el sistema antic), bloquejat per una comprovació prèvia a Zampa |
 | **Navegació** — refresc i botó enrere | ⬜ Sense començar. No hi ha cap `pushState`/`hash` a l'app: refrescar torna sempre a l'inici i el botó enrere surt de l'app |
+| **Seguretat** — filtre d'alta (cens de socis FEM) | ✅ Fet i verificat a **Test** (02/08/2026). ⬜ **Pendent Normal** |
 
 El que ha canviat per als socis amb la migració d'Auth: la sessió es manté oberta fins que es
 prem "Sortir", i qui no pot entrar se'n surt sol per correu (contrasenya nova o enllaç màgic)
 sense dependre de l'administrador.
+
+**Filtre d'alta (02/08/2026):** cap email pot crear-se un compte si no és al cens
+`socis_fem_autoritzats` (taula nova, admin-only per RLS, independent de `users` — compartida
+amb Zampa i amb un significat de fila que el cens hauria trencat). `fem_register_account()` ho
+comprova abans de crear res i, si l'email hi és, en pren també el rol amb què es crea el
+compte (ja no sempre `participant`: es pot pre-autoritzar un Expert). Gestió d'altes, baixes i
+canvi de rol del cens des d'una subpestanya nova a Admin → Socis → **Socis FEM**, sense RPC
+pròpia (la mateixa RLS n'hi ha prou, com ja passa a Reptes/Fotos). De pas, arreglats els
+desplegables de rol (aquí i a la gestió d'usuaris existent) que es pintaven amb fons blanc del
+sistema en lloc del fosc de la resta de l'app. Decisió (taula a part vs. columna a `users`),
+detall tècnic i verificació a `ANALISI_Login_Navegacio.md` §1.6. Migració aplicada només a
+**Test**; **Normal pendent**, vegeu `sql/README.md`.
 
 ## 7. Què queda pendent de decidir
 
@@ -170,6 +183,25 @@ Coses menors, sense data, que no justifiquen una fase pròpia:
 - **Interpunt de "Cancel·lar"**: es veu malament amb la font condensada dels botons (Barlow
   Condensed). Confirmat que el caràcter és correcte i que és un problema de renderització de la
   font. Sense pedaç net trobat; acceptat com a menor.
+- ~~**Panell de Socis, tres punts detectats per Enric provant el bloc 9 de la Fase 4**~~ — **FET el
+  02/08/2026**, condició del Tall 2 ja complerta (vegeu `docs/TALLS.md`, Tall 2 → Abans):
+  - El badge de rol ara és un desplegable de 3 opcions (Participant/Soci, Expert, Administrador)
+    directament a la taula, `changeRole()` (`js/features/socis.js`) — reemplaça l'antic
+    `toggleRole()`, que només alternava Admin↔Soci i amagava Expert al modal d'edició. Desactivat
+    per a la pròpia fila (no es pot canviar el rol propi).
+  - **Gestió del rol Zampa**: nova columna "Zampa" amb desplegable de les 3 opcions que accepta
+    realment Zampa (`admin`/`editor`/`user` — investigat el codi de `FEM-Zampa`), `changeZampaRole()`.
+    ⚠️ Matís important, que Enric ja sap: les RLS de Zampa són totes `USING(true)` — `zampa_role`
+    només és un permís d'interfície dins de Zampa mateix, no s'aplica per RLS enlloc (ni allà ni
+    aquí). Canviar-lo des de FEM-Foto és tan real com ja ho era des de Zampa.
+  - **"Foto pujada" / "Ha Votat"**: **eliminades** (decisió d'Enric, no calia substituir-les per
+    cap comptador). De rebot, `hasUserVoted()` (`core/data.js`) ha quedat sense cap ús i s'ha
+    esborrat.
+  Verificat en local (Test): les 3 columnes noves persisteixen a `public.users` (comprovat per
+  SQL), la fila pròpia queda desactivada, i CA↔ES repinten bé sense clau crua. Trobada i corregida
+  de pas una incidència menor: `edit_role_tooltip` tenia un valor vell a `app_texts` ("Clica per
+  canviar rol", d'quan el control era un clic, no un desplegable) que guanyava al nou text del
+  codi — actualitzat a Test als dos idiomes.
 
 ## 9. Riscos vius
 

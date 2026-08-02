@@ -74,7 +74,7 @@ export async function loadAllData() {
     // password NO es demana (2026-07-26): la columna ja no és llegible pel
     // client (REVOKE, sql/2026-07-26_login_seguretat_fem_login.sql) — el
     // login passa per fem_login(), que la verifica al servidor.
-    sb.from('users').select('id,display_name,email,role,created_at').order('id', { ascending: true }),
+    sb.from('users').select('id,display_name,email,role,zampa_role,created_at').order('id', { ascending: true }),
     // uploads_enabled/voting_enabled ja existien a la taula però eren lletra
     // morta fins la Fase 2 — ara SÍ que en depèn el mirall de state.settings.
     // cal_upload_start/end, cal_voting_start/end, upload_mode, voting_mode:
@@ -133,6 +133,7 @@ export async function loadAllData() {
     email:    u.email || '',
     username: u.email || '',
     role:     u.role || 'participant',
+    zampa_role: u.zampa_role || 'user',
     created_at: u.created_at || '',
   }));
 
@@ -280,7 +281,7 @@ export async function saveUsers() {
   return !error;
 }
 
-// Efficient single-user update (used by toggleRole, inlineEditName)
+// Efficient single-user update (used by changeRole, changeZampaRole, inlineEditName)
 export async function updateUser(userId, fields) {
   const { error } = await sb.from('users').update(fields).eq('id', userId);
   if (error) console.error('updateUser error', error);
@@ -464,13 +465,6 @@ export function getVotingProgress(objectiveId) {
 // ═══════════════════════════════════
 // PARTICIPANT NUMBER (anonymous) + helpers de usuario
 // ═══════════════════════════════════
-export function hasUserVoted(userId) {
-  const user = state.users.find(u => u.id === userId);
-  if (!user) return false;
-  // Check if this user has at least one vote
-  return state.votes.some(v => v.userId === userId);
-}
-
 export function getParticipantNumber(userId) {
   // Incluye a todos los usuarios (admin también participa)
   const idx = state.users.findIndex(u => u.id === userId);
