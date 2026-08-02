@@ -45,26 +45,34 @@ abans de tocar res de Zampa**, no re-derivar el context.
 
 ### Filtre d'alta — cens de socis FEM
 
-✅ **Fet i verificat a Test (02/08/2026).** ⬜ **Pendent aplicar a Normal.**
+✅ **Fet i verificat als dos entorns (Test 02/08/2026, Normal 02/08/2026).**
 
 Ningú pot crear-se un compte si el seu email no és a `socis_fem_autoritzats` (taula nova,
 admin-only per RLS, independent de `users`). `fem_register_account()` ho comprova abans de
 crear cap fila i, si l'email hi és, en pren també el rol per defecte — ja no és sempre
 `participant`, es pot pre-autoritzar un Expert abans que s'hagi registrat mai. Gestió
 d'altes/baixes/canvi de rol del cens des d'una subpestanya nova, Admin → Socis → **Socis FEM**,
-sense RPC pròpia (la mateixa RLS admin-only ja n'hi ha prou). Detall complet, la decisió taula
-a part vs. columna a `users`, i la verificació, a §1.6.
+sense RPC pròpia (la mateixa RLS admin-only ja n'hi ha prou). Càrrega inicial: els emails que
+ja tenien compte (52 a Test, 41 a Normal); **pendent afegir-hi els socis de la FEM encara no
+usuaris de l'app** quan Enric passi la llista. Detall complet, la decisió taula a part vs.
+columna a `users`, i la verificació, a §1.6.
 
 ### Navegació
 
-⬜ **Sense començar.** Verificat per `grep` a tot `js/` i `index.html`: cap ús de
-`pushState`, `replaceState`, `hash` ni `popstate`. Les pantalles (`router.js`) i els
-subpanells (`participant.js`) són pur `classList`. Conseqüència: refrescar torna sempre a la
-pantalla d'inici, i el botó enrere surt de l'app en lloc de moure's per dins.
+✅ **Fet i verificat (02/08/2026).** Opció B de §2.3 implementada: routing per `hash`
+(`js/core/navigation.js`), incremental — pantalles principals (`#admin`, `#participant`) i tots
+els subpanells de participant (`#participant/voting`, `/gallery`, `/resultats`...). Cada
+`showXxx()` ja existent registra la seva ruta i la desa amb `pushState` en navegar-hi de debò
+(deduplicat: repintar el mateix panell des del polling no afegeix entrades). Un `popstate`
+repinta el panell corresponent en lloc de deixar sortir l'usuari de l'app. Pestanyes internes de
+l'admin (`switchTab`) **fora d'abast a propòsit** — es pot ampliar després.
 
-No és destructiu (els vots es desen al clic), però és de les coses que més desconcerten
-l'usuari. Proposta a §2.3: routing per `hash` amb `popstate` cridant les funcions
-`showXxx()` que ja existeixen, incremental (participant primer).
+Cas parat especial: `state.adminViewingAsParticipant` ("veure com a participant") només viu en
+memòria, mai s'ha persistit. Sense tenir-ho en compte, un admin que refresqués mentre veia un
+panell de participant queia sempre al seu panell d'admin encara que el fragment digués on era.
+Es reconstrueix a l'arrencada a partir de la pròpia ruta del fragment: si la ruta és de
+participant i qui hi entra és un admin real, és que hi era per aquest camí (vegeu
+`restoreRouteOrDefault` a `navigation.js`).
 
 ---
 
@@ -1346,15 +1354,19 @@ Amb comptes i emails d'un sol ús, esborrats després:
 | Canvi d'idioma CA↔ES amb la pestanya oberta | Selects de rol i taula es repinten (calia enganxar `renderSocisFemTable` a `applyTranslations()`, com ja fa `renderMembersTable`) |
 | `color-scheme: dark` aplicat de veritat | Confirmat per `getComputedStyle()`, no només visualment |
 
-### Estat: Test tancat, Normal pendent
+### Estat: tancat als dos entorns (02/08/2026)
 
-Migració i codi de client aplicats i verificats només a **Test**. Falta: aplicar
-`sql/2026-08-02_socis_fem_autoritzats.sql` a Normal (carregarà els 41 emails actuals amb el
-seu rol), i carregar-hi els socis de la FEM encara no usuaris de l'app quan Enric passi la
-llista — es pot fer per SQL directe, sense esperar cap pantalla, com ja es va fer amb la
-càrrega inicial. `fem_admin_create_member` (l'alta feta per l'admin des del panell) es queda
-**sense aquest filtre a propòsit** — decisió d'Enric: l'admin ja és una barrera de confiança i
-ha de poder donar d'alta algú puntualment encara que hi hagi un despistat al cens.
+Migració i codi de client aplicats i verificats a **Test** (52 emails carregats) i **Normal**
+(41 emails carregats), el mateix dia. A Normal es va verificar només el camí de rebuig
+(`not_authorized` amb un email de prova, cap fila creada) — el camí d'acceptació no es va
+tornar a provar en producció perquè és exactament el mateix codi ja verificat de cap a cap a
+Test, i crear-hi un compte real només per provar-ho hauria estat un risc innecessari.
+
+Falta: carregar-hi els socis de la FEM encara no usuaris de l'app quan Enric passi la llista
+— es pot fer per SQL directe, sense esperar cap pantalla ni una altra migració, com ja es va
+fer amb la càrrega inicial. `fem_admin_create_member` (l'alta feta per l'admin des del panell)
+es queda **sense aquest filtre a propòsit** — decisió d'Enric: l'admin ja és una barrera de
+confiança i ha de poder donar d'alta algú puntualment encara que hi hagi un despistat al cens.
 
 ---
 

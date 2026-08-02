@@ -15,6 +15,7 @@ import { renderObjectivesList } from '../features/tematiques.js';
 import { applyAllActiveCalendars } from '../features/calendari.js';
 import { refreshAdminDashboard } from '../screens/admin.js';
 import { refreshParticipantDashboard, showParticipantMain } from '../screens/participant.js';
+import { registerRoute, recordRoute, registerRoleChrome } from './navigation.js';
 
 // ── BOTTOM NAV HELPERS ──
 export function setActiveNav(id) {
@@ -39,6 +40,7 @@ export function showScreen(name) {
 }
 
 export function showAdminScreen() {
+  recordRoute('admin');
   startAutoRefresh();
   showScreen('admin');
   applyTranslations();
@@ -53,7 +55,12 @@ export function showAdminScreen() {
   if (typeof window.renderTextsList === 'function') window.renderTextsList();
 }
 
-export function showParticipantScreen() {
+// Part de showParticipantScreen() que NO depèn de quin panell s'acabarà
+// mostrant (capçalera, insígnia de rol, calendaris...). Separada perquè la
+// restauració de ruta en refrescar (navigation.js) l'ha de cridar igual per
+// tornar directament a un panell concret (p. ex. Galeria) sense passar
+// primer per la pantalla principal.
+function _initParticipantChrome() {
   startAutoRefresh();
   showScreen('participant');
   applyTranslations();
@@ -89,7 +96,10 @@ export function showParticipantScreen() {
     if (logoutBtn) logoutBtn.style.display = '';
     if (logoutX)   logoutX.style.display   = '';
   }
+}
 
+export function showParticipantScreen() {
+  _initParticipantChrome();
   showParticipantMain();
 }
 
@@ -277,6 +287,9 @@ function _refreshUI() {
 export function stopAutoRefresh() {
   if (autoRefreshTimer) { clearInterval(autoRefreshTimer); autoRefreshTimer = null; }
 }
+
+registerRoute('admin', 'admin', showAdminScreen);
+registerRoleChrome('participant', _initParticipantChrome);
 
 // Exponer en window las funciones usadas desde onclick del HTML
 window.setActiveNav = setActiveNav;

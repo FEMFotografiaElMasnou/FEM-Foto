@@ -8,6 +8,7 @@ import { showToast, showLoader, hideLoader } from '../ui/toast.js';
 import { openModal, closeModal, confirmAction } from '../ui/modals.js';
 import { loadAllData, loadAppTexts } from '../core/data.js';
 import { showScreen, showAdminScreen, showParticipantScreen, stopAutoRefresh } from '../core/router.js';
+import { restoreRouteOrDefault, clearRoute } from '../core/navigation.js';
 
 // ═══════════════════════════════════
 // PERSISTÈNCIA DE SESSIÓ
@@ -89,12 +90,20 @@ async function _authSessionEmail() {
 }
 
 // Entra a l'app amb un usuari ja resolt (comú a tots els camins d'accés).
-function _enterApp(user) {
+// opts.restoreRoute: només al camí automàtic de sessió (arrencada/refresc,
+// vegeu init()) es mira el fragment de l'URL per tornar exactament on era
+// l'usuari (Fase 5). Un login o canvi de BD interactius sempre porten a
+// l'inici del rol, no a on es va deixar l'app fa temps en aquest navegador.
+function _enterApp(user, opts = {}) {
   state.currentUser = user;
   saveSession(user);
   applyTranslations();
-  if (user.role === 'admin') showAdminScreen();
-  else showParticipantScreen();
+  const goHome = () => {
+    if (user.role === 'admin') showAdminScreen();
+    else showParticipantScreen();
+  };
+  if (opts.restoreRoute) restoreRouteOrDefault(goHome);
+  else goHome();
 }
 
 // ═══════════════════════════════════
@@ -147,7 +156,7 @@ export async function init() {
         _startRecoveryFlow(fullUser);
         return;
       }
-      _enterApp(fullUser);
+      _enterApp(fullUser, { restoreRoute: true });
       return; // no mostrem la pantalla de login
     }
     // Sessió d'Auth d'algú que ja no té fila a public.users (baixa feta des
@@ -162,7 +171,7 @@ export async function init() {
   if (saved && saved.id) {
     const fullUser = state.users.find(u => u.id === saved.id);
     if (fullUser) {
-      _enterApp(fullUser);
+      _enterApp(fullUser, { restoreRoute: true });
       return;
     }
     clearSession(); // sessió invàlida (l'usuari ja no existeix)
@@ -390,6 +399,7 @@ export function _resetToLoginScreen() {
   state.currentUser = null;
   clearSession();
   state.adminViewingAsParticipant = false;
+  clearRoute();
   showScreen('login');
   document.getElementById('login-user').value = '';
   document.getElementById('login-pass').value  = '';

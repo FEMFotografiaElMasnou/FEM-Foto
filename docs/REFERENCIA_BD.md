@@ -22,7 +22,7 @@ estructura; on hi hagi diferències, es diu explícitament.
 | `users` | 9 | Socis. **Compartida amb l'app Zampa** — vegeu l'avís de sota |
 | `app_settings` | 5 | Configuració clau/valor + mirall dels punts de la Classificació General |
 | `app_texts` | 4 | Textos editables de l'app, per idioma (`jsonb`) |
-| `socis_fem_autoritzats` | 3 | Cens de socis FEM autoritzats a donar-se d'alta (`email`, `rol_per_defecte`). **Només a Test** — vegeu avís de sota |
+| `socis_fem_autoritzats` | 3 | Cens de socis FEM autoritzats a donar-se d'alta (`email`, `rol_per_defecte`) |
 
 **`objectives`** — `id`, `name`, `description`, `status` (`active`/`finished`/`inactive`),
 `created_by`, `start_date`/`end_date` (creació i finalització del repte, **no** el calendari),
@@ -77,15 +77,17 @@ de la migració d'Auth).
 > `GRANT` després del `REVOKE` de tota la taula). Conseqüència pràctica: **`select('*')` sobre
 > `users` falla** per a qualsevol client. Cal enumerar sempre les columnes.
 
-> 🚧 **`socis_fem_autoritzats` (02/08/2026, `sql/2026-08-02_socis_fem_autoritzats.sql`) existeix
-> avui NOMÉS a Test.** Pendent aplicar a Normal — vegeu `sql/README.md`. Filtre d'alta: si
-> l'email no hi és, `fem_register_account()` retorna `not_authorized` sense crear res. Taula
-> independent de `users` a propòsit (`users` és compartida amb Zampa i una fila hi vol dir
-> "compte real"; el cens ha d'incloure socis que encara no en tenen cap). RLS només-admin (ni
-> `anon` ni `authenticated` normal la poden llegir directament): l'accés d'admin des del panell
-> (Admin → Socis → *Socis FEM*) és `sb.from('socis_fem_autoritzats')` directe, sense RPC pròpia,
-> igual que ja fan `objectives`/`photo_submissions`. Detall i decisió (taula a part vs. columna a
-> `users`) a `ANALISI_Login_Navegacio.md` §1.6.
+> 🚧 **`socis_fem_autoritzats` (02/08/2026, `sql/2026-08-02_socis_fem_autoritzats.sql`), aplicada
+> als dos entorns.** Filtre d'alta: si l'email no hi és, `fem_register_account()` retorna
+> `not_authorized` sense crear res. Taula independent de `users` a propòsit (`users` és
+> compartida amb Zampa i una fila hi vol dir "compte real"; el cens ha d'incloure socis que
+> encara no en tenen cap). RLS només-admin (ni `anon` ni `authenticated` normal la poden llegir
+> directament): l'accés d'admin des del panell (Admin → Socis → *Socis FEM*) és
+> `sb.from('socis_fem_autoritzats')` directe, sense RPC pròpia, igual que ja fan
+> `objectives`/`photo_submissions`. Càrrega inicial: els emails que ja tenien compte (52 a Test,
+> 41 a Normal); **pendent afegir-hi els socis de la FEM encara no usuaris de l'app** quan Enric
+> passi la llista. Detall i decisió (taula a part vs. columna a `users`) a
+> `ANALISI_Login_Navegacio.md` §1.6.
 
 ### Mortes, encara presents
 
@@ -115,7 +117,7 @@ l'app**: tot el que el client no pot fer directament (per RLS) hi passa pel mig.
 | `fem_login(identity, password)` | anon, auth | Valida contrasenya al servidor i retorna dades no sensibles. **Camí de reserva** des del Pas 4b. Una contrasenya buida a la BD retorna `invalid` (abans `reset_required`) |
 | `fem_is_admin()` | anon, auth | `true` si `auth.uid()` és d'un admin. Base de les polítiques RLS |
 | `fem_current_user_id()` | anon, auth | `users.id` de la sessió actual |
-| `fem_register_account(name, email, password)` | anon, auth | Auto-registre. **Des del 02/08/2026, només a Test**: rebutja amb `not_authorized` qualsevol email fora de `socis_fem_autoritzats`, i el rol ja no és sempre `participant` — el pren de `rol_per_defecte` del cens |
+| `fem_register_account(name, email, password)` | anon, auth | Auto-registre. **Des del 02/08/2026**: rebutja amb `not_authorized` qualsevol email fora de `socis_fem_autoritzats`, i el rol ja no és sempre `participant` — el pren de `rol_per_defecte` del cens |
 | `fem_admin_create_member(name, email, password, role)` | anon*, auth | "Nou Soci" des del panell. Gated per `fem_is_admin()` |
 | `fem_delete_account(user_id)` | **auth** | Baixa (admin o un mateix). Esborra `public.users` **i** `auth.users` |
 | `fem_bootstrap_admin(name, email, password)` | anon, auth | Primer admin + `app_settings`. Només amb `users` buida |
@@ -196,7 +198,7 @@ Totes les taules tenen RLS activada. Des del Pas 3b/3c (27/07/2026), les políti
 taules de FEM-Foto es basen en `auth.uid()` a través de `users.auth_user_id`, no en
 `USING(true)`. Nombre de polítiques per taula: `users` 6, `objectives` 4, `photo_submissions`
 4, `votes` 4, `seguiment_votacio` 3, `app_settings` 3, `app_texts` 2, `socis_fem_autoritzats`
-4 (SELECT/INSERT/UPDATE/DELETE, totes quatre `fem_is_admin()` — a Test només, vegeu més amunt).
+4 (SELECT/INSERT/UPDATE/DELETE, totes quatre `fem_is_admin()`).
 
 Pendent (Pas 4d): eliminar `users_insert_*` i `users_delete_*`, que són l'últim camí
 d'escriptura anònima a `public.users`. **Bloquejat** fins a comprovar si Zampa dona altes pel

@@ -10,6 +10,7 @@ import './core/config.js';
 import { applyTranslations } from './core/i18n.js';
 import './core/data.js';
 import './core/router.js';
+import { initRoutingListener } from './core/navigation.js';
 
 // ── UI ──
 import './ui/toast.js';
@@ -49,5 +50,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const testBanner = document.getElementById('login-test-banner');
   if (testBanner && _dbMode === 'test') testBanner.style.display = 'block';
   _updateTestStamp();  // Segell TEST global (visible només en mode test)
+  initRoutingListener(); // Enrere/Endavant del navegador (Fase 5)
   init();              // Then load data
 });

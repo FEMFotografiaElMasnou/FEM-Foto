@@ -8,6 +8,7 @@ import { renderVotingGrid, updateVoteButtonsState, isVotingSubmitted, renderPunt
 import { renderResultatsRepte, objectiveHasExpertVoting, renderClassificacioGeneral, renderValoracioRepte, renderTaulaClassificacio } from '../features/ranking.js';
 import { updateUploadSection, _formatDateEs, _formatDateSlash } from '../features/fotos.js';
 import { setActiveNav, switchTab } from '../core/router.js';
+import { registerRoute, recordRoute } from '../core/navigation.js';
 import { populateGalleryFilters, renderGallery, startGalleryCarousel, stopGalleryCarousel } from '../features/galeria.js';
 import { getActiveCalendar } from '../features/calendari.js';
 import { getVotingProgress } from '../core/data.js';
@@ -45,6 +46,7 @@ function _hideAllParticipantPanels() {
 }
 
 export function showParticipantMain() {
+  recordRoute('participant');
   _hideAllParticipantPanels();
   document.getElementById('participant-panel-main').classList.remove('hidden');
   setActiveNav('bnav-home');
@@ -72,6 +74,7 @@ export function showParticipantVoting() {
     showToast(t('no_photos_published_toast'), 'info');
     return;
   }
+  recordRoute('participant/voting');
   _hideAllParticipantPanels();
   document.getElementById('participant-panel-voting').classList.remove('hidden');
   setActiveNav('bnav-vote');
@@ -135,6 +138,7 @@ function _renderVotingHeaderInto(titleId, statusId) {
 // real — no necessita desplegable de repte com Valoració Repte/Resultat
 // Repte (que llisten reptes finalitzats).
 export function showParticipantPuntuacioRepte() {
+  recordRoute('participant/puntuacio');
   _hideAllParticipantPanels();
   document.getElementById('participant-panel-puntuacio-repte').classList.remove('hidden');
   // 'bnav-vote', no 'bnav-rank' (Pas D): des que aquesta pantalla és la
@@ -151,6 +155,7 @@ export function showParticipantPuntuacioRepte() {
 }
 
 export function showParticipantGallery() {
+  recordRoute('participant/gallery');
   _hideAllParticipantPanels();
   document.getElementById('participant-panel-gallery').classList.remove('hidden');
   populateGalleryFilters();
@@ -192,6 +197,7 @@ function _resultatsScope(objId) {
 }
 
 export function showParticipantResultats() {
+  recordRoute('participant/resultats');
   _hideAllParticipantPanels();
   document.getElementById('participant-panel-resultats').classList.remove('hidden');
   setActiveNav('bnav-rank');
@@ -249,6 +255,7 @@ function _valoracioScope(objId) {
 }
 
 export function showParticipantValoracioRepte() {
+  recordRoute('participant/valoracio');
   _hideAllParticipantPanels();
   document.getElementById('participant-panel-valoracio-repte').classList.remove('hidden');
   setActiveNav('bnav-rank');
@@ -307,6 +314,7 @@ function _classificacioScope() {
 }
 
 export function showParticipantClassificacioGeneral() {
+  recordRoute('participant/classificacio');
   _hideAllParticipantPanels();
   document.getElementById('participant-panel-classificacio').classList.remove('hidden');
   setActiveNav('bnav-rank');
@@ -336,6 +344,7 @@ function _taulaClassificacioScope() {
 }
 
 export function showParticipantTaulaClassificacio() {
+  recordRoute('participant/taula-classificacio');
   _hideAllParticipantPanels();
   document.getElementById('participant-panel-taula-classificacio').classList.remove('hidden');
   setActiveNav('bnav-rank');
@@ -538,6 +547,15 @@ function _updateSistemaBadges(isAdminRole, nou) {
   const mosaicBadge = document.getElementById('vote-mosaic-badge');
   if (mosaicBadge) mosaicBadge.textContent = nou ? '0-10' : '3×5';
 }
+
+registerRoute('participant', 'participant', showParticipantMain);
+registerRoute('participant/voting', 'participant', showParticipantVoting);
+registerRoute('participant/puntuacio', 'participant', showParticipantPuntuacioRepte);
+registerRoute('participant/gallery', 'participant', showParticipantGallery);
+registerRoute('participant/resultats', 'participant', showParticipantResultats);
+registerRoute('participant/valoracio', 'participant', showParticipantValoracioRepte);
+registerRoute('participant/classificacio', 'participant', showParticipantClassificacioGeneral);
+registerRoute('participant/taula-classificacio', 'participant', showParticipantTaulaClassificacio);
 
 // Exponer en window las funciones usadas desde onclick del HTML
 window.showParticipantMain = showParticipantMain;

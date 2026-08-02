@@ -284,9 +284,9 @@ prova vivint per accident.**
 
 ## Fora d'abast, a posta
 
-- **Navegació** (refrescar torna a l'inici, el botó enrere surt de l'app). Conegut, sense
-  començar, proposta a `ANALISI_Login_Navegacio.md` §2.3. **No** es compta com a incidència
-  d'aquesta fase.
+- **Navegació** (refrescar torna a l'inici, el botó enrere surt de l'app). **No** es va comptar
+  com a incidència d'aquesta fase per ser transversal, no pròpia del Bloc 5/6 — resolta després,
+  fora de la numeració de fases (`ANALISI_Login_Navegacio.md`, secció Navegació).
 - **Pas 4d** de la migració d'Auth: bloquejat per Zampa.
 - **Site URL de Supabase**: es canvia el dia del tall, no abans (`docs/TALLS.md`).
 - El **redisseny** de les pantalles de resultat per al sistema d'1 concepte: backlog, no regressió.

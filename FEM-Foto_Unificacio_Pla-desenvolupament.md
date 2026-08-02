@@ -109,8 +109,8 @@ Fora de la numeració de fases. Anàlisi completa a `ANALISI_Login_Navegacio.md`
 | Bloc | Estat |
 |---|---|
 | **Autenticació** — migració a Supabase Auth | 🔄 Passos 1, 2, 3a-3c i 4a-4c fets, verificats als dos entorns i desplegats, més el **Reset de contrasenya de l'admin** (28/07, contrasenya temporal en lloc de buida — `ANALISI_Login_Navegacio.md` §1.5). Falta **4d** (retirar el sistema antic), bloquejat per una comprovació prèvia a Zampa |
-| **Navegació** — refresc i botó enrere | ⬜ Sense començar. No hi ha cap `pushState`/`hash` a l'app: refrescar torna sempre a l'inici i el botó enrere surt de l'app |
-| **Seguretat** — filtre d'alta (cens de socis FEM) | ✅ Fet i verificat a **Test** (02/08/2026). ⬜ **Pendent Normal** |
+| **Navegació** — refresc i botó enrere | ✅ Fet i verificat (02/08/2026). Routing per `hash` (`js/core/navigation.js`): refrescar es queda al mateix panell i el botó enrere navega per dins l'app. Detall a `ANALISI_Login_Navegacio.md`, secció Navegació |
+| **Seguretat** — filtre d'alta (cens de socis FEM) | ✅ Fet i verificat als **dos entorns** (02/08/2026) |
 
 El que ha canviat per als socis amb la migració d'Auth: la sessió es manté oberta fins que es
 prem "Sortir", i qui no pot entrar se'n surt sol per correu (contrasenya nova o enllaç màgic)
@@ -125,8 +125,9 @@ canvi de rol del cens des d'una subpestanya nova a Admin → Socis → **Socis F
 pròpia (la mateixa RLS n'hi ha prou, com ja passa a Reptes/Fotos). De pas, arreglats els
 desplegables de rol (aquí i a la gestió d'usuaris existent) que es pintaven amb fons blanc del
 sistema en lloc del fosc de la resta de l'app. Decisió (taula a part vs. columna a `users`),
-detall tècnic i verificació a `ANALISI_Login_Navegacio.md` §1.6. Migració aplicada només a
-**Test**; **Normal pendent**, vegeu `sql/README.md`.
+detall tècnic i verificació a `ANALISI_Login_Navegacio.md` §1.6. Migració aplicada als **dos
+entorns** (02/08/2026, vegeu `sql/README.md`). Pendent: carregar-hi els socis de la FEM encara
+no usuaris de l'app quan Enric passi la llista.
 
 ## 7. Què queda pendent de decidir
 
