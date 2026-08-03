@@ -80,6 +80,8 @@ export const TRANSLATIONS = {
     member_zampa_role: 'Zampa',
     // Socis FEM autoritzats (cens que filtra l'auto-registre)
     members_tab_appusers: 'Usuaris app', members_tab_fem: 'Socis FEM',
+    members_search_placeholder: 'Cerca per nom o email...',
+    no_members_found: 'Cap soci coincideix amb la cerca.',
     socis_fem_title: 'Cens de socis FEM autoritzats',
     socis_fem_subtitle: "Només els emails d'aquesta llista es poden donar d'alta a l'app.",
     socis_fem_email_placeholder: 'nou.email@exemple.cat',
@@ -512,6 +514,8 @@ export const TRANSLATIONS = {
     member_zampa_role: 'Zampa',
     // Socios FEM autorizados (censo que filtra el auto-registro)
     members_tab_appusers: 'Usuarios app', members_tab_fem: 'Socios FEM',
+    members_search_placeholder: 'Busca por nombre o email...',
+    no_members_found: 'Ningún socio coincide con la búsqueda.',
     socis_fem_title: 'Censo de socios FEM autorizados',
     socis_fem_subtitle: 'Solo los emails de esta lista pueden darse de alta en la app.',
     socis_fem_email_placeholder: 'nuevo.email@ejemplo.cat',

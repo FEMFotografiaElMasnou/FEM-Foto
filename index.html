@@ -284,9 +284,15 @@
 
     <!-- TAB: SOCIS -->
     <div id="admin-tab-members" class="tab-content">
-      <div class="tab-nav">
-        <button type="button" class="tab-btn active" id="members-subtab-btn-appusers" onclick="showMembersSubTab('appusers')" data-i18n="members_tab_appusers">Usuaris app</button>
-        <button type="button" class="tab-btn" id="members-subtab-btn-fem" onclick="showMembersSubTab('fem')" data-i18n="members_tab_fem">Socis FEM</button>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px;">
+        <div class="tab-nav" style="margin-bottom:0;">
+          <button type="button" class="tab-btn active" id="members-subtab-btn-appusers" onclick="showMembersSubTab('appusers')" data-i18n="members_tab_appusers">Usuaris app</button>
+          <button type="button" class="tab-btn" id="members-subtab-btn-fem" onclick="showMembersSubTab('fem')" data-i18n="members_tab_fem">Socis FEM</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex:1 1 240px;min-width:180px;max-width:320px;">
+          <input type="text" id="members-search" oninput="filterMembers(this.value)" data-i18n-placeholder="members_search_placeholder" placeholder="Cerca per nom o email..." style="width:100%;background:rgba(4,9,30,0.6);border:1px solid var(--border2);border-radius:8px;padding:0 16px;height:48px;color:var(--text);font-family:var(--font-body);font-size:15px;outline:none;">
+          <span id="members-search-count" style="font-size:12px;color:var(--text-muted);white-space:nowrap;"></span>
+        </div>
       </div>
 
       <!-- SUBTAB: USUARIS APP (gestió de comptes existents, com fins ara) -->

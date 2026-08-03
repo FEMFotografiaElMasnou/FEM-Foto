@@ -139,13 +139,39 @@ export async function copyTempPassword() {
 // ═══════════════════════════════════
 // MEMBERS
 // ═══════════════════════════════════
+// Cercador de la pestanya Socis: un input compartit entre les dues
+// subpestanyes (Usuaris app / Socis FEM), amb un terme guardat per cadascuna
+// perquè canviar de subpestanya no esborri la cerca de l'altra.
+let _activeMembersSubtab = 'appusers';
+const _membersSearchTerm = { appusers: '', fem: '' };
+
+function _updateMembersSearchCount(shown, total, term) {
+  const countEl = document.getElementById('members-search-count');
+  if (countEl) countEl.textContent = term ? `${shown} / ${total}` : '';
+}
+
+export function filterMembers(term) {
+  _membersSearchTerm[_activeMembersSubtab] = term || '';
+  if (_activeMembersSubtab === 'fem') renderSocisFemTable();
+  else renderMembersTable();
+}
+
 export function renderMembersTable() {
   const tbody = document.getElementById('members-tbody');
-  if (state.users.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted);">${t('no_members')}</td></tr>`;
+  const term  = _membersSearchTerm.appusers.trim().toLowerCase();
+  const users = term
+    ? state.users.filter(u =>
+        (u.name || '').toLowerCase().includes(term) ||
+        String(u.email || u.username || '').toLowerCase().includes(term))
+    : state.users;
+
+  if (_activeMembersSubtab === 'appusers') _updateMembersSearchCount(users.length, state.users.length, term);
+
+  if (users.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted);">${t(term ? 'no_members_found' : 'no_members')}</td></tr>`;
     return;
   }
-  tbody.innerHTML = state.users.map((u, idx) => {
+  tbody.innerHTML = users.map((u, idx) => {
     const isSelf = u.id === state.currentUser.id;
     return `
       <tr>
@@ -325,10 +351,16 @@ export function showMembersSubTab(tab) {
   const btn     = document.getElementById(`members-subtab-btn-${tab}`);
   if (content) content.classList.add('active');
   if (btn) btn.classList.add('active');
+
+  _activeMembersSubtab = tab;
+  const searchInput = document.getElementById('members-search');
+  if (searchInput) searchInput.value = _membersSearchTerm[tab];
+
   // Es carrega a demanda, no dins loadAllData(): la RLS només la deixa
   // llegir a un admin, així que per a qualsevol participant seria una
   // consulta buida i inútil en cada auto-refresh.
   if (tab === 'fem') loadSocisFemAutoritzats();
+  else renderMembersTable();
 }
 
 export async function loadSocisFemAutoritzats() {
@@ -347,11 +379,18 @@ export async function loadSocisFemAutoritzats() {
 export function renderSocisFemTable() {
   const tbody = document.getElementById('socis-fem-tbody');
   if (!tbody) return;
-  if (state.socisAutoritzats.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--text-muted);">${t('socis_fem_empty')}</td></tr>`;
+  const term = _membersSearchTerm.fem.trim().toLowerCase();
+  const rows = term
+    ? state.socisAutoritzats.filter(s => (s.email || '').toLowerCase().includes(term))
+    : state.socisAutoritzats;
+
+  if (_activeMembersSubtab === 'fem') _updateMembersSearchCount(rows.length, state.socisAutoritzats.length, term);
+
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--text-muted);">${t(term ? 'no_members_found' : 'socis_fem_empty')}</td></tr>`;
     return;
   }
-  tbody.innerHTML = state.socisAutoritzats.map(s => `
+  tbody.innerHTML = rows.map(s => `
     <tr>
       <td style="font-family:var(--font-mono);font-size:12px;">${s.email}</td>
       <td>
@@ -426,6 +465,7 @@ export function removeSociFemAutoritzat(email) {
 
 // Exponer en window las funciones usadas desde onclick del HTML
 window.showMembersSubTab = showMembersSubTab;
+window.filterMembers = filterMembers;
 // Exposada perquè applyTranslations() (i18n.js) repinti aquesta taula en
 // canviar d'idioma (el select de rol es genera amb t(), no amb data-i18n).
 window._refreshSocisFemTable = renderSocisFemTable;
