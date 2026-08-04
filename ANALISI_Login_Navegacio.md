@@ -26,7 +26,7 @@
 | Pas 4b · Auth decideix l'accés; sessió persistent | ✅ |
 | Pas 4c · recuperació per correu i enllaç màgic | ✅ |
 | Reset de l'admin · contrasenya temporal (§1.5) | ✅ |
-| **Pas 4d · retirada del sistema antic** | ⬜ **Pendent**, bloquejat |
+| **Pas 4d · retirada del sistema antic** | ✅ **Fet als dos entorns (04/08/2026)** |
 
 Tot el que està ✅ està aplicat als **dos** projectes, verificat i desplegat.
 
@@ -35,13 +35,12 @@ Tot el que està ✅ està aplicat als **dos** projectes, verificat i desplegat.
 resol contra `state.users`, perquè Auth només entén emails). `fem_login()` queda com a camí
 de reserva per a **un** cas legítim: comptes sense parella a `auth.users`. (El segon cas que
 cobria —contrasenya reiniciada per un admin— va desaparèixer el 28/07/2026 amb §1.5.) La sessió
-és persistent: dura fins que es prem "Sortir".
+és persistent: dura fins que es prem "Sortir". Des del 04/08/2026, aquest camí de reserva ja no
+és cridable a cap dels dos entorns (`fem_login()` sense `EXECUTE` per a `anon`/`authenticated`)
+— detall a §1.7.
 
-**Què bloqueja el Pas 4d**: cal comprovar **Zampa** abans de buidar `users.password` i
-d'eliminar les polítiques `users_insert_*`/`users_delete_*`. Zampa comparteix la taula `users`
-i podria estar comparant la contrasenya en clar des del seu client, o donant altes pel seu
-compte. Hi ha una nota de traspàs autònoma escrita al final de §1.4 — **llegir-la sencera
-abans de tocar res de Zampa**, no re-derivar el context.
+**Pas 4d, desbloquejat (04/08/2026)**: la comprovació a Zampa que el bloquejava des del 27/07 ja
+s'ha fet — codi font revisat en local, no per suposició. Detall complet a §1.7.
 
 ### Filtre d'alta — cens de socis FEM
 
@@ -1390,6 +1389,78 @@ només existeix `contacto@joseantoniosancho.com` (2 fotos publicades) —
 encara tots dos** (`sanchopastor@gmail.com` amb 1 foto, `contacto@joseantoniosancho.com` amb
 0) — el mateix fitxer ja deixava constància que a Test no calia tocar-ho perquè no reproduïa el
 problema. Cap acció pendent a Normal.
+
+---
+
+## 1.7 Pas 4d — retirada del sistema antic de contrasenyes (04/08/2026)
+
+Bloquejat des del 27/07/2026 per la nota de traspàs de §1.4: calia comprovar Zampa abans de
+buidar `users.password` i de retirar les polítiques `users_insert_*`/`users_delete_*`, perquè
+Zampa comparteix `public.users` i podia estar comparant la contrasenya en clar o donant altes
+pel seu compte. Es va deixar escrit per no haver de re-derivar el context en una sessió futura.
+
+### La comprovació (codi font, no suposició)
+
+Enric té el repo de Zampa en local (`_Apps/FEM-Zampa`). Llegit directament, no assumit:
+
+- **El login de Zampa és mort des del 26/07/2026**, abans i independentment d'aquest pas.
+  Triple confirmació: (1) `sql/2026-07-26_login_seguretat_fem_login.sql` va revocar `SELECT`
+  sobre `users.password` per a `anon`/`authenticated`; (2) el propi `select()` de Zampa
+  (`App.tsx:150-152`) ni tan sols demana la columna `password`; (3) la comparació
+  (`u.password && u.password.trim() === ...`) és sempre `false` amb `u.password` `undefined`.
+  Ningú s'hi ha pogut identificar des d'aleshores.
+- **Però `handleRegister()` (App.tsx:256-308), independent del login, seguia funcionant.**
+  Insereix directament a `public.users` amb la clau anon
+  (`client.from('users').insert([newUser])`), sense passar mai per `fem_register_account()` —
+  saltant-se el cens de socis FEM (§1.6) i deixant una fila sense `auth_user_id` que encara
+  podia entrar a **FOTO i a REPTES** pel camí de reserva `fem_login()` (que no comprova cap
+  cens, no és un procediment d'alta). **Forat real, trobat mentre es feia la comprovació que
+  calia fer igualment** — no és el que originalment es buscava, però hi és.
+- **Comprovat que no s'havia fet servir**: 0 files amb `auth_user_id IS NULL` a Normal (41/41)
+  i a Test (52/52) abans d'aplicar res.
+- **FEM-Reptes (codi font local, `_Apps/FEM-Reptes`), comprovat també**: no llegeix mai
+  `users.password` (només comentaris històrics), no fa cap `INSERT`/`DELETE` directe sobre
+  `users` — tot passa per les mateixes RPC que FOTO (`fem_admin_create_member`,
+  `fem_delete_account`, `fem_register_account`, `fem_admin_reset_password`,
+  `fem_admin_set_email/password`), totes `SECURITY DEFINER`, no els afecta cap canvi de RLS.
+  Sí que crida `fem_login()` com a camí de reserva (`login.js:187`), però amb `rpcError`
+  capturat i degradat al mateix missatge de "credencials incorrectes" de sempre
+  (`login.js:192-197`) — revocar-ne l'`EXECUTE` no li canvia cap comportament visible.
+
+### El canvi (`sql/2026-08-04_pas4d_retirada_sistema_antic.sql`)
+
+1. **Buida `public.users.password`** (52/52 files a Test) — cap camí legítim el llegeix ja.
+2. **Retira 4 polítiques RLS**: `users_insert_self_register`, `users_insert_bootstrap`,
+   `users_insert_admin`, `users_delete_admin_or_self`. Cap client legítim (FOTO ni REPTES) en
+   depèn — totes les altes/baixes van per RPC des del Pas 4a. Dues d'elles
+   (`self_register`/`bootstrap`) són exactament les que Zampa feia servir per al forat de dalt;
+   les altres dues exigeixen rol `authenticated`, que Zampa mai arriba a tenir (només fa servir
+   la clau anon, sense `supabase.auth.signIn*`), així que no li tocaven de totes maneres.
+3. **Revoca `EXECUTE` de `fem_login()`** per a `anon`/`authenticated` — no s'esborra la funció
+   (mateix criteri "amagar, no eliminar" ja aplicat a `fem_set_new_password` el 28/07/2026).
+   Amb el pas 2 fet, cap fila nova pot quedar mai sense `auth_user_id`, així que aquest camí de
+   reserva ja no té cap ús legítim pendent.
+
+### Verificació (04/08/2026, crides reals per API amb la clau anon, als dos entorns)
+
+| Comprovació | Test | Normal |
+|---|---|---|
+| `fem_login()` cridada com a `anon` | `42501 permission denied for function fem_login` | Idèntic |
+| `INSERT` directe a `users` estil Zampa (clau anon) | `42501 permission denied for table users` (RLS: cap política aplicable per a `anon`, no un problema de `GRANT` — comprovat amb `information_schema.role_table_grants`, `anon` conserva el `GRANT` de taula) | Idèntic |
+| Login real (`signInWithPassword`) amb un compte de prova | `200`, token d'accés vàlid | Idèntic |
+| `fem_register_account()` (RPC legítima) | S'executa sencera (`email_exists`, l'email ja hi era) | S'executa sencera (`not_authorized`, l'email de prova no és al cens — comprovació diferent, mateixa conclusió: cap error de permisos) |
+
+Comptes de prova d'un sol ús esborrats en acabar (`public.users` i `auth.users`) als dos
+entorns; Test torna a 52/52 i Normal a 41/41, sense orfes.
+
+### Estat: tancat als dos entorns (04/08/2026)
+
+Aplicat i verificat a **Test i Normal el mateix dia**. **Efecte sobre Zampa**: el seu formulari
+de "Registrar-se" començarà a donar error (la RLS ho rebutjarà) — l'única funcionalitat de
+Zampa que aquest canvi trenca de debò, i que avui ja no portava enlloc dins de Zampa mateix
+(ningú es pot tornar a identificar amb el que hi registri, el login és mort). Decisió d'Enric:
+no és conservadora a propòsit — es tira endavant sencer, no per etapes. Res del que toca aquest
+pas l'usa cap camí real de FOTO ni de REPTES, verificat amb el seu codi font, no per suposició.
 
 ---
 

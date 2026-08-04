@@ -103,26 +103,31 @@ resoldre. Ja ha generat consultes reals dels socis abans d'ara — vegeu el punt
 
 ### Abans
 
-- [ ] Fase 4 (proves internes) i Fase 5 (validació amb socis) tancades.
-- [ ] **Fer que cada desplegament nou refresqui l'app sola a qui la tingui oberta**, en lloc de
-      deixar que cadascú topi amb codi vell fins que recarrega a mà. Decisió d'Enric el 02/08/2026:
-      ja ha causat consultes reals de socis abans d'aquesta fase, i amb ~50 persones entrant pel
-      domini del club (no per `fem-foto.vercel.app` triat expressament) el problema es multiplica.
-      Dues maneres raonables de resoldre-ho, a triar abans del tall (no fetes, no decidides):
-      1. **Capçaleres `Cache-Control` a `vercel.json`** perquè el navegador mai serveixi `index.html`
-         ni els mòduls `js/**`/`css/**` de la seva pròpia cache sense revalidar amb el servidor
-         (`no-cache` o `max-age=0, must-revalidate`). Més senzill, cap canvi de codi de l'app.
-      2. **Detecció de versió en calent**: `router.js` ja fa un sondeig cada 30 s
-         (`startAutoRefresh()`); s'hi podria afegir la comprovació d'un número de versió i mostrar
-         un avís de "Hi ha una versió nova, recarrega" (o recarregar sol). Més feina, però resol
-         també el cas d'una pestanya oberta durant hores, que les capçaleres de cache soles no cobreixen.
-      Probablement calguin totes dues: la 1 talla el problema de soca-rel per a qui carrega de nou,
-      la 2 cobreix qui ja el tenia obert. Vegeu la nota tècnica més amunt.
+- [x] **Fase 4 (proves internes) tancada** — **FET el 02/08/2026**, els 10 blocs de
+      `docs/PROVES_Fase4.md` en verd. ~~Fase 5 (validació amb socis)~~ **suprimida (04/08/2026,
+      decisió d'Enric)**: els socis no tenen el nivell tècnic per a aquest tipus de validació: la
+      real ja passa en línia amb en Pablo durant tot el desenvolupament, i cada "fes commit i push"
+      d'Enric és el punt on ho dona per prou validat. Vegeu
+      `FEM-Foto_Unificacio_Pla-desenvolupament.md` §5.
+- [x] **Capçaleres `Cache-Control` a `vercel.json`** — **FET el 03/08/2026** (commit `afaf17a`):
+      `/`, `/index.html`, `/js/(.*)` i `/css/(.*)` serveixen ara `no-cache, must-revalidate`, així
+      que qui carrega (o recarrega) l'app sempre revalida amb el servidor abans de fer servir la
+      seva cache. Això talla el cas de soca-rel: **qui obre l'app de nou** (la majoria de vegades)
+      ja no pot quedar-se amb `index.html`/JS/CSS vells.
+- [x] ~~**Detecció de versió en calent**~~ — **descartada (04/08/2026, decisió d'Enric)**. Cobriria
+      qui ja tenia una pestanya oberta abans d'un desplegament (les capçaleres de cache no hi
+      arriben — no torna a demanar res al servidor fins que no recarrega). Motiu del descart:
+      l'app és d'ús molt poc freqüent —pujar fotos, votar, consultar resultats, unes 2-3
+      setmanes cada ~2 mesos—; a mig procés no es despleguen canvis que calgui forçar a veure, i
+      entre un repte i el següent hi ha temps de sobres perquè l'entrada i sortida esporàdica
+      normal ja renovi l'app tota sola. Amb les capçaleres `Cache-Control` (punt anterior) n'hi ha
+      prou.
 - [x] **Panell de Socis afinat** — **FET el 02/08/2026**. Els tres punts detallats a
       `FEM-Foto_Unificacio_Pla-desenvolupament.md` §8: badge de rol → desplegable de 3 opcions a
       la taula, columna nova de rol Zampa (3 opcions), i "Foto pujada"/"Ha Votat" eliminades.
 - [ ] Tall 1 fet i estable, o decidit explícitament que es fan alhora.
-- [ ] Pas 4d de la migració d'Auth tancat (o decidit que pot esperar).
+- [x] **Pas 4d de la migració d'Auth** — **FET als dos entorns (04/08/2026)**,
+      `ANALISI_Login_Navegacio.md` §1.7.
 - [x] **Redirect URLs de Supabase, als dos projectes** — **FET el 29/07/2026**. Hi ha les 4
       entrades a `FEM_Reptes` (Normal) i a `FEM_Reptes-test` (Test): `fem-foto.vercel.app/**`,
       `localhost:3000/**`, `www.femfotografiaelmasnou.cat/**` i `femfotografiaelmasnou.cat/**`.

@@ -71,9 +71,18 @@ Objectiu: una única aplicació que integri tota la funcionalitat de Reptes més
 | 2 | Integració nativa de Resultats | Es porten "Resultats de Repte" i "Classificació General" a dins de l'app com a pantalles pròpies (nova entrada al menú/router), es retira l'iframe i es deixa un ÚNIC càlcul de rànquing (`ranking.js`). **Estat (25/07/2026):** FET i validat per Enric. Les dues pantalles natives repliquen l'estètica de FEM-Resultats (targetes amb estrelles, taula de Classificació amb miniatures per repte). Iframe i RESULTATS_BASE retirats del tot. |
 | 3 | Nou sistema de puntuació | Canvi d'esquema a la taula `votes` (nova columna de puntuació 0–10), nou control de vot a la UI (1 selector en lloc de 3 files d'estrelles), adaptació de `ranking.js` i del desglossament de resultats. Primer a Supabase Test, després a Normal. **Estat (25/07/2026):** EN CURS. Pas 1 (columna `votes.valoracio` + trigger) i Pas 1b (correcció: valoracio es guarda amb decimals, numeric, no arrodonit a enter) fets i verificats a Test i Normal. Pas 2 (pantalla nova «Valoració Repte», en paral·lel a Resultat Repte, només visible per a comptes admin) FET. Pas 2b (25/07/2026): panell de puntuació propi al visor de fotos («Valoració Repte»), amb disparador ⓘ ancorat a la mateixa foto (no a la pantalla) i taula Votants/Puntuació/Posició; «Resultat Repte» queda intacte amb la seva estrella i cortina de 3 criteris. FET. Pas 3 (25/07/2026): «Taula de Classificació», pantalla nova en paral·lel a Classificació General (intacta), amb el mateix motor de punts per posició alimentat per valoracio en lloc dels 3 criteris — verificat per Enric que dona els mateixos punts i posicions que l'actual, com s'esperava. FET. ⚠️ **Rectificat el 29/07/2026**: aquella comparació era d'un repte «Dominant» i no valia en general — «Escales» donava 19 posicions diferents de 23 per l'arrodoniment de `valoracio`. **Corregit i verificat el mateix dia** (una línia a `getPhotoValoracio()`): per SQL, amb el codi real a Node i a la interfície, amb un repte de prova a Test que reprodueix l'empat. Tot a `docs/PROVES_Fase4.md`, Annex A. Fase 3, pla per passos acordat, tancada. Pas 4 (26/07/2026): nova pantalla «Puntuar Repte» amb el control de captura 0–10 definitiu, FET i validat per Enric — vegeu secció 8. Pendent, sense calendaritzar: el redisseny de les pantalles de resultat per al sistema d'1 sol concepte. |
 | 4 | Proves internes | Validació amb l'entorn de Test, comparant resultats amb Reptes + Resultats actuals per descartar regressions. |
-| 5 | Validació amb els socis | Foto accessible per la URL de Vercel (sense domini públic) perquè Pablo i la resta de socis la revisin sense risc per a la producció actual. |
+| 5 | ~~Validació amb els socis~~ | **Suprimida (04/08/2026, decisió d'Enric)** — vegeu nota sota la taula. |
 | 6 | Tall (cutover) | femfotografiaelmasnou.cat es reapunta cap al projecte Vercel de Foto. Moment sensible: franja de baix ús + pla de reversió del DNS. |
 | 7 | Retirada | Un cop Foto porti un temps estable en producció, s'arxiven (no s'esborren de seguida) els repos i desplegaments de Reptes i Resultats. |
+
+**Fase 5, suprimida (04/08/2026):** el disseny original preveia que Pablo i altres socis
+provessin l'app per la URL de Vercel abans del tall de domini. Decisió d'Enric: els socis no
+tenen el nivell tècnic per fer aquest tipus de validació — no aportaria res de fiable. La
+validació real ja passa contínuament, en línia amb en Pablo, al llarg de tot el desenvolupament;
+i cada **"fes commit i push"** d'Enric és, formalment, el punt on ell dona una cosa per prou
+validada en tots els sentits per quedar-hi. No cal cap fase a part per a això — ja hi és,
+integrada al dia a dia. El **Tall 2 (domini)** ja no depèn de cap "Fase 5 tancada": depèn només
+dels punts tècnics reals de `docs/TALLS.md`.
 
 ## 6. Estat actual (27 de juliol de 2026)
 
@@ -83,8 +92,8 @@ Objectiu: una única aplicació que integri tota la funcionalitat de Reptes més
 | 1 · Bastida | ✅ Fet | Repo `FEM-Foto` i projecte Vercel actius. Desplega a `fem-foto.vercel.app` |
 | 2 · Integració nativa de Resultats | ✅ **Tancada** | Iframe retirat, un únic motor de rànquing. Sense cap dependència de FEM-Resultats |
 | 3 · Nou sistema de puntuació | 🔄 En curs | Passos 1-4 i A-D fets **i desplegats**. El tall ja és **un clic**, no codi: només falta prémer-lo (Normal segueix en «Antic») |
-| 4 · Proves internes | 🔄 Oberta el 29/07/2026 | Guió de proves a `docs/PROVES_Fase4.md` (10 blocs, criteris de verd escrits). Executat el bloc de puntuació: hi va sortir **una regressió real**, corregida i verificada (Annex A). Els blocs 1-6 i 8-10, pendents |
-| 5 · Validació amb els socis | ⬜ | |
+| 4 · Proves internes | ✅ **Tancada (02/08/2026)** | Guió de proves a `docs/PROVES_Fase4.md`. Els 10 blocs en verd (l'últim, Bloc 10, tancat el 02/08/2026 — coexistència amb FEM-Reptes verificada). Pel camí es van trobar i corregir 5 incidències reals (4.2, 5.4, 5.5, 5.6, 7.1); detall a l'Annex A/Registre del document |
+| 5 · ~~Validació amb els socis~~ | ❌ **Suprimida (04/08/2026)** | Vegeu la nota sota la taula de fases, §5 |
 | 6 · Tall de domini | ⬜ | Llista de comprovació a `docs/TALLS.md` |
 | 7 · Retirada de les apps antigues | ⬜ | Un cop FEM-Reptes deixi d'importar, executar la "Llista concreta pendent" de `docs/NETEJA_codi_mort.md` §4 (columnes/files d'`objectives`/`photo_submissions`/`app_settings` deixades quietes per prudència mentre convivien) |
 
@@ -108,7 +117,7 @@ Fora de la numeració de fases. Anàlisi completa a `ANALISI_Login_Navegacio.md`
 
 | Bloc | Estat |
 |---|---|
-| **Autenticació** — migració a Supabase Auth | 🔄 Passos 1, 2, 3a-3c i 4a-4c fets, verificats als dos entorns i desplegats, més el **Reset de contrasenya de l'admin** (28/07, contrasenya temporal en lloc de buida — `ANALISI_Login_Navegacio.md` §1.5). Falta **4d** (retirar el sistema antic), bloquejat per una comprovació prèvia a Zampa |
+| **Autenticació** — migració a Supabase Auth | ✅ **Tancada (04/08/2026)**. Passos 1, 2, 3a-3c, 4a-4c i **4d** fets, verificats als dos entorns i desplegats, més el **Reset de contrasenya de l'admin** (28/07 — `ANALISI_Login_Navegacio.md` §1.5). El **Pas 4d** (retirada del sistema antic) va comprovar Zampa amb el seu codi font: login ja mort des del 26/07, però el registre encara escrivia directe a `users`, saltant-se el cens de socis FEM — tancat de pas. Detall a §1.7 |
 | **Navegació** — refresc i botó enrere | ✅ Fet i verificat (02/08/2026). Routing per `hash` (`js/core/navigation.js`): refrescar es queda al mateix panell i el botó enrere navega per dins l'app. Detall a `ANALISI_Login_Navegacio.md`, secció Navegació |
 | **Seguretat** — filtre d'alta (cens de socis FEM) | ✅ Fet i verificat als **dos entorns** (02/08/2026) |
 
@@ -253,7 +262,9 @@ Coses menors, sense data, que no justifiquen una fase pròpia:
   > sessió de Supabase Auth. Resolt portant-hi el login per Auth (mateixes RPC, cap canvi de BD).
   > **Cap dels dos problemes es va veure fins que un soci ho va reportar.** Mentre FEM-Reptes
   > visqui, qualsevol canvi d'esquema, de permisos o de RLS s'ha de comprovar **també** contra
-  > ella — el Pas 4d (buidar `users.password`) és el pròxim candidat clar.
+  > ella. **El Pas 4d, el candidat que quedava, es va fer el 04/08/2026** — aquest cop comprovat
+  > contra el codi font real de FEM-Reptes (i de Zampa) **abans** d'aplicar-lo, no després que
+  > algú ho reportés. Detall a `ANALISI_Login_Navegacio.md` §1.7.
 - **El tall de domini** (Fase 6) és el moment més sensible del projecte: franja de baix ús i
   pla de reversió del DNS a mà. Vegeu `docs/TALLS.md`.
 
