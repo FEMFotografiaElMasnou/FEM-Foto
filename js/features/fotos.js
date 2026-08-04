@@ -6,7 +6,7 @@ import { sb, CLOUDINARY_PRESET, CLOUDINARY_URL, _dbMode } from '../core/config.j
 import { t } from '../core/i18n.js';
 import { showToast, showLoader, hideLoader } from '../ui/toast.js';
 import { confirmAction } from '../ui/modals.js';
-import { getActiveAllPhotos, getParticipantNumber, loadAllData } from '../core/data.js';
+import { getActiveAllPhotos, getUserDisplayName, slugifyFileName, loadAllData } from '../core/data.js';
 import { renderAdminVotingGrid, renderVotingGrid, resetVoteButtons } from './votacio.js';
 import { refreshAdminDashboard } from '../screens/admin.js';
 import { refreshParticipantDashboard, getButtonVisibility } from '../screens/participant.js';
@@ -47,13 +47,6 @@ export function _formatDateSlash(dateVal) {
   return `${dd}/${mm}/${yyyy}`;
 }
 
-// Nom real de l'autor. Només per al panell d'admin: l'admin gestiona i ha de
-// saber qui és qui, no li apliquen els límits d'anonimat de la votació.
-function _authorName(userId) {
-  const u = state.users.find(x => x.id === userId);
-  return (u && u.name) ? u.name : '—';
-}
-
 export function renderAdminGallery() {
   const grid      = document.getElementById('admin-gallery');
   // Solo fotos de la temática activa (las pasadas se ven desde Gestión de Temáticas)
@@ -76,9 +69,9 @@ export function renderAdminGallery() {
 
   grid.innerHTML = allPhotos.map(photo => {
     const isSelected = state.selectedPhotos.has(photo.id);
-    const num = getParticipantNumber(photo.userId);
-    const fname = photo.fileName || 'foto_' + num + '.jpg';
-    const author = _escape(_authorName(photo.userId));
+    const authorName = getUserDisplayName(photo.userId);
+    const fname = photo.fileName || slugifyFileName(authorName) + '.jpg';
+    const author = _escape(authorName || '—');
     const caption = _escape(photo.caption);
     return `
       <div class="gallery-item ${isSelected ? 'selected' : ''}" onclick="toggleSelectPhoto('${photo.id}')" data-id="${photo.id}">
@@ -94,7 +87,7 @@ export function renderAdminGallery() {
           </div>
         </div>
         <div class="gallery-meta">
-          <div class="gallery-author">#${num} · ${author}</div>
+          <div class="gallery-author">${author}</div>
           ${caption ? `<div class="gallery-caption" title="${caption}">${caption}</div>` : ''}
         </div>
       </div>

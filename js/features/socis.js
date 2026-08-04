@@ -166,16 +166,17 @@ export function renderMembersTable() {
     : state.users;
 
   if (_activeMembersSubtab === 'appusers') _updateMembersSearchCount(users.length, state.users.length, term);
+  const countEl = document.getElementById('members-count');
+  if (countEl) countEl.textContent = `(${state.users.length})`;
 
   if (users.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted);">${t(term ? 'no_members_found' : 'no_members')}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--text-muted);">${t(term ? 'no_members_found' : 'no_members')}</td></tr>`;
     return;
   }
-  tbody.innerHTML = users.map((u, idx) => {
+  tbody.innerHTML = users.map((u) => {
     const isSelf = u.id === state.currentUser.id;
     return `
       <tr>
-        <td style="color:var(--text-muted);font-family:var(--font-mono);">${idx+1}</td>
         <td>
           <span
             style="cursor:pointer;border-bottom:1px dashed var(--border);padding-bottom:1px;"
@@ -385,6 +386,8 @@ export function renderSocisFemTable() {
     : state.socisAutoritzats;
 
   if (_activeMembersSubtab === 'fem') _updateMembersSearchCount(rows.length, state.socisAutoritzats.length, term);
+  const countEl = document.getElementById('socis-fem-count');
+  if (countEl) countEl.textContent = `(${state.socisAutoritzats.length})`;
 
   if (rows.length === 0) {
     tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--text-muted);">${t(term ? 'no_members_found' : 'socis_fem_empty')}</td></tr>`;

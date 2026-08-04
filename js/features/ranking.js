@@ -464,6 +464,24 @@ const _VALORACIO_SEG_PROFILE = 'box-shadow:inset 0 0 0 1px rgba(245,166,35,0.5)'
 // rgb(245,166,35)*0.1.
 const _VALORACIO_SEG_EMPTY_BG = 'rgb(48,64,95)';
 
+// Barra de 10 blocs INTERACTIVA (votacio.js/lightbox.js, substitueix les
+// antigues "càpsules" rodones, 03/08/2026): mateix llenguatge visual que la
+// barra de només lectura de sota, però acumulativa i clicable — clicar el
+// bloc 7 n'omple de l'1 al 7, no només el 7 sol, que és el que té sentit amb
+// blocs en lloc de bombolles soltes. `val` és la puntuació ja enviada (0 si
+// cap encara); `buildOnclick(n)` la passa qui crida perquè cadascú fa servir
+// un handler diferent (handleCapsule amb containerId al mosaic,
+// handleCapsuleLightbox sense al visor).
+export function buildPuntuacioBarHtml(val, buildOnclick) {
+  return Array.from({ length: 10 }, (_, i) => i + 1).map(n => {
+    const filled = n <= val;
+    const bg    = filled ? _valoracioSegColor(n - 1) : _VALORACIO_SEG_EMPTY_BG;
+    const color = filled ? 'rgba(10,14,30,0.8)' : 'var(--text-muted)';
+    const cls = ['puntuacio-seg', filled ? 'filled' : '', n === val ? 'current' : ''].filter(Boolean).join(' ');
+    return `<span class="${cls}" style="background:${bg};color:${color};" onclick="${buildOnclick(n)}">${n}</span>`;
+  }).join('');
+}
+
 // 10 blocs (un per punt sencer 0-10). Els blocs anteriors al de la
 // puntuació es pinten sencers amb la intensitat que els toca; el bloc de la
 // puntuació es reparteix entre la intensitat que li toca (proporció exacta,

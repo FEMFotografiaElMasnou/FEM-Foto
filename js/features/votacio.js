@@ -6,10 +6,19 @@ import { sb } from '../core/config.js';
 import { t } from '../core/i18n.js';
 import { showToast, showLoader, hideLoader } from '../ui/toast.js';
 import { confirmAction } from '../ui/modals.js';
-import { getActivePublishedPhotos, getParticipantNumber } from '../core/data.js';
+import { getActivePublishedPhotos, getFotoTitol } from '../core/data.js';
 import { refreshAdminDashboard } from '../screens/admin.js';
 import { refreshParticipantDashboard, renderVotingHeader } from '../screens/participant.js';
 import { openFullscreen } from '../ui/lightbox.js';
+import { buildPuntuacioBarHtml } from './ranking.js';
+
+// Escapa text per inserir-lo en un atribut HTML (getFotoTitol ve del peu de
+// foto, text lliure escrit pel soci).
+function _escape(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
 
 // ── VOTE HELPERS ──
 export function getMyVote(photoId) {
@@ -188,7 +197,7 @@ export function renderVotingGrid(containerId) {
   grid.innerHTML = lockedBanner + activePhotos.map(photo => {
     const isOwn = photo.userId === uid;
     const myVote = getMyVote(photo.id);
-    const num    = getParticipantNumber(photo.userId);
+    const titol  = _escape(getFotoTitol(photo));
 
     // Etiqueta del criteri (Creativitat/Temàtica/Composició): abans 11px
     // inline, il·legible — classe .vote-criteria-label (participant.css,
@@ -207,7 +216,7 @@ export function renderVotingGrid(containerId) {
 
     return `
       <div class="vote-card ${myVote ? 'voted' : ''}" data-photo="${photo.id}">
-        <img src="${photo.url}" alt="Foto ${num}" loading="lazy" onclick="openFullscreen('${photo.url}')" style="cursor:zoom-in;width:100%;display:block;max-height:280px;object-fit:contain;background:var(--surface);">
+        <img src="${photo.url}" alt="${titol}" loading="lazy" onclick="openFullscreen('${photo.url}')" style="cursor:zoom-in;width:100%;display:block;max-height:280px;object-fit:contain;background:var(--surface);">
         <div class="vote-card-footer" style="flex-direction:column;align-items:stretch;gap:6px;">
           <div style="display:flex;justify-content:flex-end;align-items:center;min-height:16px;">
             ${myVote ? `<span style="font-size:11px;color:var(--success);">${t('voted_label')}</span>` : ''}
@@ -590,8 +599,8 @@ export function renderPuntuacioGrid(containerId) {
   const objId = state.currentObjective ? state.currentObjective.id : null;
   const userSubmitted = (uid && objId) ? isVotingSubmitted(uid, objId) : false;
   const votingLocked = !hasActiveObj || !state.settings.voting_enabled || userSubmitted;
-  // Bloquejat: només s'apaguen les càpsules NO seleccionades (.puntuacio-row.locked
-  // .capsule:not(.active) a base.css) — la seleccionada i el desplegable es
+  // Bloquejat: només s'apaguen els blocs NO assolits (.puntuacio-row.locked
+  // .puntuacio-seg:not(.filled) a base.css) — els assolits i el desplegable es
   // mantenen a plena nitidesa, és el resultat final, no té sentit apagar-lo.
   const lockClass = votingLocked ? ' locked' : '';
   const lockStyle = votingLocked ? 'pointer-events:none;' : '';
@@ -626,9 +635,7 @@ export function renderPuntuacioGrid(containerId) {
     const myVote = getMyVote(photo.id);
     const val = myVote ? (myVote.valoracio || 0) : 0;
 
-    const capsules = Array.from({ length: 10 }, (_, i) => i + 1).map(n =>
-      `<span class="capsule ${val === n ? 'active' : ''}" onclick="handleCapsule('${photo.id}',${n},'${containerId}')">${n}</span>`
-    ).join('');
+    const capsules = buildPuntuacioBarHtml(val, n => `handleCapsule('${photo.id}',${n},'${containerId}')`);
 
     const options = ['<option value="0">—</option>'].concat(
       Array.from({ length: 10 }, (_, i) => i + 1).map(n =>
@@ -646,7 +653,7 @@ export function renderPuntuacioGrid(containerId) {
           ${isOwn
             ? `<div style="font-size:12px;color:var(--accent);text-align:center;padding:6px 0;font-weight:600;">${t('your_photo')}</div>`
             : `<div class="puntuacio-row${lockClass}" style="${lockStyle}">
-                 <div class="capsule-strip">${capsules}</div>
+                 <div class="puntuacio-bar">${capsules}</div>
                  <select class="puntuacio-select" onchange="handlePuntuacioSelect('${photo.id}',this.value,'${containerId}')">${options}</select>
                </div>`
           }

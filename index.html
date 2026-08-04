@@ -299,14 +299,13 @@
       <div id="members-subtab-appusers" class="subtab-content active">
         <div class="card">
           <div class="card-header">
-            <div class="card-title" data-i18n="members_title">Gestió de socis</div>
+            <div class="card-title"><span data-i18n="members_title">Gestió de socis</span> <span id="members-count" style="color:var(--text-muted);"></span></div>
             <button type="button" class="btn btn-primary btn-sm" onclick="openMemberModal()" data-i18n="new_member_btn">+ Nou Soci</button>
           </div>
           <div style="overflow-x:auto;">
             <table class="participant-table">
               <thead>
                 <tr>
-                  <th>#</th>
                   <th data-i18n="member_name">Nom</th>
                   <th data-i18n="table_username_header">Usuari</th>
                   <th data-i18n="member_role">Rol</th>
@@ -315,7 +314,7 @@
                 </tr>
               </thead>
               <tbody id="members-tbody">
-                <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted);" data-i18n="loading">Carregant...</td></tr>
+                <tr><td colspan="5" style="text-align:center;padding:40px;color:var(--text-muted);" data-i18n="loading">Carregant...</td></tr>
               </tbody>
             </table>
           </div>
@@ -327,7 +326,7 @@
         <div class="card">
           <div class="card-header">
             <div>
-              <div class="card-title" data-i18n="socis_fem_title">Cens de socis FEM autoritzats</div>
+              <div class="card-title"><span data-i18n="socis_fem_title">Cens de socis FEM autoritzats</span> <span id="socis-fem-count" style="color:var(--text-muted);"></span></div>
               <div class="card-subtitle" data-i18n="socis_fem_subtitle">Només els emails d'aquesta llista es poden donar d'alta a l'app.</div>
             </div>
           </div>

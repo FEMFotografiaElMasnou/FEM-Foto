@@ -126,8 +126,10 @@ pròpia (la mateixa RLS n'hi ha prou, com ja passa a Reptes/Fotos). De pas, arre
 desplegables de rol (aquí i a la gestió d'usuaris existent) que es pintaven amb fons blanc del
 sistema en lloc del fosc de la resta de l'app. Decisió (taula a part vs. columna a `users`),
 detall tècnic i verificació a `ANALISI_Login_Navegacio.md` §1.6. Migració aplicada als **dos
-entorns** (02/08/2026, vegeu `sql/README.md`). Pendent: carregar-hi els socis de la FEM encara
-no usuaris de l'app quan Enric passi la llista.
+entorns** (02/08/2026, vegeu `sql/README.md`). Primera càrrega complementària feta el
+03/08/2026 amb el cens oficial de la FEM: 7 emails nous afegits (48 a Normal, 58 a Test); 4
+descartats a propòsit perquè eren la mateixa persona amb un email diferent al ja registrat.
+Detall a `ANALISI_Login_Navegacio.md` §1.6.
 
 ## 7. Què queda pendent de decidir
 
@@ -203,6 +205,34 @@ Coses menors, sense data, que no justifiquen una fase pròpia:
   de pas una incidència menor: `edit_role_tooltip` tenia un valor vell a `app_texts` ("Clica per
   canviar rol", d'quan el control era un clic, no un desplegable) que guanyava al nou text del
   codi — actualitzat a Test als dos idiomes.
+- ~~**Ronda de retocs d'Admin/Reptes i votació, a petició d'Enric**~~ — **FET el 03/08/2026**:
+  - **Descàrregues per nom, no per número**: `getParticipantNumber()` eliminada de `core/data.js`
+    (no aportava res — ni a l'accessibilitat, on l'`alt` que l'usava era invisible, ni fora d'un
+    context on calgués anonimat). Substituïda per `getUserDisplayName()` + `slugifyFileName()`:
+    el ZIP "Descarregar Totes" i la Galeria ara anomenen els fitxers pel nom del soci
+    (`roc-garcia.jpg`, no `participant_12.jpg`), útil per etiquetar a xarxes o imprimir. Sufix
+    `-2`/`-3` automàtic si dues persones generessin el mateix nom, perquè el ZIP no en
+    sobreescrigui una en silenci. `getFotoTitol()` nova cobreix l'únic ús real que li quedava al
+    número: l'`alt` del mosaic de votació ara és el peu de foto (o "Imatge sense títol" si no
+    n'hi ha), tal com hauria de ser des del principi.
+  - **Columna `#` eliminada** de la taula "Usuaris app" (Admin → Socis): sense cap ús un cop fet
+    el punt anterior. Comptadors `(nn)` afegits als títols de "Gestió de socis" i "Cens de socis
+    FEM autoritzats" en compensació — l'única cosa que aquell número aportava de debò.
+  - **Barra de puntuació segmentada**: substitueix les antigues "càpsules" rodones (1-10, selecció
+    d'una en una) al mosaic de votació i al visor a pantalla completa. Reutilitza el mateix
+    llenguatge visual (i el mateix càlcul de color, `buildPuntuacioBarHtml()` exportada de
+    `ranking.js`) que "Valoració Repte", però acumulativa i clicable: triar el 7 n'omple de l'1 al
+    7. Ample = ample de la foto al mosaic; ample fix i raonable al visor (ja hi havia aquest
+    criteri al panell). Alçada dels blocs iterada en viu amb Enric: 40px → 28px → **24px final**.
+  - **Input de fitxer de la imatge de fons del repte**: ja no es veu blanc/nadiu — estilat amb
+    `::file-selector-button` als mateixos colors que la resta de camps.
+  - **Estat Actiu/Inactiu dels reptes, ara editable**: vegeu `docs/REFERENCIA_BD.md` (nota sobre
+    `objectives.status`) pel detall complet. En resum: abans "Inactiu" era un residu de la Fase 2
+    sense cap manera d'entrar-hi ni sortir-ne des de la UI; ara és un desplegable a cada targeta
+    de repte, i serveix per decidir quin repte es mostra als socis quan n'hi ha més d'un amb
+    dates que coincideixen.
+  Verificat en viu a Test amb el "Repte de proves" (activat expressament per a aquesta ronda de
+  proves, 6 fotos reals) i "Contrallums" (commutat Actiu↔Inactiu i confirmat per SQL que persisteix).
 
 ## 9. Riscos vius
 

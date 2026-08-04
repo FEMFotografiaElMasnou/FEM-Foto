@@ -114,6 +114,37 @@ body::before {
 
 .form-group select option { background: var(--surface2); }
 
+/* Input de fitxer nadiu (p.ex. imatge de fons del repte): el propi <input>
+   ja hereta el fons fosc de .form-group input, però el botó intern del
+   selector de fitxer és renderitzat pel sistema operatiu i ignora aquest
+   fons — per això sortia blanc. ::file-selector-button (i l'equivalent
+   -webkit- per a Chrome/Safari una mica més vells) és l'únic punt on es pot
+   estilar de debò. */
+.form-group input[type="file"] {
+  padding: 8px 12px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.form-group input[type="file"]::file-selector-button,
+.form-group input[type="file"]::-webkit-file-upload-button {
+  background: var(--surface3);
+  color: var(--text);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 8px 16px;
+  margin-right: 12px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.form-group input[type="file"]:hover::file-selector-button,
+.form-group input[type="file"]:hover::-webkit-file-upload-button {
+  background: var(--surface2);
+  border-color: var(--accent);
+}
+
 /* ════════════════════════════════
    BUTTONS
 ════════════════════════════════ */
@@ -728,43 +759,46 @@ body::before {
 
 .puntuacio-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
 }
 
-.capsule-strip { display: flex; gap: 4px; flex-wrap: wrap; }
+/* Barra de puntuació interactiva (substitueix les càpsules rodones,
+   03/08/2026): mateix llenguatge visual que la barra de només lectura de
+   "Valoració Repte" (ranking.js/participant.css .valoracio-seg), però amb
+   blocs prou alts per ser un objectiu de toc còmode i clicables un a un.
+   width:100% perquè l'amplada total segueixi sempre la del contenidor —
+   la foto al mosaic, l'ample fix del panell al visor (base.css més avall). */
+.puntuacio-bar { display: flex; gap: 3px; width: 100%; }
 
-.capsule {
-  min-width: 26px;
-  height: 26px;
-  display: inline-flex;
+.puntuacio-seg {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 24px;
+  display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
-  border: 2px solid var(--accent2);
-  color: var(--accent2);
+  border-radius: 6px;
   font-size: 12px;
   font-family: var(--font-mono);
+  font-weight: 700;
   cursor: pointer;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
-  transition: border-color 0.15s, color 0.15s, background 0.15s, transform 0.1s;
+  transition: transform 0.1s;
 }
-.capsule:hover { border-color: var(--accent2); }
-.capsule.active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-  font-weight: 700;
-}
-.capsule:active { transform: scale(1.15); }
+.puntuacio-seg:hover { transform: scaleY(1.1); }
+.puntuacio-seg:active { transform: scale(0.94); }
+/* Marca el bloc exacte triat (a més de l'ompliment acumulat fins allà). */
+.puntuacio-seg.current { box-shadow: inset 0 0 0 2px #fff; }
 
-/* Bloquejat (votació ja enviada / tancada): només s'apaguen les càpsules NO
-   seleccionades — la seleccionada i el desplegable es mantenen a plena
-   nitidesa, és el resultat final desat, no té sentit apagar-lo. */
-.puntuacio-row.locked .capsule:not(.active) { opacity: 0.4; }
+.puntuacio-select { align-self: flex-end; }
+
+/* Bloquejat (votació ja enviada / tancada): només s'apaguen els blocs NO
+   assolits — els assolits i el desplegable es mantenen a plena nitidesa, és
+   el resultat final desat, no té sentit apagar-lo. */
+.puntuacio-row.locked .puntuacio-seg:not(.filled) { opacity: 0.4; }
 
 .puntuacio-select {
   font-family: var(--font-mono);
@@ -1425,7 +1459,7 @@ body::before {
    Mateix ancoratge que .valoracio-panel (cantonada inferior esquerra de la
    foto real), però sempre visible — no és un panell de consulta amb
    disparador, és el mateix control d'ús actiu que al mosaic (reutilitza
-   .puntuacio-row/.capsule-strip/.capsule/.puntuacio-select).
+   .puntuacio-row/.puntuacio-bar/.puntuacio-seg/.puntuacio-select).
 ════════════════════════════════ */
 .puntuacio-lightbox-panel {
   position: absolute;

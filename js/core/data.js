@@ -4,7 +4,7 @@
 import { state, _localVoteEdits } from './state.js';
 import { sb } from './config.js';
 import { showToast } from '../ui/toast.js';
-import { mergeTranslations } from './i18n.js';
+import { mergeTranslations, t } from './i18n.js';
 
 // ═══════════════════════════════════
 // TEXTOS DE LA INTERFÍCIE (app_texts, Fase 2 d'i18n)
@@ -463,11 +463,35 @@ export function getVotingProgress(objectiveId) {
 }
 
 // ═══════════════════════════════════
-// PARTICIPANT NUMBER (anonymous) + helpers de usuario
+// HELPERS D'USUARI I FITXER (noms de fitxer de descàrrega, títol accessible)
 // ═══════════════════════════════════
-export function getParticipantNumber(userId) {
-  // Incluye a todos los usuarios (admin también participa)
-  const idx = state.users.findIndex(u => u.id === userId);
-  return idx >= 0 ? (idx + 1) : '?';
+// Substitueix getParticipantNumber() (02-03/08/2026): el número de soci no
+// aportava res ni a l'accessibilitat (alt invisible) ni a les descàrregues
+// (obligava l'admin a anar a la taula per saber qui era "participant_12").
+export function getUserDisplayName(userId) {
+  const u = state.users.find(x => x.id === userId);
+  return (u && u.name) ? u.name : '';
+}
+
+// Atribut alt del mosaic de votació: el peu de foto si n'hi ha, si no un
+// text neutre — un número no llegit per ningú no aportava res d'accessible.
+export function getFotoTitol(photo) {
+  return (photo && photo.caption) ? photo.caption : t('untitled_photo');
+}
+
+// Nom de fitxer a partir del nom del soci: minúscules, sense accents, espais
+// i símbols estranys -> guions. Sencer, no només el primer nom: ja hi ha
+// diversos socis amb el mateix nom de pila (p.ex. "Marta").
+export function slugifyFileName(name) {
+  const noAccents = String(name || '')
+    .normalize('NFD')
+    .split('')
+    .filter(ch => ch.codePointAt(0) < 0x0300 || ch.codePointAt(0) > 0x036f)
+    .join('');
+  const slug = noAccents
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return slug || 'foto';
 }
 

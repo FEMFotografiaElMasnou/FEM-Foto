@@ -1368,6 +1368,29 @@ fer amb la càrrega inicial. `fem_admin_create_member` (l'alta feta per l'admin 
 es queda **sense aquest filtre a propòsit** — decisió d'Enric: l'admin ja és una barrera de
 confiança i ha de poder donar d'alta algú puntualment encara que hi hagi un despistat al cens.
 
+### Primera càrrega complementària (03/08/2026)
+
+Enric va passar el cens oficial de la FEM en captures de pantalla (38 emails). Contrastat amb
+`socis_fem_autoritzats`: 27 ja hi eren (coincidien amb comptes ja donats d'alta), 11 eren nous.
+D'aquests 11, 4 no eren persones noves de debò — el nom coincidia amb un compte ja existent amb
+un **email diferent** (Jordi Santmiquel, Eliana Maridueña, Marianne Schiffels, José Antonio
+Sancho Pastor). Decisió d'Enric: **no afegir-los al cens**, per no obrir la porta a un segon
+autoregistre amb l'altre email — tècnicament inofensiu, però crearia un compte duplicat amb
+fotos/vots repartits entre tots dos, un problema real ja viscut (vegeu més avall). Afegits
+només els **7 genuïnament nous**: `11937gms@comb.cat`, `alvarezplanas@gmail.com`,
+`bdominguezh@gmail.com`, `gloriademimon@gmail.com`, `helena@helenabuira.com`,
+`monicasola11@gmail.com`, `sacrigarciaaviles@yahoo.es`. Cens resultant: 48 a Normal (41+7), 58
+a Test (52+6, un dels 7 ja hi era per una altra prova).
+
+**El cas Sancho Pastor ja estava resolt.** Enric recordava tenir-lo amb dos comptes actius i
+volia identificar quin s'havia de conservar per donar de baixa l'altre. Comprovat: a **Normal**
+només existeix `contacto@joseantoniosancho.com` (2 fotos publicades) —
+`sql/2026-07-25_merge_duplicate_user_sancho.sql` ja va fusionar-hi `sanchopastor@gmail.com` el
+25/07/2026, movent-ne l'única foto i esborrant la fila buida. **A Test sí que hi conviuen
+encara tots dos** (`sanchopastor@gmail.com` amb 1 foto, `contacto@joseantoniosancho.com` amb
+0) — el mateix fitxer ja deixava constància que a Test no calia tocar-ho perquè no reproduïa el
+problema. Cap acció pendent a Normal.
+
 ---
 
 ## 2. Navegació (refresc de pàgina, botó enrere)

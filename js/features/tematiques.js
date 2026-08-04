@@ -39,11 +39,17 @@ export function renderObjectivesList() {
   el.innerHTML = sortedObjectives.map(obj => {
     const isActive   = obj.status === 'active';
     const isFinished = obj.status === 'finished';
-    const statusBadge = isActive
-      ? `<span class="badge badge-green">● ${t("active_badge")}</span>`
-      : isFinished
-        ? `<span class="badge badge-gray">✓ ${t("finished_badge")}</span>`
-        : `<span class="badge badge-yellow">${t("inactive_badge")}</span>`;
+    // Actiu/Inactiu (03/08/2026): deixa de ser un badge de només lectura.
+    // És l'eina per decidir quin repte es mostra als socis quan n'hi ha més
+    // d'un amb dates que coincideixen — abans "Inactiu" no es podia posar
+    // ni treure mai des de la interfície (petició Enric, ANALISI corresponent).
+    // Finalitzat es queda igual: terminal, només via el botó de sota.
+    const statusBadge = isFinished
+      ? `<span class="badge badge-gray">✓ ${t("finished_badge")}</span>`
+      : `<select class="field-compact" onchange="changeObjectiveStatus('${obj.id}', this.value)" title="${t('obj_status_tooltip')}">
+           <option value="active" ${isActive ? 'selected' : ''}>${t('active_badge')}</option>
+           <option value="inactive" ${!isActive ? 'selected' : ''}>${t('inactive_badge')}</option>
+         </select>`;
     const finalizeBtn = isActive
       ? `<button type="button" class="btn btn-danger btn-sm" onclick="finalizeObjective('${obj.id}')">${t("finalize_btn")}</button>`
       : '';
@@ -125,6 +131,23 @@ export function renderObjectivesList() {
   }).join('');
   // Re-apply translations to newly rendered elements
   applyTranslations();
+}
+
+// Actiu <-> Inactiu (03/08/2026): commutador lliure per a qualsevol repte no
+// finalitzat. A diferència de finalizeObjective(), no toca res més (fotos,
+// vots, calendari) — només decideix si aquest és el repte que
+// state.currentObjective agafa (data.js/tematiques.js: primer amb
+// status==='active'). Sense aquest control, dos reptes amb dates que es
+// creuessin no es podien desempatar mai des de la interfície.
+export async function changeObjectiveStatus(id, newStatus) {
+  const obj = state.objectives.find(o => o.id === id);
+  if (!obj || obj.status === 'finished') return;
+  obj.status = newStatus;
+  state.currentObjective = state.objectives.find(o => o.status === 'active') || null;
+  await saveObjectives();
+  renderObjectivesList();
+  refreshAdminDashboard();
+  showToast(t('objective_status_changed'), 'success');
 }
 
 export async function finalizeObjective(id) {
@@ -310,6 +333,7 @@ export async function saveObjective() {
 // Exponer en window las funciones usadas desde onclick del HTML
 window.renderObjectivesList = renderObjectivesList;
 window.finalizeObjective = finalizeObjective;
+window.changeObjectiveStatus = changeObjectiveStatus;
 window.openObjectiveModal = openObjectiveModal;
 window.saveObjective = saveObjective;
 window.handleObjectiveCoverSelect = handleObjectiveCoverSelect;

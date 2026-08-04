@@ -4,8 +4,8 @@
 import { state, actingAsAdmin } from '../core/state.js';
 import { t } from '../core/i18n.js';
 import { showToast, showLoader, hideLoader } from './toast.js';
-import { getActiveAllPhotos, getParticipantNumber } from '../core/data.js';
-import { getPhotoResultsBreakdown, getPhotoValoracioBreakdown, formatScore, formatPosition } from '../features/ranking.js';
+import { getActiveAllPhotos, getUserDisplayName, slugifyFileName } from '../core/data.js';
+import { getPhotoResultsBreakdown, getPhotoValoracioBreakdown, formatScore, formatPosition, buildPuntuacioBarHtml } from '../features/ranking.js';
 import { getMyVote, isVotingSubmitted } from '../features/votacio.js';
 
 let _fullscreenFileName = 'foto.jpg';
@@ -124,9 +124,7 @@ function _puntuacioPanelHtml(photoObj) {
   const myVote = getMyVote(photoObj.id);
   const val = myVote ? (myVote.valoracio || 0) : 0;
 
-  const capsules = Array.from({ length: 10 }, (_, i) => i + 1).map(n =>
-    `<span class="capsule ${val === n ? 'active' : ''}" onclick="handleCapsuleLightbox('${photoObj.id}',${n})">${n}</span>`
-  ).join('');
+  const capsules = buildPuntuacioBarHtml(val, n => `handleCapsuleLightbox('${photoObj.id}',${n})`);
   const options = ['<option value="0">—</option>'].concat(
     Array.from({ length: 10 }, (_, i) => i + 1).map(n =>
       `<option value="${n}" ${val === n ? 'selected' : ''}>${n}</option>`)
@@ -134,7 +132,7 @@ function _puntuacioPanelHtml(photoObj) {
 
   return `
     <div class="puntuacio-row">
-      <div class="capsule-strip">${capsules}</div>
+      <div class="puntuacio-bar">${capsules}</div>
       <select class="puntuacio-select" onchange="handlePuntuacioSelectLightbox('${photoObj.id}',this.value)">${options}</select>
     </div>
   `;
@@ -388,13 +386,20 @@ export async function downloadAllPhotos() {
     const rawName = state.currentObjective ? state.currentObjective.title : 'FEM';
     const folderName = rawName.replace(/[^a-zA-Z0-9àáèéíïòóúüçñÀÁÈÉÍÏÒÓÚÜÇÑ _-]/g, '').replace(/\s+/g, '_') || 'fotos';
     const folder = zip.folder(folderName);
+    // Noms de fitxer pel nom del soci, no pel número: així serveixen tal
+    // qual per etiquetar a xarxes o imprimir (petició Enric, 03/08/2026).
+    // Sufix -2/-3 si dos socis generessin el mateix nom, per no sobreescriure
+    // cap foto en silenci dins del ZIP.
+    const usedNames = new Set();
 
     for (let i = 0; i < allPhotos.length; i++) {
       const photo = allPhotos[i];
-      const num = getParticipantNumber(photo.userId);
-      const idx = String(i + 1).padStart(2, '0');
       const ext = (photo.fileName || 'foto.jpg').split('.').pop() || 'jpg';
-      const fname = `${idx}_participant_${num}.${ext}`;
+      const base = slugifyFileName(getUserDisplayName(photo.userId));
+      let fname = `${base}.${ext}`;
+      let n = 2;
+      while (usedNames.has(fname)) { fname = `${base}-${n}.${ext}`; n++; }
+      usedNames.add(fname);
 
       try {
         const res = await fetch(photo.url);

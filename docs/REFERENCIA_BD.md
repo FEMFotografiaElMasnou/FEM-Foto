@@ -34,6 +34,15 @@ resta de l'app), `cal_upload_start`/`cal_upload_end`/`cal_voting_start`/`cal_vot
 `getActiveCalendar(objectiveId)` (`js/features/calendari.js`) és el punt d'accés correcte als
 camps de calendari — internament ja llegeix `objectives`, cap altra part de l'app ho ha de saber.
 
+> ⚠️ **`objectives.status` (03/08/2026): `active`/`inactive` ja és editable des de la interfície**
+> (desplegable a cada targeta de repte, Admin → Reptes), no només `finished`. Abans, `active` es
+> fixava només en crear el repte i `inactive` no es podia posar ni treure mai des de la UI — un
+> residu de quan (Fase 2) hi havia un bloqueig que impedia dos reptes actius alhora, retirat quan
+> va arribar el disseny multi-repte. `state.currentObjective` (`data.js`) segueix sent el primer
+> `objectives` amb `status='active'`; ara serveix per decidir quin repte es mostra als socis quan
+> n'hi ha més d'un amb dates que coincideixen. `finished` es manté terminal, només via
+> "Finalitzar". Detall a `FEM-Foto_Unificacio_Pla-desenvolupament.md` §8.
+
 **`votes`** — `creativity`, `theme`, `composition` (sistema antic, 0-5 cadascun) i `valoracio`
 (`numeric`, 0-10, sistema nou). `valoracio` la manté sincronitzada el trigger
 `fem_sync_valoracio()` a partir dels tres criteris antics (×10/15). Conseqüència pràctica: qui
@@ -84,9 +93,10 @@ de la migració d'Auth).
 > encara no en tenen cap). RLS només-admin (ni `anon` ni `authenticated` normal la poden llegir
 > directament): l'accés d'admin des del panell (Admin → Socis → *Socis FEM*) és
 > `sb.from('socis_fem_autoritzats')` directe, sense RPC pròpia, igual que ja fan
-> `objectives`/`photo_submissions`. Càrrega inicial: els emails que ja tenien compte (52 a Test,
-> 41 a Normal); **pendent afegir-hi els socis de la FEM encara no usuaris de l'app** quan Enric
-> passi la llista. Detall i decisió (taula a part vs. columna a `users`) a
+> `objectives`/`photo_submissions`. Càrrega inicial (02/08/2026): els emails que ja tenien compte
+> (52 a Test, 41 a Normal). Primera càrrega complementària (03/08/2026) amb el cens oficial de
+> la FEM: 7 emails nous — 58 a Test, 48 a Normal. Detall, decisió (taula a part vs. columna a
+> `users`) i per què 4 emails de la mateixa remesa es van descartar expressament, a
 > `ANALISI_Login_Navegacio.md` §1.6.
 
 ### Mortes, encara presents
