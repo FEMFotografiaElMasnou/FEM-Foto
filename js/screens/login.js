@@ -649,8 +649,8 @@ export async function handleRegister() {
   if (error || result.status !== 'ok') {
     hideLoader();
     errEl.style.display = 'block';
-    errEl.textContent   = result.status === 'email_exists'
-      ? t('register_email_exists')
+    errEl.textContent   = result.status === 'email_exists' ? t('register_email_exists')
+      : result.status === 'not_authorized' ? t('register_not_authorized')
       : t('register_error');
     if (error) console.error('fem_register_account error', error);
     btn.innerHTML = t('create_account_btn'); btn.disabled = false; return;
