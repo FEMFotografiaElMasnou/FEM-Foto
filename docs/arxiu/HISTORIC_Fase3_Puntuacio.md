@@ -1,4 +1,11 @@
-# FEM-Foto — Fase 3: nou sistema de puntuació (3 criteris 0-5 → 1 concepte 0-10)
+# FEM-Foto — Fase 3: nou sistema de puntuació (històric)
+
+> **Document arxivat (05/08/2026).** L'estat actual i les decisions vives viuen a
+> `docs/SISTEMA_PUNTUACIO.md`. Això que segueix és el registre cronològic de com s'hi va
+> arribar — útil per entendre el raonament d'una decisió concreta, no per treballar al
+> projecte avui.
+
+---
 
 > **Com es llegeix aquest document.** Té tres nivells, i probablement només necessites el
 > primer:

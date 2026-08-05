@@ -4,8 +4,8 @@ Estat real dels dos projectes Supabase, llegit directament de Normal
 (`ogqqcgbgcqowvywaolln`) el **27/07/2026**. Test (`xxydxdsiunfwzkcffdai`) té la mateixa
 estructura; on hi hagi diferències, es diu explícitament.
 
-> Aquest document descriu **què hi ha**. El *per què* de cada decisió és als documents
-> d'anàlisi (`ANALISI_Fase3_Puntuacio.md`, `ANALISI_Login_Navegacio.md`).
+> Aquest document descriu **què hi ha**. El *per què* de cada decisió és a
+> `docs/SISTEMA_PUNTUACIO.md` i `docs/AUTENTICACIO.md`.
 
 ---
 
@@ -47,7 +47,7 @@ camps de calendari — internament ja llegeix `objectives`, cap altra part de l'
 (`numeric`, 0-10, sistema nou). `valoracio` la manté sincronitzada el trigger
 `fem_sync_valoracio()` a partir dels tres criteris antics (×10/15). Conseqüència pràctica: qui
 escrigui `valoracio` directament ha d'escriure **també** els tres criteris amb
-`valoracio/2` cadascun, o el trigger li trepitjarà el valor. Vegeu `ANALISI_Fase3_Puntuacio.md`, Pas 4.
+`valoracio/2` cadascun, o el trigger li trepitjarà el valor. Vegeu `docs/SISTEMA_PUNTUACIO.md`.
 
 **`users`** — `id` (text, `u_...`), `display_name`, `email`, `password`, `role`, `created_at`,
 `zampa_role`, `submitted_at`, `auth_user_id` (uuid, pont cap a `auth.users`, afegit al Pas 1
@@ -56,7 +56,7 @@ de la migració d'Auth).
 > ⚠️ **`users` és compartida amb l'app Zampa** del club (taules `zampa_*`). Qualsevol operació
 > en cascada (`TRUNCATE`, `DELETE` massiu) hi esborraria dades. Comprovar-ho **sempre** abans
 > de tocar aquesta taula. Hi ha una nota de traspàs per a quan s'abordi Zampa a
-> `ANALISI_Login_Navegacio.md` §1.4.
+> `docs/arxiu/HISTORIC_Auth_Migracio.md` §1.4.
 
 > ⚠️ **`users.password` segueix guardant la contrasenya en clar.** El client ja no la pot
 > llegir (revocat a la Fase 1.3) i Supabase Auth ja és qui decideix l'accés (Pas 4b), però la
@@ -97,7 +97,7 @@ de la migració d'Auth).
 > (52 a Test, 41 a Normal). Primera càrrega complementària (03/08/2026) amb el cens oficial de
 > la FEM: 7 emails nous — 58 a Test, 48 a Normal. Detall, decisió (taula a part vs. columna a
 > `users`) i per què 4 emails de la mateixa remesa es van descartar expressament, a
-> `ANALISI_Login_Navegacio.md` §1.6.
+> `docs/arxiu/HISTORIC_Auth_Migracio.md` §1.6.
 
 ### Mortes, encara presents
 
@@ -177,7 +177,7 @@ consultar `auth.sessions`, i recarregar la pàgina tampoc no hi fa res. Fins al 
 seguia dins —i escrivint— fins que el testimoni intentava renovar-se, o sigui fins a una hora.
 **Resolt des del client**: el sondeig de 30 s de `startAutoRefresh()` (`js/core/router.js`) valida
 la sessió contra el servidor i, si la rebutja, tanca la sessió local. Expulsió en 30 s com a
-màxim. Detall: `docs/PROVES_Fase4.md`, incidència 1.11 i Annex B. `fem_set_new_password` queda sense privilegis i `fem_login` ja no retorna
+màxim. Detall: `docs/arxiu/PROVES_Fase4.md`, incidència 1.11 i Annex B. `fem_set_new_password` queda sense privilegis i `fem_login` ja no retorna
 `reset_required`.
 
 **Conseqüència per al Pas 4d**: buidar `users.password` per a tothom era, amb el disseny antic,
@@ -192,7 +192,7 @@ dues primeres es comproven internament amb `fem_is_admin()`, que retorna un `EXI
 `NULL`. Però trenquen el criteri de doble barrera que sí que apliquen les funcions més noves
 (`REVOKE EXECUTE ... FROM PUBLIC, anon` a més de la comprovació interna). Val la pena alinear-les —
 és un `REVOKE` de tres línies, sense risc. `fem_apply_calendar()` ja estava apuntada com a
-observació a `ANALISI_Login_Navegacio.md` §1.2.
+observació a `docs/arxiu/HISTORIC_Auth_Migracio.md` §1.2.
 
 ⚠️ **Que hi digui `FROM PUBLIC, anon` i no només `FROM anon` no és estètica** (comprovat el
 28/07/2026 a Test): tota funció nova neix amb `EXECUTE` concedit a `PUBLIC`, i `anon` hi arriba

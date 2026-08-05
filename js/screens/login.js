@@ -13,7 +13,7 @@ import { restoreRouteOrDefault, clearRoute } from '../core/navigation.js';
 // ═══════════════════════════════════
 // PERSISTÈNCIA DE SESSIÓ
 // ═══════════════════════════════════
-// Pas 4b (ANALISI_Login_Navegacio.md §1.4): la sessió REAL és ara la de Supabase
+// Pas 4b (docs/arxiu/HISTORIC_Auth_Migracio.md §1.4): la sessió REAL és ara la de Supabase
 // Auth, que el propi SDK desa a localStorage amb una clau per projecte (Normal i
 // Test no es trepitgen). Per decisió d'Enric (27/07/2026) la sessió és
 // PERSISTENT: qui entra hi segueix fins que prem "Sortir" — abans, tancar la
@@ -631,7 +631,7 @@ export async function handleRegister() {
   btn.disabled  = true;
   showLoader(t('creating_account'));
 
-  // Pas 4a (ANALISI_Login_Navegacio.md §1.4): l'alta ja no és un INSERT directe
+  // Pas 4a (docs/arxiu/HISTORIC_Auth_Migracio.md §1.4): l'alta ja no és un INSERT directe
   // a public.users. fem_register_account() crea, dins la mateixa transacció, la
   // fila de public.users I el compte d'auth.users — fins ara només es creava la
   // primera, i el soci nou quedava sense poder establir sessió real d'Auth (per

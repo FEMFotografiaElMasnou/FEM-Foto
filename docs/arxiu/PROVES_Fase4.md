@@ -1,4 +1,9 @@
-# Fase 4 — Proves internes
+# Fase 4 — Proves internes (històric)
+
+> **Document arxivat (05/08/2026).** Fase 4 tancada el 02/08/2026, els 10 blocs en verd —
+> vegeu el resum a `FEM-Foto_Unificacio_Pla-desenvolupament.md`. Es conserva com a registre
+> del guió seguit i de les incidències trobades pel camí (algunes, com la regla de "prova
+> d'autorització amb una fila real", ja són a `CLAUDE.md`).
 
 Guió de proves de FEM-Foto **abans** d'ensenyar-la als socis (Fase 5) i abans del tall de domini
 (Fase 6). Obert el 29/07/2026.

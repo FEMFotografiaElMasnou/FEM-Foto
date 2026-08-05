@@ -1,4 +1,11 @@
-# FEM-Foto — Autenticació i navegació
+# FEM-Foto — Autenticació i navegació (històric)
+
+> **Document arxivat (05/08/2026).** L'estat actual i les decisions vives viuen a
+> `docs/AUTENTICACIO.md`. Això que segueix és el registre cronològic de com s'hi va
+> arribar — útil per entendre el raonament d'una decisió concreta, no per treballar al
+> projecte avui.
+
+---
 
 > **Com es llegeix aquest document.** Té tres nivells, i probablement només
 > necessites el primer:

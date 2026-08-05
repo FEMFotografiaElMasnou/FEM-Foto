@@ -725,7 +725,7 @@ window.openClassificacioLightbox = openClassificacioLightbox;
 // Idèntica a computeGeneralRankingLive(), només canvia la font de la nota
 // (computeValoracioRankingForObjective en lloc de computeRankingForObjective).
 // assignPositionPoints() no distingeix escala de nota, només posició — vegeu
-// §3.7/Pas 3 de ANALISI_Fase3_Puntuacio.md.
+// §3.7/Pas 3 de docs/arxiu/HISTORIC_Fase3_Puntuacio.md.
 export function computeValoracioGeneralRankingLive(scope = 'all') {
   // A diferència de computeGeneralRankingLive() (sempre només finalitzats,
   // per a tothom): per a l'admin real també s'hi inclouen els reptes actius

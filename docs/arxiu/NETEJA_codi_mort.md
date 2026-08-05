@@ -1,4 +1,9 @@
-# Neteja de codi mort i rèmores
+# Neteja de codi mort i rèmores (històric)
+
+> **Document arxivat (05/08/2026).** La regla viva que en va sortir ("pantalles del sistema
+> antic: no tocar fins Fase 7") és a `CLAUDE.md`. L'únic punt encara pendent (la fila
+> `app_settings.general_ranking`) és al backlog de `FEM-Foto_Unificacio_Pla-desenvolupament.md`.
+> Això que segueix és el registre de com es va decidir cada peça.
 
 Obert el 29/07/2026, al final del bloc B2 de la Fase 4, quan van sortir quatre restes de la
 compactació del panell d'admin i Enric va plantejar la pregunta de fons: **no és millor eliminar-les

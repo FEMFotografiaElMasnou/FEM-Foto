@@ -254,7 +254,7 @@ export async function saveMember() {
       return;
     }
 
-    // Pas 4b (ANALISI_Login_Navegacio.md §1.4): l'email va per una RPC a part
+    // Pas 4b (docs/arxiu/HISTORIC_Auth_Migracio.md §1.4): l'email va per una RPC a part
     // (fem_admin_set_email) perquè també el canviï a auth.users. Ara que
     // l'accés el decideix Supabase Auth i la identitat es resol per email, un
     // UPDATE només a public.users deixaria aquest soci sense poder iniciar
@@ -269,7 +269,7 @@ export async function saveMember() {
         return;
       }
     }
-    // Pas 3b (ANALISI_Login_Navegacio.md §1.4): la contrasenya, si es canvia,
+    // Pas 3b (docs/arxiu/HISTORIC_Auth_Migracio.md §1.4): la contrasenya, si es canvia,
     // va per una RPC a part (fem_admin_set_password) perquè també sincronitzi
     // auth.users — un UPDATE directe des del client deixaria l'usuari afectat
     // sense poder establir mai més una sessió real d'Auth (Pas 3a).
@@ -286,7 +286,7 @@ export async function saveMember() {
     const u = state.users.find(u => u.id === id);
     if (u) { u.name = name; u.email = email; u.username = email; u.role = role; if (password) u.password = password; }
   } else {
-    // New member — Pas 4a (ANALISI_Login_Navegacio.md §1.4): l'alta ja no és un
+    // New member — Pas 4a (docs/arxiu/HISTORIC_Auth_Migracio.md §1.4): l'alta ja no és un
     // INSERT directe. fem_admin_create_member() crea la fila de public.users I
     // el compte d'auth.users dins la mateixa transacció; sense la segona, el
     // soci nou no podria establir sessió real d'Auth i la RLS del Pas 3b li

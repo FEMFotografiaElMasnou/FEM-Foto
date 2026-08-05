@@ -14,6 +14,10 @@ Per a l'estat actual, vegeu `CLAUDE.md` a l'arrel.
 | `Diagnostic_objectives_reptes_calendari.md` | Diagnòstic previ a fusionar `reptes_calendari` dins `objectives` | La migració es va aplicar el 24/07/2026 | El raonament de per què una taula satèl·lit era mala idea. Els tres fets que segueixen vius són a `docs/REFERENCIA_BD.md` |
 | `HANDOFF_Fase2_Resultats.md` | Traspàs per integrar Resultats nativament | Fase 2 tancada i verificada; descriu un iframe que ja no existeix | El mapa del codi de FEM-Resultats, útil si algun dia cal consultar `_reference-resultats/` |
 | `Galeria_especificacio.md` | Especificació de la galeria | Implementada a `js/features/galeria.js` | El criteri d'ordenació i el comportament esperat dels dos desplegables |
+| `HISTORIC_Fase3_Puntuacio.md` | Seguiment pas a pas del canvi de sistema de puntuació | Fase 3 tancada (05/08/2026); l'estat actual viu a `docs/SISTEMA_PUNTUACIO.md` | El raonament de cada decisió de disseny (trigger vs. columna generada, `/2` vs `/3`, etc.) si mai cal revisar-lo |
+| `HISTORIC_Auth_Migracio.md` | Seguiment pas a pas de la migració a Supabase Auth | Migració tancada (05/08/2026); l'estat actual viu a `docs/AUTENTICACIO.md` | El detall de cada forat de seguretat trobat i corregit pel camí (el parany del `NULL` en comprovacions d'autorització, els `REVOKE` que no feien res, etc.) |
+| `PROVES_Fase4.md` | Guió de proves internes abans del tall de domini | Fase 4 tancada (02/08/2026), els 10 blocs en verd | El guió mateix, si mai cal repetir una ronda de proves equivalent |
+| `NETEJA_codi_mort.md` | Inventari i decisions de neteja de codi mort | Feina majoritàriament feta; la regla viva i el punt pendent ja són a `CLAUDE.md` i al pla mestre | El criteri complet de què es considera "mort de debò" vs. "adormit a posta" |
 
 ## Una decisió que calia rescatar
 

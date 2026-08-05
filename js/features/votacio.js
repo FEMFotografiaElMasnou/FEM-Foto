@@ -473,7 +473,7 @@ export function updateVoteButtonsState() {
 // Duplicat de setVoteCriteria/saveVoteOnClick/renderVotingGrid/handleStar,
 // NO els substitueix (aquells segueixen intactes per a la votació real).
 // Escriu directament a `valoracio` i reparteix `creativity=theme=composition
-// = valoracio/2` (vegeu ANALISI_Fase3_Puntuacio.md, Pas 4): el trigger
+// = valoracio/2` (vegeu docs/arxiu/HISTORIC_Fase3_Puntuacio.md, Pas 4): el trigger
 // fem_sync_valoracio() (Pas 1) recalcula sempre `valoracio` a partir dels 3
 // camps antics en cada insert/update, així que cal alimentar-lo amb un
 // repartiment que hi torni a l'exacte valor original (×10/15 del trigger

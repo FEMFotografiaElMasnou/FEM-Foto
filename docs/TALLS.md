@@ -26,13 +26,9 @@ aparèixer soles si es torna a posar el commutador en «Antic».
 ### Abans
 
 - [ ] **Comprovar que les pantalles del sistema nou donen els mateixos punts i posicions que les
-      antigues, amb dades reals de Normal.** El 29/07/2026 va sortir **vermell** (al repte
-      «Escales», 19 posicions de 23 i l'ordre de la Classificació General; la verificació del Pas
-      3 de la Fase 3 s'havia fet sobre un «Dominant», on sí que quadra). **Corregit el mateix dia**
-      a `getPhotoValoracio()`, i comprovat per SQL, amb el codi real i **a la interfície** (repte
-      de prova a Test que reprodueix l'empat): en queda una diferència d'una posició, explicada a
-      l'Annex A i **acceptada per Enric el 29/07/2026**. Tot a `docs/PROVES_Fase4.md`.
-      Convé repetir la comparació just abans del tall, amb les dades que hi hagi aquell dia.
+      antigues, amb dades reals de Normal.** Ja verificat un cop (29/07/2026, amb una diferència
+      d'una posició coneguda i acceptada per Enric — detall a `docs/arxiu/PROVES_Fase4.md`, Annex
+      A), però convé repetir la comparació just abans del tall, amb les dades que hi hagi aquell dia.
 - [x] **Desplegar la correcció del 29/07/2026** (l'arrodoniment a 2 decimals de la nota del
       motor nou). **Fet el 29/07/2026**, commit `ab2c3cd`: comprovat que
       `fem-foto.vercel.app/js/features/ranking.js` ja serveix la versió corregida i que l'app
@@ -104,7 +100,7 @@ resoldre. Ja ha generat consultes reals dels socis abans d'ara — vegeu el punt
 ### Abans
 
 - [x] **Fase 4 (proves internes) tancada** — **FET el 02/08/2026**, els 10 blocs de
-      `docs/PROVES_Fase4.md` en verd. ~~Fase 5 (validació amb socis)~~ **suprimida (04/08/2026,
+      `docs/arxiu/PROVES_Fase4.md` en verd. ~~Fase 5 (validació amb socis)~~ **suprimida (04/08/2026,
       decisió d'Enric)**: els socis no tenen el nivell tècnic per a aquest tipus de validació: la
       real ja passa en línia amb en Pablo durant tot el desenvolupament, i cada "fes commit i push"
       d'Enric és el punt on ho dona per prou validat. Vegeu
@@ -115,19 +111,16 @@ resoldre. Ja ha generat consultes reals dels socis abans d'ara — vegeu el punt
       seva cache. Això talla el cas de soca-rel: **qui obre l'app de nou** (la majoria de vegades)
       ja no pot quedar-se amb `index.html`/JS/CSS vells.
 - [x] ~~**Detecció de versió en calent**~~ — **descartada (04/08/2026, decisió d'Enric)**. Cobriria
-      qui ja tenia una pestanya oberta abans d'un desplegament (les capçaleres de cache no hi
-      arriben — no torna a demanar res al servidor fins que no recarrega). Motiu del descart:
-      l'app és d'ús molt poc freqüent —pujar fotos, votar, consultar resultats, unes 2-3
-      setmanes cada ~2 mesos—; a mig procés no es despleguen canvis que calgui forçar a veure, i
-      entre un repte i el següent hi ha temps de sobres perquè l'entrada i sortida esporàdica
-      normal ja renovi l'app tota sola. Amb les capçaleres `Cache-Control` (punt anterior) n'hi ha
-      prou.
+      qui ja tenia una pestanya oberta abans d'un desplegament, cas que les capçaleres de cache no
+      arriben a tallar. Descartada perquè l'app és d'ús molt poc freqüent (2-3 setmanes cada ~2
+      mesos): entre un repte i el següent hi ha temps de sobres perquè l'entrada i sortida
+      esporàdica normal ja renovi l'app tota sola.
 - [x] **Panell de Socis afinat** — **FET el 02/08/2026**. Els tres punts detallats a
       `FEM-Foto_Unificacio_Pla-desenvolupament.md` §8: badge de rol → desplegable de 3 opcions a
       la taula, columna nova de rol Zampa (3 opcions), i "Foto pujada"/"Ha Votat" eliminades.
 - [ ] Tall 1 fet i estable, o decidit explícitament que es fan alhora.
 - [x] **Pas 4d de la migració d'Auth** — **FET als dos entorns (04/08/2026)**,
-      `ANALISI_Login_Navegacio.md` §1.7.
+      `docs/arxiu/HISTORIC_Auth_Migracio.md` §1.7.
 - [x] **Redirect URLs de Supabase, als dos projectes** — **FET el 29/07/2026**. Hi ha les 4
       entrades a `FEM_Reptes` (Normal) i a `FEM_Reptes-test` (Test): `fem-foto.vercel.app/**`,
       `localhost:3000/**`, `www.femfotografiaelmasnou.cat/**` i `femfotografiaelmasnou.cat/**`.

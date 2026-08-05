@@ -35,7 +35,7 @@ antiga i amb l'app Zampa del club.
   - Configuració a `js/core/config.js`. El mode actiu es desa a `localStorage`.
   - La clau `anon` és **pública per disseny**: la seguretat real recau a les polítiques RLS,
     no a amagar-la.
-- **Supabase Auth** per al login (migració feta el 26-27/07/2026; vegeu `ANALISI_Login_Navegacio.md`).
+- **Supabase Auth** per al login (vegeu `docs/AUTENTICACIO.md`).
 - **Cloudinary** per a les imatges (cloud `dz1n0g9yg`, preset `Fem_Apps`).
 
 ## Com treballar-hi
@@ -91,9 +91,42 @@ mai: el navegador bloqueja els imports i l'app no reacciona. Sempre per HTTP.
 ### Proves d'autorització
 
 Una prova negativa (comprovar que algú **no** pot fer una cosa) ha de fer-se sempre amb una
-fila que **existeixi de veritat**. El 27/07/2026 una prova amb un id inexistent va donar verd
-sense provar res: la funció sortia pel camí de "no trobat" abans d'arribar a comprovar
-l'autorització, i va amagar un forat real durant hores.
+fila que **existeixi de veritat**. Amb un id inexistent el verd no prova res: la funció surt pel
+camí de "no trobat" abans d'arribar a comprovar l'autorització, i pot amagar un forat real.
+
+### Pantalles del sistema de puntuació antic (3 criteris)
+
+No es toquen ni es redissenyen. Són el pla de reversió del Tall 1 (`docs/TALLS.md`) — tornar
+enrere ha de seguir sent un clic. Es revisen a la Fase 7 (retirada), no abans.
+
+## Com es manté la documentació
+
+Perquè els documents no tornin a créixer amb registre cronològic (el que ja vam haver de
+desfer el 05/08/2026):
+
+- **Estat actual i regles vives, mai narrativa cronològica.** Frases del tipus "el dia X es va
+  trobar...", "verificat el..." no hi tenen lloc. El detall de com s'hi ha arribat viu al
+  `git log` (els missatges de commit d'aquest projecte ja el porten) — no es duplica als `.md`.
+- **Un fet, un únic lloc.** Abans d'escriure una dada, comprovar que no ja hi és a un altre
+  document (taula de sota). No repetir un mateix estat en 3 llocs que caldrà recordar de
+  sincronitzar — un se'n va desactualitzar per això mateix.
+- **Comprimir en tancar, no després.** Quan un pas o fase es tanca, en el mateix moment (no en
+  una neteja posterior) es retira la narrativa de com s'hi ha arribat i es deixa només la
+  conclusió operativa. Si val la pena preservar el detall, va a `docs/arxiu/`, no es queda al
+  document actiu.
+- **Criteri de sortida**: es podria llegir "d'una pantalla"? Si no, no està acabat.
+
+| Tipus de dada | Únic lloc |
+|---|---|
+| Estat de fases i passos | `FEM-Foto_Unificacio_Pla-desenvolupament.md` |
+| Esquema BD, RPC, RLS actuals | `docs/REFERENCIA_BD.md` |
+| Qui veu cada pantalla | `docs/PANTALLES.md` |
+| Sistema de puntuació: com funciona avui | `docs/SISTEMA_PUNTUACIO.md` |
+| Autenticació i navegació: com funciona avui | `docs/AUTENTICACIO.md` |
+| Migracions aplicades | `sql/README.md` |
+| Checklist dels talls pendents | `docs/TALLS.md` |
+| Regles i convencions permanents | Aquest fitxer |
+| Detall de com es va arribar a una decisió | `git log`, o `docs/arxiu/` si cal preservar-ho |
 
 ## Qui és qui
 
@@ -110,12 +143,10 @@ l'autorització, i va amagar un forat real durant hores.
 | Document | Per a què serveix |
 |---|---|
 | `FEM-Foto_Unificacio_Pla-desenvolupament.md` | Pla mestre: fases, estat de cadascuna, backlog |
-| `ANALISI_Fase3_Puntuacio.md` | Canvi del sistema de puntuació (3 criteris → 1 concepte 0-10) |
-| `ANALISI_Login_Navegacio.md` | Autenticació (Supabase Auth) i navegació |
+| `docs/SISTEMA_PUNTUACIO.md` | Sistema de puntuació (3 criteris → 1 concepte 0-10): com funciona avui |
+| `docs/AUTENTICACIO.md` | Autenticació (Supabase Auth) i navegació: com funciona avui |
 | `docs/REFERENCIA_BD.md` | Taules, funcions RPC, RLS, cron — la superfície de servidor |
 | `docs/PANTALLES.md` | Quines pantalles hi ha i qui les veu |
 | `docs/TALLS.md` | Llistes de comprovació dels dos talls pendents |
-| `docs/PROVES_Fase4.md` | Guió de proves internes (Fase 4) i registre d'incidències |
-| `docs/NETEJA_codi_mort.md` | Què s'esborra, què no es toca i per què. Inventari pendent |
 | `sql/README.md` | Quina migració s'ha aplicat on |
-| `docs/arxiu/` | Documents tancats. Historial, no referència. |
+| `docs/arxiu/` | Documents tancats. Historial, no referència — inclou el registre pas a pas de la migració d'Auth i del canvi de puntuació, i el guió de proves de la Fase 4 |
