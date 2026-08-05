@@ -13,11 +13,17 @@ regles que no s'han de tornar a discutir. El detall tècnic pas a pas de com es 
 | «Taula de Classificació» | ✅ |
 | «Puntuar Repte» (captura 0-10) | ✅ |
 | Commutador `sistema_puntuacio_nou` al panell d'admin (pestanya *Puntuació*) | ✅ |
-| **El tall** — commutador en «Nou» a Normal, de manera formal i estable | ⬜ Pendent |
+| **El tall** — commutador en «Nou» a Normal, de manera formal i estable | ⬜ Pendent, fet alhora amb el tall de domini |
 
-Tot el desenvolupament està tancat. Falta només prémer el commutador a Normal quan es decideixi
-— és un clic al panell d'admin, amb marxa enrere igual d'immediata. Checklist i estat real del
-commutador: `docs/TALLS.md`.
+Tot el desenvolupament està tancat. **Decidit (05/08/2026): no hi ha un tall de puntuació
+independent** — es fa en el mateix moment que el tall de domini, un únic pas. El commutador ja
+és a `true` a Normal (resta d'una prova anterior, no el tall fet formalment), i coincideix amb
+l'estat que ha de quedar el dia del tall. Checklist completa: `docs/TALLS.md`.
+
+**Què veuran els socis, i quan**: els reptes ja tancats mostraran la puntuació normalitzada al
+sistema nou (0-10) des del mateix dia del tall — els punts i posicions no canvien, només com es
+mostren. El repte en curs es veurà amb el sistema nou (tant per votar com per veure el resultat)
+quan s'obri la propera votació.
 
 ## Com funciona
 

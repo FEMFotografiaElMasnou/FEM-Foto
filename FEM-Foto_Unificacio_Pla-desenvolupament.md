@@ -74,7 +74,7 @@ Objectiu: una única aplicació que integri tota la funcionalitat de Reptes més
 **Fase 5, suprimida (04/08/2026, decisió d'Enric):** els socis no tenen el nivell tècnic per
 validar una URL de prova de Vercel — no aportaria res de fiable. La validació real ja passa
 contínuament en línia amb en Pablo, i cada "fes commit i push" d'Enric és, formalment, el punt
-on ell dona una cosa per prou validada. El Tall 2 (domini) no depèn de cap "Fase 5 tancada":
+on ell dona una cosa per prou validada. El tall (domini) no depèn de cap "Fase 5 tancada":
 depèn només dels punts tècnics de `docs/TALLS.md`.
 
 ## 6. Estat actual
@@ -84,10 +84,10 @@ depèn només dels punts tècnics de `docs/TALLS.md`.
 | 0 · Diagnosi i pla | ✅ Fet | Aquest document |
 | 1 · Bastida | ✅ Fet | Repo `FEM-Foto` i projecte Vercel actius. Desplega a `fem-foto.vercel.app` |
 | 2 · Integració nativa de Resultats | ✅ **Tancada** | Iframe retirat, un únic motor de rànquing. Sense cap dependència de FEM-Resultats |
-| 3 · Nou sistema de puntuació | 🔄 En curs | Passos 1-4 i A-D fets **i desplegats**. El tall ja és **un clic**, no codi: només falta prémer-lo (Normal segueix en «Antic») |
+| 3 · Nou sistema de puntuació | ✅ **Desenvolupament tancat** | Passos 1-4 i A-D fets i desplegats. El canvi de sistema es fa alhora amb el tall de domini (Fase 6), no per separat — `docs/TALLS.md` |
 | 4 · Proves internes | ✅ **Tancada (02/08/2026)** | Els 10 blocs del guió en verd. Registre a `docs/arxiu/PROVES_Fase4.md` |
 | 5 · ~~Validació amb els socis~~ | ❌ **Suprimida (04/08/2026)** | Vegeu la nota sota la taula de fases, §5 |
-| 6 · Tall de domini | ⬜ | Llista de comprovació a `docs/TALLS.md` |
+| 6 · Tall de domini | ⬜ | Llista de comprovació a `docs/TALLS.md` — inclou el canvi de sistema de puntuació |
 | 7 · Retirada de les apps antigues | ⬜ | Un cop FEM-Reptes deixi d'importar: la fila `app_settings.general_ranking` (§8) i el que quedi per revisar a `docs/arxiu/NETEJA_codi_mort.md` |
 
 **Fase 2 — tancada del tot, sense dependència de FEM-Resultats**: zero referències a `iframe`,
@@ -112,10 +112,8 @@ Com funciona cadascun d'aquests tres blocs avui, i les regles que no es tornen a
 
 ## 7. Què queda pendent de decidir
 
-**El tall de Fase 3** (checklist a `docs/TALLS.md`): **quan** es prem el commutador. No falta
-res tècnic — els Passos A-D ja són desplegats —, només decidir el dia. Preferència: fer-ho entre
-la pujada i l'inici de la votació d'un repte (no un requisit: els dos sistemes conviuen bé si no
-es pot).
+**Quan es fa el tall** (checklist a `docs/TALLS.md`): el domini i el sistema de puntuació es
+canvien **alhora**, en un sol pas. No falta res tècnic, només decidir el dia.
 
 **La navegació**: si es fa per a totes les pantalles de cop o primer només les de participant.
 

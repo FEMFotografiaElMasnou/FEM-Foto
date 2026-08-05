@@ -96,8 +96,9 @@ camí de "no trobat" abans d'arribar a comprovar l'autorització, i pot amagar u
 
 ### Pantalles del sistema de puntuació antic (3 criteris)
 
-No es toquen ni es redissenyen. Són el pla de reversió del Tall 1 (`docs/TALLS.md`) — tornar
-enrere ha de seguir sent un clic. Es revisen a la Fase 7 (retirada), no abans.
+No es toquen ni es redissenyen. Són el pla de reversió del sistema de puntuació (`docs/TALLS.md`)
+— tornar enrere ha de seguir sent un clic al commutador. Es revisen a la Fase 7 (retirada), no
+abans.
 
 ## Com es manté la documentació
 

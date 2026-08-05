@@ -60,4 +60,4 @@ visibilitat no depèn del rol. Sí que segueix aplicant al distintiu, que necess
 
 ## Què passarà al tall
 
-Res de codi: es prem el botó. Vegeu `docs/TALLS.md`, Tall 1.
+Res de codi: es prem el botó, en el mateix moment que el tall de domini. Vegeu `docs/TALLS.md`.
